@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Tạo khóa học</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <style>
+    .module-card{border:1px solid #e5e7eb;border-radius:12px;padding:16px;margin-bottom:12px;background:#fff}
+    .lesson{border-top:1px dashed #e5e7eb;padding-top:12px;margin-top:12px}
+  </style>
+</head>
+<body>
+<div class="container mt-5">
+  <h1 class="mb-4 text-primary">🎓 Tạo Khóa học mới</h1>
+
+  <form id="courseForm" action="{{ url_for('create_course') }}" method="POST" enctype="multipart/form-data" class="shadow p-4 rounded bg-light">
+
+    <!-- Thông tin khóa học cơ bản -->
+    <div class="mb-3">
+      <label for="name" class="form-label">Tên khóa học</label>
+      <input type="text" class="form-control" id="name" name="name" required>
+    </div>
+
+    <div class="mb-3">
+      <label for="category" class="form-label">Phân loại khóa học</label>
+      <input type="text" class="form-control" id="category" name="category" placeholder="VD: Lập trình, Thiết kế, Marketing">
+    </div>
+
+    <div class="mb-3">
+      <label for="tags" class="form-label">Tags</label>
+      <input type="text" class="form-control" id="tags" name="tags" placeholder="VD: Python, Cơ bản, OOP">
+      <div class="form-text">Nhập nhiều tag, phân cách bằng dấu phẩy (,)</div>
+    </div>
+
+    <div class="mb-3">
+      <label for="description" class="form-label">Mô tả</label>
+      <textarea class="form-control" id="description" name="description" rows="4"></textarea>
+    </div>
+
+    <div class="mb-3">
+      <label for="image" class="form-label">Ảnh khóa học</label>
+      <input class="form-control" type="file" id="image" name="image" accept="image/*" required>
+    </div>
+
+    <div class="mb-3">
+      <label for="video" class="form-label">Video tổng quan (tùy chọn)</label>
+      <input class="form-control" type="file" id="video" name="video" accept="video/*">
+      <!-- Hidden field để lưu caption_url từ doc-to-video -->
+      <input type="hidden" id="caption_url" name="caption_url">
+    </div>
+
+    <hr class="my-4">
+
+    <!-- 🤖 AI VIDEO GENERATOR -->
+    <div class="mb-4 p-4 border border-success rounded bg-light">
+      <div class="d-flex align-items-center mb-3">
+        <span class="badge bg-success me-2">🤖 AI</span>
+        <h5 class="mb-0 text-success">Tạo video bài giảng từ tài liệu (AI-Powered)</h5>
+      </div>
+      <p class="text-muted mb-3">
+        <strong>Tính năng mới:</strong> AI đọc và hiểu tài liệu PDF/Word/PowerPoint, tự động tạo video bài giảng có cấu trúc chuyên nghiệp với slides, mục tiêu học tập, và script tự nhiên.
+      </p>
+      
+      <div class="row">
+        <div class="col-md-6">
+          <label class="form-label">Chọn tài liệu để tạo video</label>
+          <input type="file" class="form-control" id="ai-doc-input" accept=".pdf,.docx,.ppt,.pptx">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Tiêu đề video (tùy chọn)</label>
+          <input type="text" class="form-control" id="ai-video-title" placeholder="Để trống để AI tự tạo">
+        </div>
+      </div>
+      
+      <div class="d-flex gap-2 mt-3">
+        <button type="button" class="btn btn-success" id="ai-generate-video">
+          <i class="fas fa-magic me-1"></i>Tạo video AI từ tài liệu
+        </button>
+        <span class="small text-muted" id="ai-status"></span>
+      </div>
+      
+      <!-- Video Preview Section -->
+      <div id="ai-video-preview" class="mt-4" style="display: none;">
+        <div class="card">
+          <div class="card-header">
+            <h6 class="mb-0">
+              <i class="fas fa-video me-2"></i>Video AI đã tạo thành công
+            </h6>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <div class="col-md-8">
+                <video id="ai-video-player" controls class="w-100" style="max-height: 300px;" preload="metadata">
+                  <source id="ai-video-source" src="" type="video/mp4">
+                  Trình duyệt của bạn không hỗ trợ video.
+                </video>
+                <div id="ai-video-debug" class="mt-2 small text-muted" style="display: none;"></div>
+              </div>
+              <div class="col-md-4">
+                <div class="mb-3">
+                  <label class="form-label fw-bold">Thông tin video:</label>
+                  <div id="ai-video-info" class="small text-muted"></div>
+                </div>
+                <div class="d-grid gap-2">
+                  <button type="button" class="btn btn-outline-primary btn-sm" id="ai-download-video">
+                    <i class="fas fa-download me-1"></i>Download video
+                  </button>
+                  <button type="button" class="btn btn-outline-success btn-sm" id="ai-upload-to-lesson">
+                    <i class="fas fa-upload me-1"></i>Upload vào bài học
+                  </button>
+                  <button type="button" class="btn btn-outline-secondary btn-sm" id="ai-close-preview">
+                    <i class="fas fa-times me-1"></i>Đóng preview
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="mt-3">
+        <strong>🤖 AI sẽ tự động:</strong>
+        <ul class="mb-0">
+          <li>Phân tích nội dung và xác định chủ đề chính</li>
+          <li>Tạo cấu trúc bài giảng logic với slides</li>
+          <li>Xác định mục tiêu học tập rõ ràng</li>
+          <li>Tạo script tự nhiên như giáo viên thực sự</li>
+          <li>Tạo video chất lượng cao với audio TTS</li>
+          <li>Tự động thêm vào bài học đầu tiên</li>
+        </ul>
+      </div>
+    </div>
+
+    <hr class="my-4">
+
+    <!-- ✅ TRÌNH DỰNG MODULE & BÀI HỌC -->
+    <h5 class="mb-2">Module & Bài học</h5>
+    <p class="text-muted">
+      Mỗi module gồm một hoặc nhiều bài học. Bài học có thể là <b>video</b> (URL hoặc <u>upload file</u>), 
+      <b>nội dung</b> (soạn trực tiếp), hoặc <b>🤖 AI tạo video từ tài liệu</b>. 
+      Nếu nhập cả URL và upload file, hệ thống <b>ưu tiên file upload</b>.
+    </p>
+
+    <div id="modules"></div>
+    <button type="button" id="addModule" class="btn btn-outline-primary btn-sm">+ Thêm module</button>
+
+    <!-- Hidden: chứa JSON outline -->
+    <input type="hidden" id="outline_json" name="outline_json" value="">
+
+    <div class="mt-4">
+      <button type="submit" class="btn btn-success">Tạo khóa học</button>
+      <a href="{{ url_for('manage_courses') }}" class="btn btn-secondary">Quay lại</a>
+    </div>
+  </form>
+</div>
+
+<script>
+(function(){
+  const modulesBox = document.getElementById('modules');
+  const addModuleBtn = document.getElementById('addModule');
+  const form = document.getElementById('courseForm');
+  const outlineInput = document.getElementById('outline_json');
+
+  // Đếm số lượng bài học để tạo tên trường upload duy nhất
+  let lessonFileCounter = 0;
+
+  function makeModuleCard() {
+    const wrap = document.createElement('div');
+    wrap.className = 'module-card';
+    wrap.innerHTML = `
+      <div class="d-flex justify-content-between align-items-center">
+        <div class="w-100 me-3">
+          <label class="form-label">Tên module</label>
+          <input class="form-control module-title" placeholder="VD: Tuần 1 – Giới thiệu">
+        </div>
+        <button type="button" class="btn btn-outline-danger btn-sm remove-module ms-2">Xóa</button>
+      </div>
+      <div class="lessons mt-2"></div>
+      <button type="button" class="btn btn-outline-secondary btn-sm add-lesson mt-2">+ Thêm bài học</button>
+    `;
+    wrap.querySelector('.remove-module').onclick = ()=> wrap.remove();
+    wrap.querySelector('.add-lesson').onclick = ()=> addLesson(wrap.querySelector('.lessons'));
+    return wrap;
+  }
+
+  function addLesson(container, data={}) {
+    const box = document.createElement('div');
+    box.className = 'lesson';
+    box.innerHTML = `
+      <div class="row g-2">
+        <div class="col-md-6">
+          <label class="form-label">Tiêu đề bài học</label>
+          <input class="form-control lesson-title" placeholder="VD: Machine Learning là gì?" value="${data.title||''}">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Loại</label>
+          <select class="form-select lesson-type">
+            <option value="lesson" ${data.item_type==='lesson'?'selected':''}>Lesson</option>
+            <option value="video"  ${data.item_type==='video'?'selected':''}>Video</option>
+            <option value="reading" ${data.item_type==='reading'?'selected':''}>Reading</option>
+            <option value="quiz" ${data.item_type==='quiz'?'selected':''}>Quiz</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Thời lượng (giây)</label>
+          <input type="number" class="form-control lesson-duration" min="0" value="${data.duration_sec||''}">
+        </div>
+      </div>
+
+      <div class="mb-2 mt-2">
+        <label class="form-label">URL video/tài nguyên (nếu có)</label>
+        <input class="form-control lesson-url" placeholder="/static/uploads/video.mp4 hoặc https://..." value="${data.resource_url||''}">
+      </div>
+
+      <div class="mb-2">
+        <label class="form-label">Upload video (tùy chọn)</label>
+        <input type="file" class="form-control lesson-upload" accept="video/*">
+        <div class="form-text">Ưu tiên dùng video upload nếu chọn cả hai.</div>
+      </div>
+
+      <div class="mb-2">
+        <label class="form-label">Nội dung bài học</label>
+        <textarea class="form-control lesson-content" rows="4" placeholder="Soạn nội dung...">${data.content||''}</textarea>
+      </div>
+
+      <div class="mb-3 p-3 border border-primary rounded bg-light">
+        <div class="d-flex align-items-center mb-2">
+          <span class="badge bg-primary me-2">🤖 AI</span>
+          <label class="form-label mb-0 fw-bold">Tạo video bài giảng từ tài liệu (AI-Powered)</label>
+        </div>
+        <input type="file" class="form-control lesson-doc" accept=".pdf,.docx,.ppt,.pptx" placeholder="Chọn file PDF, Word, hoặc PowerPoint">
+        <div class="d-flex gap-2 mt-2">
+          <button type="button" class="btn btn-primary btn-sm btn-generate-video">
+            <i class="fas fa-magic me-1"></i>Tạo video AI từ tài liệu
+          </button>
+          <span class="small text-muted gen-status"></span>
+        </div>
+        <div class="form-text">
+          <strong>🤖 AI sẽ:</strong>
+          <ul class="mb-0 mt-1">
+            <li>Đọc và hiểu nội dung tài liệu</li>
+            <li>Tạo cấu trúc bài giảng logic với slides</li>
+            <li>Xác định mục tiêu học tập rõ ràng</li>
+            <li>Tạo script tự nhiên như giáo viên thực sự</li>
+            <li>Tạo video chất lượng cao với audio TTS</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="text-end">
+        <button type="button" class="btn btn-outline-danger btn-sm remove-lesson">Xóa bài học</button>
+      </div>
+    `;
+
+    // Gán tên field upload duy nhất cho bài học này
+    const uploadInput = box.querySelector('.lesson-upload');
+    const fieldName = `lesson_file_${++lessonFileCounter}`;
+    uploadInput.name = fieldName;               
+    box.dataset.uploadField = fieldName; 
+
+    box.querySelector('.remove-lesson').onclick = ()=> box.remove();
+
+    // Xử lý "Tạo video từ tài liệu" bằng AI
+    const docInput   = box.querySelector('.lesson-doc');
+    const genBtn     = box.querySelector('.btn-generate-video');
+    const urlInput   = box.querySelector('.lesson-url');
+    const titleInput = box.querySelector('.lesson-title');
+    const contentTa  = box.querySelector('.lesson-content');
+    const statusEl   = box.querySelector('.gen-status');
+
+    genBtn.onclick = async () => {
+      const file = docInput && docInput.files && docInput.files[0];
+      if(!file){ statusEl.textContent = "Chọn tài liệu trước đã."; return; }
+      statusEl.textContent = "Đang tạo video...";
+      try{
+        const fd = new FormData();
+        fd.append('file', file);
+        fd.append('title', titleInput.value || file.name);
+
+        const res = await fetch('/api/convert-doc-to-video', { 
+          method:'POST', 
+          body: fd,
+          credentials: 'same-origin' // Đảm bảo gửi cookies
+        });
+        
+        // Kiểm tra response status
+        if (!res.ok) {
+          if (res.status === 302 || res.status === 401) {
+            throw new Error('Vui lòng đăng nhập trước khi sử dụng tính năng này. Nhấn OK để chuyển đến trang đăng nhập.');
+          }
+          if (res.status === 500) {
+            const errorText = await res.text();
+            console.error('Server error:', errorText);
+            throw new Error('Lỗi server: ' + (errorText.substring(0, 100) || 'Không xác định'));
+          }
+          throw new Error(`HTTP Error: ${res.status} - ${res.statusText}`);
+        }
+        
+        // Kiểm tra content type
+        const contentType = res.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          const text = await res.text();
+          console.error('Expected JSON but got:', text.substring(0, 200));
+          throw new Error('Server trả về dữ liệu không đúng định dạng. Vui lòng đăng nhập lại.');
+        }
+        
+        const data = await res.json();
+        if(!data.ok){ throw new Error(data.error || 'Tạo video thất bại'); }
+        
+        urlInput.value = data.video_url;
+        
+        // QUAN TRỌNG: Lưu caption_url vào hidden field để submit với form
+        if(data.caption_url){
+          const captionInput = document.getElementById('caption_url');
+          if(captionInput){
+            captionInput.value = data.caption_url;
+            console.log('[CAPTION] Saved caption_url:', data.caption_url);
+          }
+        }
+        
+        if(!contentTa.value){
+          contentTa.value = data.script_text || "";
+        }
+
+        const lectureInfo = data.lecture_structure || {};
+        const infoText = `✓ Đã tạo video AI bài giảng: "${lectureInfo.title || 'Bài giảng'}" (${lectureInfo.slide_count || 0} slides, ${Math.round(lectureInfo.total_duration || 0)} phút)`;
+        statusEl.textContent = infoText;
+
+        // Cập nhật tiêu đề nếu chưa có
+        if(!titleInput.value && lectureInfo.title){
+          titleInput.value = lectureInfo.title;
+        }
+      }catch(err){
+        console.error(err);
+        
+        // Hiển thị thông báo lỗi với hướng dẫn cụ thể
+        if (err.message.includes('đăng nhập')) {
+          statusEl.innerHTML = `
+            <span class="text-danger">
+              ❌ ${err.message}
+              <br><small>
+                <a href="/login" class="btn btn-sm btn-primary mt-2">Đăng nhập ngay</a>
+              </small>
+            </span>
+          `;
+        } else {
+          statusEl.textContent = "Lỗi: " + err.message;
+        }
+      }
+    };
+    container.appendChild(box);
+  }
+
+  addModuleBtn.onclick = ()=> modulesBox.appendChild(makeModuleCard());
+
+  // 🤖 AI Video Generator - Tạo video từ tài liệu ở đầu form
+  const aiDocInput = document.getElementById('ai-doc-input');
+  const aiVideoTitle = document.getElementById('ai-video-title');
+  const aiGenerateBtn = document.getElementById('ai-generate-video');
+  const aiStatus = document.getElementById('ai-status');
+
+  // Function để kiểm tra trạng thái đăng nhập
+  async function checkLoginStatus() {
+    try {
+      const res = await fetch('/api/check-login', { 
+        method: 'GET',
+        credentials: 'same-origin'
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        return data.ok === true;
+      }
+      return false;
+    } catch (e) {
+      console.error('Login check error:', e);
+      return false;
+    }
+  }
+
+  aiGenerateBtn.onclick = async () => {
+    const file = aiDocInput.files && aiDocInput.files[0];
+    if (!file) {
+      aiStatus.textContent = "Vui lòng chọn tài liệu trước!";
+      return;
+    }
+
+    // Kiểm tra trạng thái đăng nhập trước
+    aiStatus.textContent = "🔍 Đang kiểm tra quyền truy cập...";
+    const isLoggedIn = await checkLoginStatus();
+    
+    if (!isLoggedIn) {
+      aiStatus.innerHTML = `
+        <span class="text-danger">
+          ❌ Bạn cần đăng nhập để sử dụng tính năng này
+          <br><small>
+            <a href="/login" class="btn btn-sm btn-primary mt-2">Đăng nhập ngay</a>
+          </small>
+        </span>
+      `;
+      return;
+    }
+
+      // Progress indicator
+      let progressInterval;
+      let dots = 0;
+      
+      const updateProgress = () => {
+        dots = (dots + 1) % 4;
+        const dotStr = '.'.repeat(dots);
+        aiStatus.innerHTML = `
+          <span class="text-info">
+            🤖 AI đang phân tích tài liệu và tạo video${dotStr}
+            <br><small class="text-muted">Vui lòng đợi, quá trình này mất khoảng 2-5 phút (giọng người thật)...</small>
+          </span>
+        `;
+      };
+      
+      updateProgress();
+      progressInterval = setInterval(updateProgress, 1000);
+      
+      aiGenerateBtn.disabled = true;
+      
+      // Clear interval when done
+      window.currentProgressInterval = progressInterval;
+      
+      // Log để debug
+      console.log('📤 Starting video generation...');
+      console.log('   File:', file.name);
+      console.log('   Title:', aiVideoTitle.value);
+
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('title', aiVideoTitle.value || file.name);
+
+      // Add timeout to prevent hanging (increased to 15 minutes)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 900000); // 15 minutes timeout for video creation
+      
+      const res = await fetch('/api/convert-doc-to-video', { 
+        method: 'POST', 
+        body: fd,
+        credentials: 'same-origin', // Đảm bảo gửi cookies
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      // Kiểm tra response status
+      if (!res.ok) {
+        if (res.status === 302 || res.status === 401) {
+          throw new Error('Vui lòng đăng nhập trước khi sử dụng tính năng này. Nhấn OK để chuyển đến trang đăng nhập.');
+        }
+        if (res.status === 500) {
+          const errorText = await res.text();
+          console.error('Server error:', errorText);
+          throw new Error('Lỗi server: ' + (errorText.substring(0, 100) || 'Không xác định'));
+        }
+        throw new Error(`HTTP Error: ${res.status} - ${res.statusText}`);
+      }
+      
+      // Kiểm tra content type
+      const contentType = res.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await res.text();
+        console.error('Expected JSON but got:', text.substring(0, 200));
+        throw new Error('Server trả về dữ liệu không đúng định dạng. Vui lòng đăng nhập lại.');
+      }
+      
+      const data = await res.json();
+      console.log('API Response:', data);
+      
+      if (!data.ok) {
+        throw new Error(data.error || 'Tạo video thất bại');
+      }
+
+      // QUAN TRỌNG: Lưu caption_url vào hidden field để submit với form
+      if(data.caption_url){
+        const captionInput = document.getElementById('caption_url');
+        if(captionInput){
+          captionInput.value = data.caption_url;
+          console.log('[CAPTION] Saved caption_url:', data.caption_url);
+        }
+      }
+
+      // Hiển thị thông tin thành công
+      const lectureInfo = data.lecture_structure || {};
+      console.log('Lecture info:', lectureInfo);
+      console.log('Video URL:', data.video_url);
+      
+      // Clear progress interval
+      if (window.currentProgressInterval) {
+        clearInterval(window.currentProgressInterval);
+      }
+      
+      aiStatus.innerHTML = `
+        <span class="text-success">
+          ✅ Đã tạo video AI: "${lectureInfo.title || 'Bài giảng'}" 
+          (${lectureInfo.slide_count || 0} slides, ~${Math.round(lectureInfo.total_duration || 0)} phút)
+        </span>
+      `;
+
+      // Hiển thị video preview
+      console.log('Calling showVideoPreview...');
+      showVideoPreview(data.video_url, data.script_text, lectureInfo);
+
+      // Reset form
+      aiDocInput.value = '';
+      aiVideoTitle.value = '';
+
+    } catch (err) {
+      console.error(err);
+      
+      // Clear progress interval
+      if (window.currentProgressInterval) {
+        clearInterval(window.currentProgressInterval);
+      }
+      
+      // Hiển thị thông báo lỗi với hướng dẫn cụ thể
+      if (err.message.includes('đăng nhập')) {
+        aiStatus.innerHTML = `
+          <span class="text-danger">
+            ❌ ${err.message}
+            <br><small>
+              <a href="/login" class="btn btn-sm btn-primary mt-2">Đăng nhập ngay</a>
+            </small>
+          </span>
+        `;
+      } else if (err.name === 'AbortError') {
+        aiStatus.innerHTML = `
+          <span class="text-danger">
+            ❌ Quá trình tạo video mất quá nhiều thời gian (quá 15 phút).
+            <br><small>Có thể file quá lớn. Thử lại với file nhỏ hơn hoặc kiểm tra cài đặt API keys trong file .env.</small>
+          </span>
+        `;
+      } else {
+        aiStatus.innerHTML = `<span class="text-danger">❌ Lỗi: ${err.message}</span>`;
+      }
+    } finally {
+      aiGenerateBtn.disabled = false;
+    }
+  };
+
+  // Function để hiển thị video preview
+  function showVideoPreview(videoUrl, scriptText, lectureInfo) {
+    console.log('showVideoPreview called with:', { videoUrl, scriptText: scriptText?.substring(0, 50), lectureInfo });
+    
+    const previewDiv = document.getElementById('ai-video-preview');
+    const videoPlayer = document.getElementById('ai-video-player');
+    const videoSource = document.getElementById('ai-video-source');
+    const videoInfo = document.getElementById('ai-video-info');
+    
+    if (!previewDiv || !videoPlayer || !videoSource || !videoInfo) {
+      console.error('Video preview elements not found');
+      return;
+    }
+    
+    // Set video source với cache busting để tránh browser cache
+    const videoUrlWithCache = videoUrl + (videoUrl.includes('?') ? '&' : '?') + 'v=' + Date.now();
+    console.log('Setting video source to:', videoUrlWithCache);
+    videoSource.src = videoUrlWithCache;
+    videoPlayer.load();
+    
+    // Force reload
+    videoPlayer.pause();
+    videoPlayer.currentTime = 0;
+    
+    // Add error handling for video load
+    videoPlayer.onerror = (e) => {
+      console.error('Video load error:', e);
+      console.error('Error details:', videoPlayer.error);
+      videoInfo.innerHTML = '<div class="text-danger">❌ Không thể load video. Vui lòng thử lại.</div>';
+    };
+    
+    videoPlayer.onloadeddata = () => {
+      console.log('Video loaded successfully');
+      console.log('Video duration:', videoPlayer.duration);
+      console.log('Video readyState:', videoPlayer.readyState);
+    };
+    
+    // Show video info when can play
+    videoPlayer.oncanplay = () => {
+      console.log('Video can play now');
+      previewDiv.style.display = 'block';
+    };
+    
+    // Hiển thị preview section
+    previewDiv.style.display = 'block';
+    
+    // Lưu trữ thông tin vào data attributes để sử dụng sau
+    previewDiv.dataset.videoUrl = videoUrl;
+    previewDiv.dataset.scriptText = scriptText || '';
+    previewDiv.dataset.lectureTitle = lectureInfo?.title || 'Bài giảng AI';
+    previewDiv.dataset.slideCount = lectureInfo?.slide_count || 0;
+    previewDiv.dataset.totalDuration = lectureInfo?.total_duration || 0;
+    
+    // Hiển thị thông tin video
+    videoInfo.innerHTML = `
+      <div class="mb-2">
+        <strong>Tiêu đề:</strong> ${lectureInfo?.title || 'Bài giảng AI'}
+      </div>
+      <div class="mb-2">
+        <strong>Slides:</strong> ${lectureInfo?.slide_count || 0} slides
+      </div>
+      <div class="mb-2">
+        <strong>Thời lượng:</strong> ~${Math.round(lectureInfo?.total_duration || 0)} phút
+      </div>
+      <div class="mb-2">
+        <strong>Script:</strong> ${scriptText ? scriptText.substring(0, 100) + '...' : 'Không có'}
+      </div>
+    `;
+    
+    // Hiển thị preview
+    previewDiv.style.display = 'block';
+    console.log('Video preview displayed');
+    
+    // Scroll to preview
+    setTimeout(() => {
+      previewDiv.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+  }
+
+  // Function để download video
+  function downloadVideo(videoUrl, filename) {
+    const link = document.createElement('a');
+    link.href = videoUrl;
+    link.download = filename || 'ai_video.mp4';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  // Function để upload video vào bài học
+  function uploadVideoToLesson(videoUrl, scriptText, lectureInfo) {
+    // Tạo module và bài học mới
+    const moduleCard = makeModuleCard();
+    const moduleTitle = moduleCard.querySelector('.module-title');
+    moduleTitle.value = lectureInfo.title || "Module AI-Generated";
+
+    // Tạo bài học với video
+    const lessonsContainer = moduleCard.querySelector('.lessons');
+    const lessonData = {
+      title: lectureInfo.title || "Bài giảng AI",
+      item_type: "video",
+      resource_url: videoUrl,
+      content: scriptText || "",
+      duration_sec: Math.round(lectureInfo.total_duration || 300)
+    };
+    addLesson(lessonsContainer, lessonData);
+
+    // Thêm module vào danh sách
+    modulesBox.appendChild(moduleCard);
+
+    // Hiển thị thông báo thành công
+    aiStatus.innerHTML = `
+      <span class="text-success">
+        ✅ Đã upload video vào bài học: "${lectureInfo.title || 'Bài giảng'}"
+      </span>
+    `;
+
+    // Scroll to module
+    moduleCard.scrollIntoView({ behavior: 'smooth' });
+    
+    // Đóng video preview
+    document.getElementById('ai-video-preview').style.display = 'none';
+  }
+
+  // Event listeners cho video preview
+  document.getElementById('ai-download-video').onclick = () => {
+    const previewDiv = document.getElementById('ai-video-preview');
+    const videoUrl = previewDiv.dataset.videoUrl;
+    const title = previewDiv.dataset.lectureTitle;
+    const filename = `${title.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}.mp4`;
+    downloadVideo(videoUrl, filename);
+  };
+
+  document.getElementById('ai-upload-to-lesson').onclick = () => {
+    const previewDiv = document.getElementById('ai-video-preview');
+    const videoUrl = previewDiv.dataset.videoUrl;
+    const scriptText = previewDiv.dataset.scriptText;
+    
+    const lectureInfo = {
+      title: previewDiv.dataset.lectureTitle,
+      slide_count: parseInt(previewDiv.dataset.slideCount),
+      total_duration: parseInt(previewDiv.dataset.totalDuration)
+    };
+    
+    uploadVideoToLesson(videoUrl, scriptText, lectureInfo);
+  };
+
+  document.getElementById('ai-close-preview').onclick = () => {
+    document.getElementById('ai-video-preview').style.display = 'none';
+  };
+
+  // Serialize ra outline_json trước khi submit
+  form.addEventListener('submit', ()=>{
+    const sections = [];
+    modulesBox.querySelectorAll('.module-card').forEach((mod, i)=>{
+      const title = mod.querySelector('.module-title').value.trim() || `Module ${i+1}`;
+      const items = [];
+      mod.querySelectorAll('.lesson').forEach((ls, j)=>{
+        const uploadInput = ls.querySelector('.lesson-upload');
+        const hasFile = uploadInput && uploadInput.files && uploadInput.files.length > 0;
+        items.push({
+          title: ls.querySelector('.lesson-title').value.trim() || `Bài ${j+1}`,
+          item_type: ls.querySelector('.lesson-type').value || 'lesson',
+          resource_url: ls.querySelector('.lesson-url').value.trim() || null,
+          duration_sec: parseInt(ls.querySelector('.lesson-duration').value||'0') || null,
+          content: ls.querySelector('.lesson-content').value || null,
+          upload_field: hasFile ? uploadInput.name : null
+        });
+      });
+      sections.push({title, items});
+    });
+    outlineInput.value = JSON.stringify({sections});
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,178 @@
+WEBVTT
+
+00:00:00.000 --> 00:00:03.000
+Hey there, future web developers.
+
+00:00:03.000 --> 00:00:06.000
+Did you know JavaScript has several ways to display data?
+
+00:00:06.000 --> 00:00:09.000
+Whether you're updating a web page or testing code,
+
+00:00:09.000 --> 00:00:11.000
+JavaScript's got you covered.
+
+00:00:11.000 --> 00:00:13.000
+Let's break it down into four simple methods.
+
+00:00:13.000 --> 00:00:17.000
+Quick and easy, just like we like it.
+
+00:00:17.000 --> 00:00:21.000
+First up, using innerHTML.
+
+00:00:21.000 --> 00:00:23.000
+This is like filling in a shape or form.
+
+00:00:23.000 --> 00:00:26.000
+JavaScript finds an existing element by its ID
+
+00:00:26.000 --> 00:00:28.000
+and updates the content.
+
+00:00:28.000 --> 00:00:31.000
+Here's how it works.
+
+00:00:31.000 --> 00:00:34.000
+This code grabs the p-tag with the ID demo
+
+00:00:34.000 --> 00:00:36.000
+and changes its content to...
+
+00:00:36.000 --> 00:00:38.000
+you guessed it.
+
+00:00:38.000 --> 00:00:39.000
+Hello world!
+
+00:00:39.000 --> 00:00:43.000
+Super handy for updating content dynamically.
+
+00:00:43.000 --> 00:00:46.000
+Next we have document write.
+
+00:00:46.000 --> 00:00:48.000
+It's like the loudspeaker of JavaScript.
+
+00:00:48.000 --> 00:00:53.000
+It outputs directly into the HTML document.
+
+00:00:53.000 --> 00:00:55.000
+But watch out.
+
+00:00:55.000 --> 00:00:58.000
+If you use document write after the page has loaded,
+
+00:00:58.000 --> 00:01:00.000
+it wipes out everything on your page.
+
+00:01:00.000 --> 00:01:03.000
+See this example.
+
+00:01:03.000 --> 00:01:06.000
+Here we run the code when the user clicks the button.
+
+00:01:06.000 --> 00:01:09.000
+So, after the page has finished loading.
+
+00:01:09.000 --> 00:01:13.000
+Oops, it replaces our entire page.
+
+00:01:13.000 --> 00:01:16.000
+So great for quick testing, but not for production.
+
+00:01:16.000 --> 00:01:18.000
+Want to grab someone's attention?
+
+00:01:18.000 --> 00:01:21.000
+Use an alert box with window alert,
+
+00:01:21.000 --> 00:01:26.000
+or just alert since the window part is optional.
+
+00:01:26.000 --> 00:01:29.000
+This pops up a box with the result.
+
+00:01:29.000 --> 00:01:32.000
+Great for quick notifications, but don't overuse it,
+
+00:01:32.000 --> 00:01:36.000
+unless you like annoying your users.
+
+00:01:36.000 --> 00:01:39.000
+And finally, the secret weapon for debugging.
+
+00:01:39.000 --> 00:01:41.000
+Console. Log.
+
+00:01:41.000 --> 00:01:43.000
+Think of it like a journal for your code.
+
+00:01:43.000 --> 00:01:47.000
+It logs messages straight to the browser console.
+
+00:01:47.000 --> 00:01:50.000
+Use this to test your code behind the scenes
+
+00:01:50.000 --> 00:01:52.000
+and to test the user experience.
+
+00:01:52.000 --> 00:01:55.000
+It's a developer's best friend.
+
+00:01:55.000 --> 00:01:57.000
+When testing console methods,
+
+00:01:57.000 --> 00:01:59.000
+you need to have the console view visible.
+
+00:01:59.000 --> 00:02:04.000
+This is usually opened by pressing F12.
+
+00:02:04.000 --> 00:02:06.000
+One last trick.
+
+00:02:06.000 --> 00:02:09.000
+While JavaScript doesn't have a direct send to printer function,
+
+00:02:09.000 --> 00:02:13.000
+you can use window print to print the current page.
+
+00:02:13.000 --> 00:02:16.000
+Easy peasy. Just one button click and voila.
+
+00:02:16.000 --> 00:02:19.000
+Old timey paper printed content.
+
+00:02:19.000 --> 00:02:21.000
+So there you have it.
+
+00:02:21.000 --> 00:02:23.000
+Four ways to display data in JavaScript
+
+00:02:23.000 --> 00:02:25.000
+plus a bonus printing tip.
+
+00:02:25.000 --> 00:02:29.000
+Try them out and see which one works best for your projects.
+
+00:02:29.000 --> 00:02:31.000
+Thanks for watching.
+
+00:02:31.000 --> 00:02:34.000
+Like and subscribe to get notified about our latest videos.
+
+00:02:34.000 --> 00:02:36.000
+For more coding tips and tricks,
+
+00:02:36.000 --> 00:02:39.000
+keep it locked right here on w3schools.com.
+
+00:02:39.000 --> 00:02:41.000
+Don't forget to try out what you've learned
+
+00:02:41.000 --> 00:02:43.000
+in our interactive editor.
+
+00:02:43.000 --> 00:02:45.000
+Happy coding.

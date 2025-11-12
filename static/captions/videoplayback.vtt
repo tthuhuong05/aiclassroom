@@ -1,0 +1,173 @@
+WEBVTT
+
+00:00.000 --> 00:02.000
+Hey everyone, welcome back!
+
+00:02.000 --> 00:04.500
+We're going to dip our toes into JavaScript,
+
+00:04.500 --> 00:08.300
+the magical programming language that makes web pages come alive.
+
+00:08.300 --> 00:10.300
+Ready to learn? Let's go!
+
+00:11.300 --> 00:13.300
+So why should you study JavaScript?
+
+00:13.300 --> 00:14.500
+Great question!
+
+00:14.500 --> 00:19.000
+JavaScript is one of the three languages every web developer should know.
+
+00:19.000 --> 00:22.000
+HTML, CSS, and JavaScript.
+
+00:22.000 --> 00:24.000
+Let's take a short look at each language.
+
+00:25.000 --> 00:27.000
+1. HTML
+
+00:27.000 --> 00:30.500
+To find content, think of this as the structure of your site.
+
+00:30.500 --> 00:32.500
+2. CSS
+
+00:32.500 --> 00:35.500
+Specifies the layout and style of your site.
+
+00:35.500 --> 00:37.500
+3. JavaScript
+
+00:37.500 --> 00:41.500
+It can change how websites behave, look, and interact with you.
+
+00:41.500 --> 00:45.500
+Think of it like the secret sauce that spices up your favorite meal.
+
+00:45.500 --> 00:48.500
+On this page, we use JavaScript for two things,
+
+00:48.500 --> 00:51.500
+changing to dark mode and that live clock.
+
+00:51.500 --> 00:55.500
+Here are some more simple examples showing the different ways JavaScript can work.
+
+00:55.500 --> 00:59.500
+First up, JavaScript can change HTML content.
+
+00:59.500 --> 01:03.500
+Imagine we want some text to change on our web page when a user clicks a button.
+
+01:03.500 --> 01:07.500
+We have a paragraph here with an ID called demo.
+
+01:07.500 --> 01:11.500
+JavaScript finds this paragraph and changes its HTML content to say,
+
+01:11.500 --> 01:13.500
+Hello JavaScript!
+
+01:13.500 --> 01:15.500
+See that?
+
+01:15.500 --> 01:17.500
+It's like magic.
+
+01:17.500 --> 01:19.500
+But cool.
+
+01:19.500 --> 01:23.500
+Next, we want an image to change at the click of a button.
+
+01:23.500 --> 01:25.500
+We have this image of a light bulb.
+
+01:25.500 --> 01:30.500
+To turn it on, we use a separate image of a lit light bulb and a little JavaScript magic.
+
+01:30.500 --> 01:33.500
+JavaScript can change HTML attribute values.
+
+01:33.500 --> 01:39.500
+And in this example, we just change the SRC or source attribute to turn the light on.
+
+01:39.500 --> 01:41.500
+Let's style things up.
+
+01:41.500 --> 01:45.500
+We can use JavaScript to change CSS styles too.
+
+01:45.500 --> 01:47.500
+Look at this example.
+
+01:47.500 --> 01:49.500
+Here we have three buttons.
+
+01:49.500 --> 01:52.500
+Using CSS and JavaScript, we can
+
+01:52.500 --> 01:55.500
+change font size, hide an element,
+
+01:55.500 --> 01:57.500
+or show an element,
+
+01:57.500 --> 02:01.500
+all triggered on user interaction making our page interactive and dynamic.
+
+02:01.500 --> 02:06.500
+JavaScript was created by Brendan Eich in 1995.
+
+02:06.500 --> 02:10.500
+It's totally different from Java and the official name is ECMA script.
+
+02:10.500 --> 02:12.500
+And here's a secret.
+
+02:12.500 --> 02:14.500
+You don't need to download JavaScript.
+
+02:14.500 --> 02:16.500
+It's already built into your browser.
+
+02:16.500 --> 02:20.500
+Yep, whether you're on a computer, tablet, or smartphone,
+
+02:20.500 --> 02:22.500
+JavaScript is ready to roll.
+
+02:22.500 --> 02:24.500
+And it's totally free.
+
+02:24.500 --> 02:26.500
+That's it for today's JavaScript intro.
+
+02:26.500 --> 02:30.500
+Now go play around with these examples and make your web pages come alive.
+
+02:30.500 --> 02:31.500
+See you next time.
+
+02:31.500 --> 02:32.500
+Thanks for watching.
+
+02:32.500 --> 02:35.500
+Like and subscribe to get notified about our latest videos.
+
+02:35.500 --> 02:37.500
+For more coding tips and tricks,
+
+02:37.500 --> 02:41.500
+keep it locked right here on w3schools.com.
+
+02:42.500 --> 02:45.500
+Don't forget to try out what you've learned in our interactive editor.
+
+02:45.500 --> 02:47.500
+Happy coding.
+

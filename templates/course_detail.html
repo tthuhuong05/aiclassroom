@@ -1,0 +1,1369 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <title>{{ course.title }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet" />
+  <style>
+  :root { 
+    --primary-color: #0d6efd; 
+    --primary-hover: #0b5ed7;
+    --secondary-color: #6c757d; 
+    --success-color: #198754; 
+    --warning-color: #ffc107; 
+    --danger-color: #dc3545; 
+    --info-color: #0dcaf0; 
+    --light-bg: #f8f9fa; 
+    --border-color: #dee2e6; 
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.1); 
+    --shadow: 0 4px 12px rgba(0,0,0,0.1); 
+    --shadow-lg: 0 12px 28px rgba(0,0,0,0.15); 
+    --transition: all 0.25s ease; 
+    --radius: 0.75rem;
+    --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; overflow-x: hidden; }
+  body { font-family: var(--font-sans); background: #f5f7fb; color: #1c1e21; line-height: 1.6; }
+
+  /* Header */
+  .course-header {
+    background: linear-gradient(135deg, #1a56db 0%, #0d6efd 100%);
+    color: white;
+    padding: 2.5rem 0;
+    margin-bottom: 2rem;
+    border-radius: 0 0 var(--radius) var(--radius);
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--shadow-lg);
+  }
+  .course-header::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.06'%3E%3Ccircle cx='20' cy='20' r='3'/%3E%3Ccircle cx='80' cy='80' r='3'/%3E%3C/g%3E%3C/svg%3E") repeat;
+    pointer-events: none;
+  }
+  .course-title {
+    font-size: 2.75rem;
+    font-weight: 800;
+    margin: 0;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    animation: fadeInDown 0.6s ease-out;
+  }
+  .course-meta .badge {
+    font-weight: 600;
+    padding: 0.5em 0.9em;
+    border-radius: 1.5rem;
+    animation: fadeIn 0.8s ease-out;
+  }
+
+  /* Main Layout */
+  .main-content {
+    background: white;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    transition: var(--transition);
+  }
+
+  /* Sidebar */
+  .sidebar {
+    background: #fafbfc;
+    border-right: 1px solid var(--border-color);
+    padding: 1.5rem 0;
+    height: calc(100vh - 120px);
+    position: sticky;
+    top: 1rem;
+    overflow-y: auto;
+  }
+  .outline-item {
+    margin: 0.25rem 1rem;
+    padding: 0.9rem 1.25rem;
+    border-radius: 0.6rem;
+    border: 1px solid transparent;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+  }
+  .outline-item::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 4px;
+    background: var(--primary-color);
+    transform: scaleY(0);
+    transition: transform 0.3s ease;
+  }
+  .outline-item:hover {
+    background: rgba(13, 110, 253, 0.08);
+    border-color: rgba(13, 110, 253, 0.2);
+    transform: translateX(4px);
+  }
+  .outline-item:hover::before { transform: scaleY(1); }
+  .outline-item.active {
+    background: linear-gradient(90deg, var(--primary-color), var(--primary-hover));
+    color: white;
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(13, 110, 253, 0.3);
+  }
+  .outline-item.active::before { transform: scaleY(1); background: white; }
+
+  /* Progress Circle */
+  .progress-circle {
+    width: 80px; height: 80px;
+    position: relative;
+    margin: 0 auto;
+  }
+  .progress-circle svg {
+    transform: rotate(-90deg);
+  }
+  .progress-circle .bg { stroke: #e5e7eb; }
+  .progress-circle .fg { 
+    stroke: url(#gradient);
+    stroke-linecap: round;
+    transition: stroke-dashoffset 1s ease;
+  }
+  .progress-circle .text {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--primary-color);
+  }
+
+  /* Content Area */
+  .content-area { padding: 2rem; }
+  .video-container {
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow-lg);
+    margin-bottom: 1.5rem;
+    position: relative;
+  }
+  .video-container::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(transparent, rgba(0,0,0,0.1));
+    pointer-events: none;
+    border-radius: var(--radius);
+  }
+
+  /* Tabs */
+  .tabs {
+    border-bottom: 2px solid var(--border-color);
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+  }
+  .tabs button {
+    background: none;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+    color: var(--secondary-color);
+    position: relative;
+    transition: var(--transition);
+  }
+  .tabs button::after {
+    content: '';
+    position: absolute;
+    bottom: -2px; left: 50%;
+    width: 0; height: 3px;
+    background: var(--primary-color);
+    transition: all 0.3s ease;
+    transform: translateX(-50%);
+  }
+  .tabs button.active,
+  .tabs button:hover {
+    color: var(--primary-color);
+  }
+  .tabs button.active::after {
+    width: 100%;
+  }
+
+  /* Transcript */
+  .transcript-box {
+    max-height: 420px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: 0.75rem;
+    padding: 1rem;
+    background: #fcfcfd;
+    font-size: 0.95rem;
+  }
+  .cue {
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    margin-bottom: 0.5rem;
+    cursor: pointer;
+    transition: var(--transition);
+    border: 1px solid transparent;
+  }
+  .cue:hover { background: #f1f3f5; border-color: #ced4da; }
+  .cue.active {
+    background: linear-gradient(90deg, rgba(13,110,253,0.1), rgba(13,110,253,0.05));
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    font-weight: 500;
+  }
+
+  /* Notes */
+  .notes {
+    min-height: 200px;
+    border-radius: 0.75rem;
+    border: 1px solid var(--border-color);
+    padding: 1rem;
+    font-family: inherit;
+    transition: var(--transition);
+  }
+  .notes:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.15);
+  }
+
+  /* Buttons */
+  .btn-primary {
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
+    border: none;
+    border-radius: 0.6rem;
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+    transition: var(--transition);
+    box-shadow: 0 2px 6px rgba(13, 110, 253, 0.3);
+  }
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(13, 110, 253, 0.4);
+  }
+
+  /* Modal */
+  .modal-content {
+    border: none;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+  }
+  .modal-header {
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    border-bottom: 1px solid var(--border-color);
+  }
+  .quiz-choices button {
+    text-align: left;
+    padding: 1rem;
+    border-radius: 0.6rem;
+    transition: var(--transition);
+    font-weight: 500;
+  }
+  .quiz-choices button:hover:not(:disabled) {
+    background: rgba(13, 110, 253, 0.08);
+    border-color: var(--primary-color);
+    transform: translateX(4px);
+  }
+
+  /* Hover Preview */
+  .hover-preview {
+    position: fixed;
+    z-index: 1060;
+    width: 300px;
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow-lg);
+    background: white;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+  }
+  .hover-preview.show {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .hover-preview video {
+    width: 100%;
+    height: 170px;
+    object-fit: cover;
+    background: #000;
+  }
+
+  /* Related Courses */
+  .related-card {
+    transition: var(--transition);
+    border: none;
+    border-radius: var(--radius);
+    overflow: hidden;
+    height: 100%;
+  }
+  .related-card:hover {
+    transform: translateY(-8px);
+    box-shadow: var(--shadow-lg);
+  }
+  .related-card img {
+    height: 180px;
+    object-fit: cover;
+    transition: transform 0.4s ease;
+  }
+  .related-card:hover img {
+    transform: scale(1.05);
+  }
+
+  /* Animations */
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes fadeInDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+
+  /* Loading */
+  .skeleton {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+  }
+  @keyframes loading { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+  /* Responsive */
+  @media (max-width: 992px) {
+    .sidebar { height: auto; position: static; }
+  }
+  @media (max-width: 768px) {
+    .course-title { font-size: 2.1rem; }
+    .content-area { padding: 1rem; }
+    .tabs button { padding: 0.5rem 1rem; font-size: 0.9rem; }
+  }
+</style>
+</head>
+<body>
+  <div class="container-fluid py-4">
+    <!-- Course Header giống Coursera -->
+    <div class="course-header">
+      <div class="container">
+        <h1 class="course-title">{{ course.title }}</h1>
+        <div class="course-meta d-flex flex-wrap gap-2">
+          {% if course.category %}
+            <span class="badge bg-light text-primary px-2 py-1 rounded-pill">{{ course.category }}</span>
+          {% endif %}
+          {% for t in (course.tags or '').split(',') if t %}
+            <span class="badge bg-light text-secondary px-2 py-1 rounded-pill">{{ t.strip() }}</span>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col-lg-3">
+        <div class="sidebar sticky-top" style="top: 1rem;">
+          <div class="outline">
+            {% if sections and sections|length>0 %}
+              {% for sec in sections %}
+                <div class="outline-section">
+                  <i class="bi bi-journal-text me-2"></i>{{ sec.title }}
+                </div>
+                {% for it in sec["items"] %}
+                  {% set p = progress.get(it.id) %}
+                  <button
+                    class="outline-item d-flex justify-content-between align-items-center{% if p and p.status=='done' %} active{% endif %}"
+                    data-item='{{ it|tojson }}'>
+                    <div>
+                      <div class="small text-muted text-uppercase">{{ it.item_type }}</div>
+                      {{ it.title }}
+                      {% if it.item_type and it.item_type|lower == 'video' and it.duration_sec %}
+                        <small class="text-muted">· {{ (it.duration_sec // 60)|int }} min</small>
+                      {% endif %}
+                    </div>
+                    <i class="bi {{ 'bi-check-circle-fill text-success' if p and p.status=='done' else 'bi-circle text-secondary' }} fs-5"></i>
+                  </button>
+                {% endfor %}
+              {% endfor %}
+            {% else %}
+              <div class="outline-section text-center text-muted">Chưa có mục nào trong khóa học.</div>
+            {% endif %}
+          </div>
+          {% if sections and sections|length>0 %}
+          <div class="progress-section">
+            <div class="small mb-2 fw-medium text-dark" id="overallStat">Tiến độ đang tải…</div>
+            <div class="progress">
+              <div id="overallBar" class="progress-bar" role="progressbar" style="width:0%"></div>
+            </div>
+          </div>
+          {% endif %}
+          <div id="hoverPreview" class="hover-preview" hidden>
+            <video id="hpVideo" muted playsinline loop preload="metadata"></video>
+            <div id="hpTitle" class="hp-title"></div>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-9">
+        <div class="main-content">
+          <div class="content-area">
+            <div id="videoPane">
+              <div class="ratio ratio-16x9 video-container">
+                <video id="player" controls preload="metadata" crossorigin="anonymous"
+                       style="width:100%;border-radius:16px;">
+                  <source id="playerSource" src="{{ course.video_url or '' }}" type="video/mp4">
+                  <track id="trackSubs" kind="subtitles" srclang="en" label="Subtitles" default
+                   {% if course.caption_url %}src="{{ course.caption_url }}"{% endif %}>
+                  <track id="trackHidden" kind="metadata" srclang="en" label="hidden-parser"
+                   {% if course.caption_url %}src="{{ course.caption_url }}"{% endif %}>
+                  Trình duyệt của bạn không hỗ trợ video.
+                </video>
+              </div>
+              <div class="controls-row">
+                <button class="btn btn-sm btn-primary" id="capAuto" type="button">
+                  <i class="bi bi-magic me-1"></i> Tạo phụ đề tự động
+                </button>
+                <div class="text-muted small ms-auto">
+                  Hệ thống sẽ tạm dừng tại <span class="badge bg-info text-dark">giây thứ 50</span> để kiểm tra nhanh nội dung đã học.
+                </div>
+              </div>
+              <div class="tabs" id="tabs">
+                <button data-tab="t" class="active">Transcript</button>
+                <button data-tab="n">Notes</button>
+                <button data-tab="d">Downloads</button>
+              </div>
+              <div id="tab-t" class="tab-pane active">
+                <div class="t-toolbar">
+                  <input id="tSearch" class="t-search" placeholder="Tìm trong transcript… (Ctrl/Cmd+K)">
+                  <span class="small" id="tStat"></span>
+                </div>
+                <div id="transcriptBox" class="transcript-box" aria-label="Transcript (click để tua)">
+                  <div id="transcriptList"></div>
+                </div>
+              </div>
+              <div id="tab-n" class="tab-pane">
+                <textarea id="notesArea" class="notes form-control" placeholder="Ghi chú của bạn cho video này…"></textarea>
+                <div class="small mt-2" id="notesStatus">Ghi tự động mỗi 2 giây.</div>
+              </div>
+              <div id="tab-d" class="tab-pane">
+                <div class="small fw-medium mb-2">Tải về:</div>
+                <ul class="downloads-list">
+                  <li><a id="dlVideo" href="{{ course.video_url or '#' }}" download class="fw-medium">Video (.mp4)</a></li>
+                  {% if course.caption_url %}
+                    <li><a id="dlCaption" href="{{ course.caption_url }}" download class="fw-medium">Transcript (.vtt)</a></li>
+                  {% else %}
+                    <li><a id="dlCaption" href="#" class="disabled fw-medium">Chưa có transcript</a></li>
+                  {% endif %}
+                </ul>
+              </div>
+            </div>
+            <div id="lessonPane" class="d-none lesson-pane">
+              <h5 id="lessonTitle" class="mb-3"></h5>
+              <div id="lessonContent"></div>
+            </div>
+            <div class="d-flex gap-2 mt-4">
+              <a href="{{ url_for('course') }}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left me-2"></i> Quay lại danh sách bài học
+              </a>
+              <a href="{{ url_for('exam', course_id=course.id) }}" class="btn btn-warning">
+                <i class="bi bi-pencil-square me-2"></i> Làm bài kiểm tra
+              </a>
+            </div>
+          </div>
+        </div>
+
+        {% if related_courses and related_courses|length > 0 %}
+          <div class="related-courses">
+            <h4><i class="bi bi-stars text-warning me-2"></i>Khóa học liên quan</h4>
+            <div class="row g-3">
+              {% for rc in related_courses if rc.id != course.id %}
+              <div class="col-12 col-md-6 col-lg-4">
+                <div class="card related-card h-100">
+                  {% if rc.image_url %}
+                    <img src="{{ rc.image_url }}" class="card-img-top" alt="{{ rc.title }}">
+                  {% endif %}
+                  <div class="card-body d-flex flex-column">
+                    {% if rc.category %}<span class="badge bg-primary mb-2">{{ rc.category }}</span>{% endif %}
+                    <h6 class="card-title related-card-title">{{ rc.title }}</h6>
+                    <p class="card-text related-card-desc">
+                      {{ rc.description and rc.description[:90] or '' }}{% if rc.description and rc.description|length>90 %}...{% endif %}
+                    </p>
+                    <div class="mb-3">
+                      {% for t in (rc.tags or '').split(',') if t %}
+                        <span class="badge bg-light text-secondary border rounded-pill me-1 mb-1">{{ t.strip() }}</span>
+                      {% endfor %}
+                    </div>
+                    <div class="mt-auto">
+                      <a href="{{ url_for('course_detail', course_id=rc.id) }}" class="btn btn-primary btn-sm w-100">
+                        <i class="bi bi-eye me-1"></i> Vào học
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+        {% else %}
+          <div class="alert alert-info d-flex align-items-center mt-4" role="alert">
+            <i class="bi bi-info-circle me-2 fs-5"></i> Chưa có gợi ý khóa học liên quan.
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+document.addEventListener('DOMContentLoaded', function () {
+  // Tabs switching
+  const tabs = document.getElementById('tabs');
+  if (tabs) {
+    tabs.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const k = btn.dataset.tab;
+        tabs.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
+        document.querySelectorAll('.tab-pane').forEach(p => p.classList.toggle('active', p.id === 'tab-' + k));
+      });
+    });
+  }
+
+  // Helpers
+  const player = document.getElementById('player');
+  const source = document.getElementById('playerSource');
+  const trackEl = document.getElementById('trackSubs');
+  const dlCaption = document.getElementById('dlCaption');
+  const btnGen    = document.getElementById('capAuto');
+
+  function ensureSubsShowing() {
+    if (!player || !player.textTracks) return;
+    Array.from(player.textTracks).forEach(t => {
+      if (t.kind === 'subtitles' || t.kind === 'captions') t.mode = 'showing';
+    });
+    try { trackEl.default = true; } catch(e) {}
+  }
+
+  function updateDownloadLink(url) {
+    if (!dlCaption) return;
+    dlCaption.href = url;
+    dlCaption.classList.remove('disabled');
+    dlCaption.classList.add('fw-medium');
+    dlCaption.textContent = 'Transcript (.vtt)';
+  }
+
+  function disableGenButton(msg='Phụ đề đã có') {
+    if (!btnGen) return;
+    btnGen.disabled = true;
+    btnGen.classList.remove('btn-primary');
+    btnGen.classList.add('btn-outline-secondary');
+    btnGen.innerHTML = `<i class="bi bi-check2-circle me-1"></i> ${msg}`;
+  }
+
+  function enableGenButton() {
+    if (!btnGen) return;
+    btnGen.disabled = false;
+    btnGen.classList.add('btn-primary');
+    btnGen.classList.remove('btn-outline-secondary');
+    btnGen.innerHTML = `<i class="bi bi-magic me-1"></i> Tạo phụ đề tự động`;
+  }
+
+  function getSubtitleTextTrack() {
+    if (!player || !player.textTracks) return null;
+    return Array.from(player.textTracks).find(t => t.kind === 'subtitles' || t.kind === 'captions') || null;
+  }
+
+  function renderTranscriptFromTrack(tt) {
+    const list = document.getElementById('transcriptList');
+    const stat = document.getElementById('tStat');
+    if (!list || !tt) return;
+    list.innerHTML = '';
+
+    const cues = tt.cues || [];
+    if (!cues.length) {
+      if (stat) stat.textContent = 'Chưa có dữ liệu transcript.';
+      return;
+    }
+
+    for (let i = 0; i < cues.length; i++) {
+      const c = cues[i];
+      const el = document.createElement('div');
+      el.className = 'cue';
+      el.dataset.start = c.startTime;
+      el.innerHTML = `
+        <div class="cue-time">${formatTime(c.startTime)}</div>
+        <div class="cue-text">${escapeHtml(c.text || '')}</div>
+      `;
+      el.addEventListener('click', () => {
+        try { player.currentTime = Math.max(0, c.startTime + 0.01); player.play(); } catch(e){}
+      });
+      list.appendChild(el);
+    }
+    if (stat) stat.textContent = `${cues.length} dòng`;
+
+    // Highlight theo thời gian
+    player?.addEventListener('timeupdate', () => {
+      const now = player.currentTime;
+      const children = list.children;
+      for (let i = 0; i < cues.length; i++) {
+        const active = now >= cues[i].startTime && now < cues[i].endTime;
+        children[i].classList.toggle('active', !!active);
+      }
+    }, { passive: true });
+  }
+
+  function waitAndRenderTranscript() {
+    const tt = getSubtitleTextTrack();
+    if (!tt) return;
+    // Đảm bảo đã parse xong cues
+    const tryRender = (tries = 0) => {
+      if (tt.cues && tt.cues.length) {
+        renderTranscriptFromTrack(tt);
+      } else if (tries < 20) {
+        setTimeout(() => tryRender(tries + 1), 100);
+      }
+    };
+    tryRender();
+  }
+
+  function formatTime(sec) {
+    const s = Math.floor(sec % 60).toString().padStart(2,'0');
+    const m = Math.floor((sec / 60) % 60).toString().padStart(2,'0');
+    const h = Math.floor(sec / 3600).toString().padStart(2,'0');
+    return (h !== '00' ? (h + ':') : '') + m + ':' + s;
+  }
+
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[s]));
+  }
+
+  // --- Core: set caption URL (ép reload + bật hiển thị)
+  function setCaptionUrl(url){
+    if (!trackEl) return;
+    // cache-buster để chắc chắn nạp lại file VTT
+    const fresh = url + (url.includes('?') ? '&' : '?') + 'v=' + Date.now();
+
+    // Xóa trước rồi set lại để ép reload trên Safari/Chrome
+    trackEl.setAttribute('src', '');
+    void trackEl.offsetWidth; // force reflow
+    trackEl.setAttribute('src', fresh);
+
+    ensureSubsShowing();
+    updateDownloadLink(url);
+    try { player.load(); } catch(e) {}
+
+    // Render transcript sau khi track sẵn sàng
+    setTimeout(waitAndRenderTranscript, 150);
+  }
+
+  // --- NEW: kiểm tra tồn tại phụ đề để lần sau tự nhận ---
+  async function checkAndLoadCaption(videoUrl){
+    if (!videoUrl) return;
+    try {
+      const r = await fetch(`/api/captions/status?video_url=${encodeURIComponent(videoUrl)}`);
+      const data = await r.json();
+      if (data?.ok && data.exists && data.caption_url) {
+        setCaptionUrl(data.caption_url);
+        disableGenButton();
+      } else {
+        enableGenButton();
+      }
+    } catch {
+      // lỗi mạng -> giữ nguyên nút
+    }
+  }
+
+  // Outline/lesson item click logic
+  document.querySelectorAll('.outline-item').forEach(item => {
+    item.addEventListener('click', async function() {
+      document.querySelectorAll('.outline-item').forEach(btn => btn.classList.remove('active'));
+      this.classList.add('active');
+
+      let data = this.dataset.item && JSON.parse(this.dataset.item);
+      if (!data) return;
+
+      if (data.item_type && data.item_type.toLowerCase() === 'video') {
+        // Show main video pane
+        document.getElementById('videoPane').classList.remove('d-none');
+        document.getElementById('lessonPane').classList.add('d-none');
+
+        if (source && player) {
+          if (source.src !== data.url) {
+            source.src = data.url;
+            player.load();
+          }
+        }
+
+        if (trackEl && data.caption_url) {
+          // gắn ngay nếu server đã biết
+          setCaptionUrl(data.caption_url);
+          disableGenButton();
+        } else {
+          // nếu item chưa có caption_url -> hỏi backend xem đã tồn tại chưa
+          checkAndLoadCaption(data.url);
+        }
+      } else {
+        // Show lesson pane
+        document.getElementById('videoPane').classList.add('d-none');
+        document.getElementById('lessonPane').classList.remove('d-none');
+        document.getElementById('lessonTitle').textContent = data.title || '';
+        document.getElementById('lessonContent').innerHTML = data.content || '<em>Không có nội dung.</em>';
+      }
+    });
+  });
+
+  // Progress bar (demo)
+  (function updateOverallStat(){
+    const items = Array.from(document.querySelectorAll('.outline-item'));
+    if (!items.length) return;
+    let done = 0;
+    items.forEach(item => {
+      if (item.classList.contains('active')) done += 1;
+      // Hoặc dùng trạng thái thật từ server
+    });
+    const stat = document.getElementById('overallStat');
+    const bar = document.getElementById('overallBar');
+    const percent = Math.round((done/items.length)*100);
+    if (stat) stat.textContent = `Hoàn thành ${done}/${items.length} mục`;
+    if (bar) { bar.style.width = percent + '%'; bar.setAttribute('aria-valuenow', percent); }
+  })();
+
+  // Transcript search
+  const tSearch = document.getElementById('tSearch');
+  if (tSearch) {
+    tSearch.addEventListener('input', function() {
+      const v = this.value.trim().toLowerCase();
+      const list = document.getElementById('transcriptList');
+      if (list) {
+        Array.from(list.children).forEach(el => {
+          el.style.display = !v || (el.innerText.toLowerCase().includes(v)) ? '' : 'none';
+        });
+      }
+    });
+  }
+
+
+  // Auto-save notes
+  const notesArea = document.getElementById('notesArea');
+  if (notesArea) {
+    let saveTimer;
+    notesArea.addEventListener('input', () => {
+      clearTimeout(saveTimer);
+      document.getElementById('notesStatus').textContent = 'Đang lưu...';
+      saveTimer = setTimeout(() => {
+        // Save to backend or localStorage
+        document.getElementById('notesStatus').textContent = 'Đã lưu tự động.';
+      }, 2000);
+    });
+  }
+
+  // Khi video/track sẵn sàng -> đảm bảo hiển thị và render transcript
+  player?.addEventListener('loadedmetadata', () => {
+    ensureSubsShowing();
+    waitAndRenderTranscript();
+  });
+
+  // Nếu track load (một số browser bắn sự kiện 'load' trên track element)
+  trackEl?.addEventListener('load', () => {
+    ensureSubsShowing();
+    waitAndRenderTranscript();
+  });
+
+  // Tiện ích bật video tab khi cần
+  window.switchToVideoTab = function() {
+    document.getElementById('videoPane')?.classList.remove('d-none');
+    document.getElementById('lessonPane')?.classList.add('d-none');
+    document.querySelector('.tabs button[data-tab="t"]')?.click();
+  };
+
+  // Nút tạo phụ đề (chỉ cần lần đầu)
+  btnGen?.addEventListener('click', async () => {
+    const videoUrl = player?.currentSrc || source?.getAttribute('src') || '';
+    if (!videoUrl) { alert('Không xác định được URL video đang phát.'); return; }
+    let data;
+    try {
+      const resp = await fetch('/api/captions/auto', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ video_url: videoUrl, language: null, force: false, course_id: {{ course.id }} })
+      });
+      if (!resp.ok) {
+        const errorText = await resp.text();
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          errorData = { error: errorText || `HTTP ${resp.status}` };
+        }
+        throw new Error(errorData.error || `Server error: ${resp.status}`);
+      }
+      data = await resp.json();
+    } catch (err) {
+      console.error('API call failed:', err);
+      alert('Lỗi: ' + (err.message || 'Không gọi được backend.'));
+      return;
+    }
+    if (!data?.ok || !data.caption_url) {
+      alert(data?.error || 'Tạo phụ đề thất bại.');
+      return;
+    }
+    setCaptionUrl(data.caption_url);
+    disableGenButton('Phụ đề đã tạo xong');
+    alert('Phụ đề đã sẵn sàng và sẽ tự dùng cho các lần truy cập sau.');
+    
+    // Tự động pre-generate questions sau khi có transcript
+    setTimeout(() => {
+      preGenerateQuestions({{ course.id }});
+    }, 1000);
+  });
+
+  // Nếu trang load đã có sẵn caption_url từ server -> bật hiển thị ngay & khóa nút.
+  (function init(){
+    const initial = trackEl?.getAttribute('src');
+    if (initial) {
+      ensureSubsShowing();
+      waitAndRenderTranscript();
+      updateDownloadLink(initial);
+      disableGenButton();
+      
+      // Pre-generate questions nếu đã có transcript
+      setTimeout(() => {
+        preGenerateQuestions({{ course.id }});
+      }, 2000);
+    } else {
+      // nếu server chưa render sẵn, kiểm tra status để tự gắn (không cần bấm nút)
+      const currentUrl = player?.currentSrc || source?.getAttribute('src') || '';
+      checkAndLoadCaption(currentUrl);
+    }
+  })();
+});
+
+// QUIZ LOGIC - Dừng tại giây 50
+console.log('🎯 Quiz logic đang được khởi tạo...');
+
+// Đợi DOM load xong
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('📄 DOM đã load xong');
+  
+  const player = document.getElementById('player');
+  console.log('🎥 Video player:', player);
+  
+  if (!player) {
+    console.log('❌ Không tìm thấy video player');
+    return;
+  }
+
+  // Quiz modal HTML
+  const quizModalHTML = `
+    <div class="modal fade" id="quizModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title"><i class="bi bi-question-circle text-primary me-2"></i>Câu hỏi kiểm tra</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div id="q-text" class="mb-4 fw-medium fs-5"></div>
+            <div id="q-choices" class="quiz-choices mb-3"></div>
+            <div id="q-result" class="result" style="min-height:22px;"></div>
+          </div>
+          <div class="modal-footer">
+            <button id="btn-continue" class="btn btn-primary" data-bs-dismiss="modal">Tiếp tục học ▶</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  // Thêm modal vào DOM
+  document.body.insertAdjacentHTML('beforeend', quizModalHTML);
+  console.log('✅ Quiz modal đã được thêm vào DOM');
+  
+  const modal = new bootstrap.Modal(document.getElementById('quizModal'));
+  const qText = document.getElementById('q-text');
+  const qChoices = document.getElementById('q-choices');
+  const qResult = document.getElementById('q-result');
+  const btnCont = document.getElementById('btn-continue');
+  
+  console.log('🔍 Quiz elements:', {modal, qText, qChoices, qResult, btnCont});
+  
+  const videoId = "{{ course.id }}";
+  const askedAt = new Set();
+  let quizAnswered = false;
+  let wrongAnswerCount = 0;
+
+  function showModal(){ 
+    console.log('📱 Hiển thị quiz modal');
+    modal.show(); 
+  }
+  function hideModal(){ 
+    console.log('❌ Ẩn quiz modal');
+    modal.hide(); 
+  }
+
+  // Tạo câu hỏi mẫu về nội dung 50 giây đầu
+  function createSampleQuestion() {
+    const questions = [
+      {
+        question: "Trong 50 giây đầu của video, nội dung chính nói về gì?",
+        options: [
+          "Giới thiệu tổng quan về chủ đề",
+          "Kết luận và tóm tắt", 
+          "Thảo luận chi tiết",
+          "Thực hành và bài tập"
+        ],
+        correct_index: 0,
+        explanation: "50 giây đầu thường là phần giới thiệu tổng quan về chủ đề bài học."
+      },
+      {
+        question: "Điều gì thường được trình bày trong phần đầu của video bài giảng?",
+        options: [
+          "Mục tiêu học tập và giới thiệu chủ đề",
+          "Bài tập và câu hỏi",
+          "Kết luận cuối bài", 
+          "Tài liệu tham khảo"
+        ],
+        correct_index: 0,
+        explanation: "Phần đầu video thường trình bày mục tiêu học tập và giới thiệu chủ đề."
+      }
+    ];
+    return questions[Math.floor(Math.random() * questions.length)];
+  }
+
+  function renderQuestion(qa){
+    console.log('📝 Rendering question:', qa);
+    qText.textContent = qa.question;
+    qResult.textContent = "";
+    btnCont.style.display = "none";
+    qChoices.innerHTML = "";
+    
+    qa.options.forEach((c, idx)=>{
+      const b = document.createElement('button');
+      b.textContent = `(${String.fromCharCode(65+idx)}) ${c}`;
+      b.className = "btn btn-outline-primary w-100 mb-2";
+      b.addEventListener('click', ()=>{
+        console.log('🖱️ User clicked option:', idx);
+        // khoá lựa chọn
+        [...qChoices.children].forEach(x=>x.disabled=true);
+        
+        if(idx === qa.correct_index){
+          qResult.textContent = "✅ Chính xác! " + qa.explanation;
+          qResult.className = "result correct";
+          quizAnswered = true;
+          console.log('✅ User answered correctly');
+        }else{
+          wrongAnswerCount++;
+          const correct = qa.options[qa.correct_index];
+          qResult.textContent = `❌ Chưa đúng. Bạn cần xem lại đoạn video từ checkpoint trước đó để hiểu rõ hơn.`;
+          qResult.className = "result wrong";
+          console.log('❌ User answered incorrectly');
+        }
+        btnCont.style.display = "inline-block";
+      });
+      qChoices.appendChild(b);
+    });
+  }
+
+  async function maybeAsk(now){
+    console.log('⏰ Checking time:', now, 'Asked at:', Array.from(askedAt));
+    
+    // Tính checkpoint hiện tại (mỗi 50 giây: 50, 100, 150, 200...)
+    const currentCheckpoint = Math.floor(now / 50) * 50;
+    const checkpointKey = currentCheckpoint.toString();
+    
+    // Kiểm tra nếu đã đến checkpoint và chưa hỏi quiz
+    // Chỉ hiển thị quiz khi đã qua checkpoint (không phải tại checkpoint 0)
+    if(now >= currentCheckpoint && currentCheckpoint > 0 && !askedAt.has(checkpointKey)){
+      console.log(`🎯 Time to show quiz at checkpoint ${currentCheckpoint}!`);
+      player.pause();
+      showModal();
+      try{
+        const qa = await fetchQuestionFromSubtitles(now);
+        askedAt.add(checkpointKey);
+        renderQuestion(qa);
+      }catch(e){
+        console.error('❌ Error creating question:', e);
+        // Fallback question
+        const fallbackQA = await createFallbackQuestion(currentCheckpoint);
+        renderQuestion(fallbackQA);
+      }
+    }
+  }
+
+  // Reset quiz khi video được tua lại trước checkpoint
+  function resetQuizIfNeeded(currentTime) {
+    const currentCheckpoint = Math.floor(currentTime / 50) * 50;
+    const checkpointKey = currentCheckpoint.toString();
+    
+    if (currentTime < currentCheckpoint && askedAt.has(checkpointKey)) {
+      console.log(`🔄 Video tua lại trước checkpoint ${currentCheckpoint}, reset quiz`);
+      askedAt.delete(checkpointKey);
+      wrongAnswerCount = 0;
+    }
+  }
+
+  // Tính checkpoint tiếp theo (mỗi 50 giây)
+  function getNextCheckpoint(currentTime) {
+    return Math.floor(currentTime / 50) * 50 + 50;
+  }
+
+  // Tạo câu hỏi từ phụ đề sử dụng pre-generated questions
+  async function fetchQuestionFromSubtitles(currentTime) {
+    console.log('🤖 Fetching pre-generated question for segment...');
+    
+    // Tính checkpoint hiện tại (làm tròn xuống bội số của 50)
+    const currentCheckpoint = Math.floor(currentTime / 50) * 50;
+    
+    console.log(`📊 Fetching question for segment: ${currentCheckpoint}s`);
+    
+    try {
+      // Ưu tiên: Lấy câu hỏi đã pre-generate từ database
+      const response = await fetch(`/api/segments/question?course_id={{ course.id }}&segment_start=${currentCheckpoint}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.ok && data.question) {
+          console.log('✅ Found pre-generated question:', data);
+          // Shuffle đáp án để không cố định vị trí
+          const shuffledData = shuffleAnswers(data);
+          return shuffledData;
+        }
+      }
+      
+      // Fallback: Nếu không có pre-generated question, thử generate on-the-fly
+      console.log('⚠️ No pre-generated question found, trying on-the-fly generation...');
+      return await generateQuestionOnTheFly(currentTime, currentCheckpoint);
+    } catch (error) {
+      console.error('❌ Error fetching question:', error);
+      return await generateQuestionOnTheFly(currentTime, currentCheckpoint);
+    }
+  }
+
+  // Fallback: Generate question on-the-fly nếu chưa có pre-generated
+  async function generateQuestionOnTheFly(currentTime, currentCheckpoint) {
+    const startTime = Math.max(0, currentCheckpoint - 50);
+    const endTime = currentCheckpoint;
+    
+    console.log(`📊 Generating question on-the-fly for segment: ${startTime}s - ${endTime}s`);
+    
+    // Lấy nội dung phụ đề từ đoạn video hiện tại
+    const subtitleText = await extractSubtitleText(startTime, endTime);
+    console.log(`📝 Subtitle text (${startTime}s-${endTime}s):`, subtitleText);
+    
+    if (!subtitleText || subtitleText.trim().length < 10) {
+      console.log('⚠️ No subtitle text found, using fallback');
+      return await createFallbackQuestion(currentCheckpoint);
+    }
+    
+    try {
+      // Gọi AI Gemini để tạo câu hỏi dựa trên nội dung thực tế
+      const response = await fetch('/api/ai-quiz/generate-from-subtitles', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          subtitle_text: subtitleText,
+          time_range: `${startTime}-${endTime} seconds`,
+          language: 'vi',
+          checkpoint: currentCheckpoint
+        })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ AI Gemini generated question on-the-fly:', data);
+        // Shuffle đáp án để không cố định vị trí
+        const shuffledData = shuffleAnswers(data);
+        return shuffledData;
+      } else {
+        console.log('⚠️ AI API failed, using fallback');
+        return await createFallbackQuestion(currentCheckpoint);
+      }
+    } catch (error) {
+      console.error('❌ Error calling AI Gemini:', error);
+      return await createFallbackQuestion(currentCheckpoint);
+    }
+  }
+
+  // Shuffle đáp án để đáp án đúng không cố định vị trí
+  function shuffleAnswers(questionData) {
+    if (!questionData.options || questionData.options.length !== 4) {
+      return questionData;
+    }
+    
+    const correctIndex = questionData.correct_index || 0;
+    const correctAnswer = questionData.options[correctIndex];
+    
+    // Tạo array indices và shuffle
+    const indices = [0, 1, 2, 3];
+    for (let i = indices.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [indices[i], indices[j]] = [indices[j], indices[i]];
+    }
+    
+    // Tạo options mới với thứ tự đã shuffle
+    const shuffledOptions = indices.map(i => questionData.options[i]);
+    const newCorrectIndex = indices.indexOf(correctIndex);
+    
+    console.log(`🔄 Shuffled answers: correct answer moved from position ${correctIndex} to ${newCorrectIndex}`);
+    
+    return {
+      ...questionData,
+      options: shuffledOptions,
+      correct_index: newCorrectIndex
+    };
+  }
+
+  // Trích xuất text từ phụ đề trong khoảng thời gian
+  async function extractSubtitleText(startTime, endTime) {
+    const player = document.getElementById('player');
+    if (!player || !player.textTracks) {
+      console.log('❌ No text tracks found');
+      return '';
+    }
+    
+    let subtitleText = '';
+    console.log(`📝 Extracting subtitles from ${startTime}s to ${endTime}s`);
+    
+    // Tìm track phụ đề đang hoạt động
+    let activeTrack = null;
+    for (let i = 0; i < player.textTracks.length; i++) {
+      const track = player.textTracks[i];
+      if (track.kind === 'subtitles' && track.mode === 'showing') {
+        activeTrack = track;
+        console.log(`✅ Found active subtitle track: ${track.label}`);
+        break;
+      }
+    }
+    
+    if (!activeTrack) {
+      console.log('⚠️ No active subtitle track found');
+      return '';
+    }
+    
+    // Trích xuất text từ cues trong khoảng thời gian
+    const cues = [];
+    for (let j = 0; j < activeTrack.cues.length; j++) {
+      const cue = activeTrack.cues[j];
+      // Kiểm tra nếu cue nằm trong khoảng thời gian (bao gồm cả overlap)
+      if (cue.startTime < endTime && cue.endTime > startTime) {
+        cues.push({
+          text: cue.text,
+          startTime: cue.startTime,
+          endTime: cue.endTime
+        });
+      }
+    }
+    
+    // Sắp xếp theo thời gian và ghép text
+    cues.sort((a, b) => a.startTime - b.startTime);
+    subtitleText = cues.map(cue => cue.text).join(' ').trim();
+    
+    console.log(`📝 Extracted ${cues.length} subtitle cues`);
+    console.log(`📝 Subtitle text: ${subtitleText.substring(0, 200)}...`);
+    
+    return subtitleText;
+  }
+
+  // Pre-generate questions cho tất cả segments
+  async function preGenerateQuestions(courseId) {
+    console.log(`🤖 Pre-generating questions for course ${courseId}...`);
+    try {
+      const response = await fetch('/api/segments/generate-questions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          course_id: courseId,
+          force: false  // Không xóa questions cũ nếu đã có
+        })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.ok) {
+          console.log(`✅ Pre-generated ${data.generated} questions for ${data.total_segments} segments`);
+          if (data.generated > 0) {
+            console.log(`📊 Successfully created ${data.generated} new questions, skipped ${data.skipped} segments`);
+          }
+        }
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        console.warn('⚠️ Failed to pre-generate questions:', errorData.error || 'Unknown error');
+      }
+    } catch (error) {
+      console.error('❌ Error pre-generating questions:', error);
+    }
+  }
+
+  // Tạo câu hỏi fallback nếu AI không hoạt động - Dựa trên phụ đề thực tế
+  async function createFallbackQuestion(checkpoint = 50) {
+    console.log(`🔄 Creating fallback question for checkpoint ${checkpoint}...`);
+    
+    const startTime = Math.max(0, checkpoint - 50);
+    const endTime = checkpoint;
+    
+    // Lấy phụ đề thực tế để tạo câu hỏi
+    const subtitleText = await extractSubtitleText(startTime, endTime);
+    
+    if (subtitleText && subtitleText.trim().length > 10) {
+      // Tạo câu hỏi dựa trên phụ đề thực tế
+      const words = subtitleText.split(' ').filter(word => word.length > 3);
+      const keyWords = words.slice(0, 5); // Lấy 5 từ khóa đầu tiên
+      
+      const question = `Dựa trên nội dung phụ đề từ ${startTime}s đến ${endTime}s, chủ đề chính được đề cập là gì?`;
+      
+      // Tạo đáp án dựa trên từ khóa thực tế
+      const correctAnswer = keyWords.slice(0, 3).join(' ');
+      const options = [
+        correctAnswer,
+        "Thảo luận chi tiết về chủ đề",
+        "Kết luận và tóm tắt nội dung", 
+        "Thực hành và bài tập"
+      ];
+      
+      // Shuffle đáp án
+      const correctIndex = Math.floor(Math.random() * 4);
+      const shuffledOptions = [...options];
+      const temp = shuffledOptions[0];
+      shuffledOptions[0] = shuffledOptions[correctIndex];
+      shuffledOptions[correctIndex] = temp;
+      
+      console.log(`🔄 Fallback question created based on actual subtitles`);
+      
+      return {
+        question: question,
+        options: shuffledOptions,
+        correct_index: correctIndex,
+        explanation: `Dựa trên nội dung phụ đề thực tế từ đoạn video ${startTime}s-${endTime}s.`
+      };
+    } else {
+      // Fallback cuối cùng nếu không có phụ đề
+      const question = `Trong đoạn video từ ${startTime}s đến ${endTime}s, nội dung chính nói về gì?`;
+      const options = [
+        "Giới thiệu tổng quan về chủ đề",
+        "Kết luận và tóm tắt",
+        "Thảo luận chi tiết", 
+        "Thực hành và bài tập"
+      ];
+      
+      const correctIndex = Math.floor(Math.random() * 4);
+      const shuffledOptions = [...options];
+      const temp = shuffledOptions[0];
+      shuffledOptions[0] = shuffledOptions[correctIndex];
+      shuffledOptions[correctIndex] = temp;
+      
+      return {
+        question: question,
+        options: shuffledOptions,
+        correct_index: correctIndex,
+        explanation: `Đoạn video từ ${startTime}s đến ${endTime}s thường là phần giới thiệu tổng quan về chủ đề bài học.`
+      };
+    }
+  }
+
+  btnCont.addEventListener('click', ()=>{
+    console.log('▶️ Continue button clicked');
+    hideModal(); 
+    if(wrongAnswerCount > 0){
+      // Tính checkpoint trước đó để tua lại
+      const currentTime = player.currentTime || 0;
+      const currentCheckpoint = Math.floor(currentTime / 50) * 50;
+      const previousCheckpoint = Math.max(0, currentCheckpoint - 50);
+      
+      console.log(`🔄 Trả lời sai - Tua lại từ checkpoint ${previousCheckpoint}`);
+      // Nếu trả lời sai, tua lại từ checkpoint trước đó
+      player.currentTime = previousCheckpoint;
+      wrongAnswerCount = 0; // reset counter
+      askedAt.delete(currentCheckpoint.toString()); // Reset quiz để có thể hỏi lại
+    }
+    player.play();
+  });
+
+  player.addEventListener('timeupdate', ()=>{
+    const t = player.currentTime || 0;
+    // Reset quiz nếu video được tua lại trước checkpoint
+    resetQuizIfNeeded(t);
+    // Hiển thị quiz mỗi 50 giây (50, 100, 150, 200...)
+    const currentCheckpoint = Math.floor(t / 50) * 50;
+    const checkpointKey = currentCheckpoint.toString();
+    
+    if(t >= currentCheckpoint && currentCheckpoint > 0 && !askedAt.has(checkpointKey)){
+      console.log(`⏰ Video reached checkpoint ${currentCheckpoint}, showing quiz`);
+      maybeAsk(t);
+    }
+  });
+
+  player.addEventListener('seeked', ()=>{
+    const t = player.currentTime || 0;
+    console.log('⏩ Video seeked to:', t);
+    // Reset quiz nếu video được tua lại trước checkpoint
+    resetQuizIfNeeded(t);
+    // nếu tua qua checkpoint → hỏi ngay quiz
+    const currentCheckpoint = Math.floor(t / 50) * 50;
+    const checkpointKey = currentCheckpoint.toString();
+    
+    if(t >= currentCheckpoint && currentCheckpoint > 0 && !askedAt.has(checkpointKey)){
+      console.log(`⏩ Video seeked past checkpoint ${currentCheckpoint}, showing quiz`);
+      maybeAsk(t);
+    }
+  });
+
+  // Reset quiz khi video được reset
+  player.addEventListener('loadstart', ()=>{
+    console.log('🔄 Video loadstart, resetting quiz');
+    askedAt.clear();
+    quizAnswered = false;
+    wrongAnswerCount = 0;
+  });
+
+  console.log('✅ Quiz logic đã được khởi tạo thành công');
+});
+
+// SUBTITLE LOGIC - Đảm bảo phụ đề hiển thị
+(function() {
+  console.log('📝 Subtitle logic đang được khởi tạo...');
+  
+  function ensureSubtitles() {
+    const player = document.getElementById('player');
+    if (!player) {
+      console.log('❌ Video player not found for subtitles');
+      return;
+    }
+    
+    // Đợi video load metadata
+    player.addEventListener('loadedmetadata', () => {
+      console.log('🎬 Video metadata loaded, checking subtitles...');
+      
+      // Kiểm tra và bật subtitles
+      player.textTracks.forEach((track, index) => {
+        if (track.kind === 'subtitles') {
+          track.mode = 'showing';
+          console.log(`✅ Enabled subtitle track ${index}: ${track.label}`);
+        }
+      });
+    });
+    
+    // Nếu video đã load rồi
+    if (player.readyState >= 1) {
+      console.log('🎬 Video already loaded, checking subtitles...');
+      player.textTracks.forEach((track, index) => {
+        if (track.kind === 'subtitles') {
+          track.mode = 'showing';
+          console.log(`✅ Enabled subtitle track ${index}: ${track.label}`);
+        }
+      });
+    }
+  }
+  
+  // Khởi tạo subtitle logic
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', ensureSubtitles);
+  } else {
+    ensureSubtitles();
+  }
+  })();
+
+  // Comprehensive Exam
+</script>
+</body>
+</html>

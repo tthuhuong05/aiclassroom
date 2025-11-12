@@ -1,0 +1,710 @@
+{% extends "base_modern.html" %}
+
+{% block title %}{{ course.title }} - VirtualRoom{% endblock %}
+
+{% block extra_head %}
+<style>
+    .course-hero {
+        position: relative;
+        min-height: 60vh;
+        background: var(--gradient-hero);
+        color: white;
+        display: flex;
+        align-items: center;
+        overflow: hidden;
+    }
+
+    .course-hero-bg {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-size: cover;
+        background-position: center;
+        opacity: 0.2;
+    }
+
+    .course-hero-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(45deg, rgba(0,0,0,0.8), rgba(0,0,0,0.4));
+    }
+
+    .course-hero-content {
+        position: relative;
+        z-index: 2;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 4rem 2rem;
+    }
+
+    .course-title {
+        font-size: clamp(2.5rem, 5vw, 4rem);
+        font-weight: 900;
+        margin-bottom: 1rem;
+        line-height: 1.1;
+    }
+
+    .course-subtitle {
+        font-size: 1.25rem;
+        opacity: 0.9;
+        margin-bottom: 2rem;
+        max-width: 600px;
+    }
+
+    .course-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2rem;
+        margin-bottom: 2rem;
+        font-size: 1.1rem;
+    }
+
+    .course-meta-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .course-actions {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .course-content {
+        padding: 4rem 0;
+        background: var(--gray-50);
+    }
+
+    body.dark-mode .course-content {
+        background: var(--dark-bg);
+    }
+
+    .content-grid {
+        display: grid;
+        grid-template-columns: 1fr 350px;
+        gap: 3rem;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 2rem;
+    }
+
+    .main-content {
+        background: white;
+        border-radius: 20px;
+        padding: 3rem;
+        box-shadow: var(--shadow-lg);
+        border: 1px solid rgba(255, 255, 255, 0.8);
+    }
+
+    body.dark-mode .main-content {
+        background: var(--dark-surface);
+        border: 1px solid var(--dark-border);
+    }
+
+    .sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: 2rem;
+    }
+
+    .enrollment-card {
+        background: white;
+        border-radius: 20px;
+        padding: 2rem;
+        box-shadow: var(--shadow-lg);
+        border: 1px solid rgba(255, 255, 255, 0.8);
+        position: sticky;
+        top: 2rem;
+    }
+
+    body.dark-mode .enrollment-card {
+        background: var(--dark-surface);
+        border: 1px solid var(--dark-border);
+    }
+
+    .price-display {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+
+    .price-amount {
+        font-size: 3rem;
+        font-weight: 900;
+        color: var(--primary-600);
+        margin-bottom: 0.5rem;
+    }
+
+    .price-period {
+        color: var(--gray-600);
+        font-size: 1.1rem;
+    }
+
+    .enroll-btn {
+        width: 100%;
+        padding: 1rem;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 1.1rem;
+        border: none;
+        background: var(--gradient-primary);
+        color: white;
+        transition: var(--transition-normal);
+        margin-bottom: 1rem;
+    }
+
+    .enroll-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-lg);
+        color: white;
+    }
+
+    .course-features {
+        background: white;
+        border-radius: 20px;
+        padding: 2rem;
+        box-shadow: var(--shadow-lg);
+        border: 1px solid rgba(255, 255, 255, 0.8);
+    }
+
+    body.dark-mode .course-features {
+        background: var(--dark-surface);
+        border: 1px solid var(--dark-border);
+    }
+
+    .feature-list {
+        list-style: none;
+        padding: 0;
+    }
+
+    .feature-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid var(--gray-100);
+    }
+
+    .feature-item:last-child {
+        border-bottom: none;
+    }
+
+    .feature-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: var(--gradient-surface);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--primary-600);
+        flex-shrink: 0;
+    }
+
+    .tab-content {
+        margin-top: 2rem;
+    }
+
+    .tab-pane {
+        animation: fadeIn 0.3s ease-in-out;
+    }
+
+    .curriculum-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        border: 1px solid var(--gray-200);
+        border-radius: 12px;
+        margin-bottom: 1rem;
+        transition: var(--transition-normal);
+        cursor: pointer;
+    }
+
+    .curriculum-item:hover {
+        border-color: var(--primary-400);
+        background: var(--primary-50);
+    }
+
+    .curriculum-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: var(--gradient-primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        flex-shrink: 0;
+    }
+
+    .curriculum-content h5 {
+        margin: 0 0 0.25rem 0;
+        font-weight: 600;
+    }
+
+    .curriculum-meta {
+        font-size: 0.9rem;
+        color: var(--gray-600);
+    }
+
+    .instructor-card {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1.5rem;
+        border: 1px solid var(--gray-200);
+        border-radius: 12px;
+        margin-bottom: 1rem;
+        transition: var(--transition-normal);
+    }
+
+    .instructor-card:hover {
+        border-color: var(--primary-400);
+        box-shadow: var(--shadow-md);
+    }
+
+    .instructor-avatar {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 3px solid var(--primary-200);
+    }
+
+    .instructor-info h5 {
+        margin: 0 0 0.25rem 0;
+        font-weight: 600;
+    }
+
+    .rating-stars {
+        color: #fbbf24;
+        font-size: 1.1rem;
+    }
+
+    .review-item {
+        padding: 1.5rem;
+        border: 1px solid var(--gray-200);
+        border-radius: 12px;
+        margin-bottom: 1rem;
+    }
+
+    .review-header {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .reviewer-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 768px) {
+        .content-grid {
+            grid-template-columns: 1fr;
+            gap: 2rem;
+        }
+
+        .course-hero {
+            min-height: 50vh;
+        }
+
+        .course-title {
+            font-size: 2rem;
+        }
+
+        .course-meta {
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .course-actions {
+            flex-direction: column;
+        }
+
+        .main-content {
+            padding: 2rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Course Hero Section -->
+<section class="course-hero">
+    <div class="course-hero-bg" style="background-image: url('{{ course.image_url or url_for('static', filename='back.jpeg') }}');"></div>
+    <div class="course-hero-overlay"></div>
+
+    <div class="container course-hero-content">
+        <div class="row">
+            <div class="col-lg-8">
+                <h1 class="course-title">{{ course.title }}</h1>
+                <p class="course-subtitle">{{ course.description }}</p>
+
+                <div class="course-meta">
+                    <div class="course-meta-item">
+                        <i class="bi bi-person-fill"></i>
+                        <span>Giảng viên: Nguyễn Văn A</span>
+                    </div>
+                    <div class="course-meta-item">
+                        <i class="bi bi-clock-fill"></i>
+                        <span>Thời lượng: 40 giờ</span>
+                    </div>
+                    <div class="course-meta-item">
+                        <i class="bi bi-people-fill"></i>
+                        <span>1,250 học viên</span>
+                    </div>
+                    <div class="course-meta-item">
+                        <span class="rating-stars">★★★★★</span>
+                        <span>(4.8)</span>
+                    </div>
+                </div>
+
+                <div class="course-actions">
+                    <button class="hero-btn hero-btn-primary">
+                        <i class="bi bi-play-circle-fill me-2"></i>Bắt đầu học ngay
+                    </button>
+                    <button class="hero-btn hero-btn-secondary">
+                        <i class="bi bi-heart me-2"></i>Yêu thích
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Course Content -->
+<section class="course-content">
+    <div class="content-grid">
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Course Tabs -->
+            <ul class="nav nav-tabs" id="courseTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview" type="button" role="tab">
+                        <i class="bi bi-info-circle me-1"></i>Tổng quan
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="curriculum-tab" data-bs-toggle="tab" data-bs-target="#curriculum" type="button" role="tab">
+                        <i class="bi bi-list-check me-1"></i>Chương trình học
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="instructor-tab" data-bs-toggle="tab" data-bs-target="#instructor" type="button" role="tab">
+                        <i class="bi bi-person-badge me-1"></i>Giảng viên
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="reviews-tab" data-bs-toggle="tab" data-bs-target="#reviews" type="button" role="tab">
+                        <i class="bi bi-star me-1"></i>Đánh giá
+                    </button>
+                </li>
+            </ul>
+
+            <div class="tab-content" id="courseTabsContent">
+                <!-- Overview Tab -->
+                <div class="tab-pane fade show active" id="overview" role="tabpanel">
+                    <h3>Về khóa học</h3>
+                    <p>{{ course.description }}</p>
+
+                    <h4>Bạn sẽ học được gì?</h4>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <ul class="list-unstyled">
+                                <li><i class="bi bi-check-circle-fill text-success me-2"></i>Kiến thức nền tảng vững chắc</li>
+                                <li><i class="bi bi-check-circle-fill text-success me-2"></i>Kỹ năng thực hành chuyên sâu</li>
+                                <li><i class="bi bi-check-circle-fill text-success me-2"></i>Công cụ và phương pháp hiện đại</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <ul class="list-unstyled">
+                                <li><i class="bi bi-check-circle-fill text-success me-2"></i>Dự án thực tế</li>
+                                <li><i class="bi bi-check-circle-fill text-success me-2"></i>Hỗ trợ 24/7</li>
+                                <li><i class="bi bi-check-circle-fill text-success me-2"></i>Chứng chỉ hoàn thành</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <h4>Yêu cầu tham gia</h4>
+                    <ul>
+                        <li>Không yêu cầu kinh nghiệm trước</li>
+                        <li>Máy tính và kết nối internet ổn định</li>
+                        <li>Kiên trì và ham học hỏi</li>
+                    </ul>
+                </div>
+
+                <!-- Curriculum Tab -->
+                <div class="tab-pane fade" id="curriculum" role="tabpanel">
+                    <h3>Chương trình học chi tiết</h3>
+
+                    <div class="curriculum-item">
+                        <div class="curriculum-icon">
+                            <i class="bi bi-play-circle"></i>
+                        </div>
+                        <div class="curriculum-content">
+                            <h5>1. Giới thiệu và Cài đặt</h5>
+                            <p class="curriculum-meta">Video: 15 phút | Bài tập: 3</p>
+                        </div>
+                        <i class="bi bi-chevron-right ms-auto"></i>
+                    </div>
+
+                    <div class="curriculum-item">
+                        <div class="curriculum-icon">
+                            <i class="bi bi-code-slash"></i>
+                        </div>
+                        <div class="curriculum-content">
+                            <h5>2. Cú pháp Cơ bản</h5>
+                            <p class="curriculum-meta">Video: 45 phút | Bài tập: 10</p>
+                        </div>
+                        <i class="bi bi-chevron-right ms-auto"></i>
+                    </div>
+
+                    <div class="curriculum-item">
+                        <div class="curriculum-icon">
+                            <i class="bi bi-diagram-3"></i>
+                        </div>
+                        <div class="curriculum-content">
+                            <h5>3. Cấu trúc Dữ liệu</h5>
+                            <p class="curriculum-meta">Video: 60 phút | Bài tập: 15</p>
+                        </div>
+                        <i class="bi bi-chevron-right ms-auto"></i>
+                    </div>
+
+                    <div class="curriculum-item">
+                        <div class="curriculum-icon">
+                            <i class="bi bi-robot"></i>
+                        </div>
+                        <div class="curriculum-content">
+                            <h5>4. Lập trình Hướng Đối tượng</h5>
+                            <p class="curriculum-meta">Video: 90 phút | Bài tập: 20</p>
+                        </div>
+                        <i class="bi bi-chevron-right ms-auto"></i>
+                    </div>
+
+                    <div class="curriculum-item">
+                        <div class="curriculum-icon">
+                            <i class="bi bi-trophy"></i>
+                        </div>
+                        <div class="curriculum-content">
+                            <h5>5. Dự án Cuối khóa</h5>
+                            <p class="curriculum-meta">Video: 30 phút | Dự án: 1</p>
+                        </div>
+                        <i class="bi bi-chevron-right ms-auto"></i>
+                    </div>
+                </div>
+
+                <!-- Instructor Tab -->
+                <div class="tab-pane fade" id="instructor" role="tabpanel">
+                    <h3>Giới thiệu giảng viên</h3>
+
+                    <div class="instructor-card">
+                        <img src="https://placehold.co/60x60?text=GV" alt="Instructor" class="instructor-avatar">
+                        <div class="instructor-info">
+                            <h5>Nguyễn Văn A</h5>
+                            <p>Senior Software Engineer tại Google</p>
+                            <div class="d-flex gap-3 mt-2">
+                                <span><i class="bi bi-star-fill text-warning"></i> 4.9 rating</span>
+                                <span><i class="bi bi-people"></i> 50,000+ học viên</span>
+                                <span><i class="bi bi-journal-code"></i> 15 khóa học</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <h5>Kinh nghiệm</h5>
+                        <p>Giảng viên Nguyễn Văn A có hơn 10 năm kinh nghiệm trong lĩnh vực phát triển phần mềm, từng làm việc tại các công ty công nghệ hàng đầu như Google, Microsoft và Facebook.</p>
+
+                        <h5 class="mt-3">Chuyên môn</h5>
+                        <div class="d-flex flex-wrap gap-2">
+                            <span class="badge bg-primary">Python</span>
+                            <span class="badge bg-primary">JavaScript</span>
+                            <span class="badge bg-primary">React</span>
+                            <span class="badge bg-primary">Node.js</span>
+                            <span class="badge bg-primary">Machine Learning</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Reviews Tab -->
+                <div class="tab-pane fade" id="reviews" role="tabpanel">
+                    <h3>Đánh giá từ học viên</h3>
+
+                    <div class="review-item">
+                        <div class="review-header">
+                            <img src="https://placehold.co/40x40?text=T" alt="Reviewer" class="reviewer-avatar">
+                            <div>
+                                <h6 class="mb-0">Trần Thị B</h6>
+                                <div class="rating-stars">★★★★★</div>
+                            </div>
+                            <small class="text-muted ms-auto">2 tuần trước</small>
+                        </div>
+                        <p>Khóa học rất chất lượng, giảng viên dạy dễ hiểu và có nhiều ví dụ thực tế. Tôi đã áp dụng được kiến thức vào công việc ngay.</p>
+                    </div>
+
+                    <div class="review-item">
+                        <div class="review-header">
+                            <img src="https://placehold.co/40x40?text=L" alt="Reviewer" class="reviewer-avatar">
+                            <div>
+                                <h6 class="mb-0">Lê Văn C</h6>
+                                <div class="rating-stars">★★★★★</div>
+                            </div>
+                            <small class="text-muted ms-auto">1 tháng trước</small>
+                        </div>
+                        <p>Nội dung cập nhật, video chất lượng cao và có phụ đề. Hỗ trợ học viên rất nhiệt tình qua forum.</p>
+                    </div>
+
+                    <div class="review-item">
+                        <div class="review-header">
+                            <img src="https://placehold.co/40x40?text=P" alt="Reviewer" class="reviewer-avatar">
+                            <div>
+                                <h6 class="mb-0">Phạm Thị D</h6>
+                                <div class="rating-stars">★★★★☆</div>
+                            </div>
+                            <small class="text-muted ms-auto">3 tuần trước</small>
+                        </div>
+                        <p>Khóa học hay nhưng nên thêm nhiều bài tập thực hành hơn. Tuy nhiên giảng viên rất tận tâm.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <!-- Enrollment Card -->
+            <div class="enrollment-card">
+                <div class="price-display">
+                    <div class="price-amount">2.999.000₫</div>
+                    <div class="price-period">hoặc 499.000₫/tháng</div>
+                </div>
+
+                <button class="enroll-btn">
+                    <i class="bi bi-cart-plus me-2"></i>Đăng ký ngay
+                </button>
+
+                <div class="text-center mb-3">
+                    <small class="text-muted">Đảm bảo hoàn tiền trong 30 ngày</small>
+                </div>
+
+                <div class="text-center">
+                    <a href="#" class="text-decoration-none">
+                        <i class="bi bi-gift me-1"></i>Nhận ưu đãi
+                    </a>
+                </div>
+            </div>
+
+            <!-- Course Features -->
+            <div class="course-features">
+                <h4 class="mb-3">Khóa học bao gồm</h4>
+                <ul class="feature-list">
+                    <li class="feature-item">
+                        <div class="feature-icon">
+                            <i class="bi bi-play-circle"></i>
+                        </div>
+                        <div>
+                            <strong>40 giờ video HD</strong>
+                            <br><small class="text-muted">Nội dung chất lượng cao</small>
+                        </div>
+                    </li>
+                    <li class="feature-item">
+                        <div class="feature-icon">
+                            <i class="bi bi-file-earmark-text"></i>
+                        </div>
+                        <div>
+                            <strong>Tài liệu tham khảo</strong>
+                            <br><small class="text-muted">Download miễn phí</small>
+                        </div>
+                    </li>
+                    <li class="feature-item">
+                        <div class="feature-icon">
+                            <i class="bi bi-trophy"></i>
+                        </div>
+                        <div>
+                            <strong>Chứng chỉ hoàn thành</strong>
+                            <br><small class="text-muted">Được công nhận</small>
+                        </div>
+                    </li>
+                    <li class="feature-item">
+                        <div class="feature-icon">
+                            <i class="bi bi-headset"></i>
+                        </div>
+                        <div>
+                            <strong>Hỗ trợ 24/7</strong>
+                            <br><small class="text-muted">Trả lời trong 24h</small>
+                        </div>
+                    </li>
+                    <li class="feature-item">
+                        <div class="feature-icon">
+                            <i class="bi bi-phone"></i>
+                        </div>
+                        <div>
+                            <strong>Truy cập mobile</strong>
+                            <br><small class="text-muted">Học mọi lúc mọi nơi</small>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Tab animations
+    const tabButtons = document.querySelectorAll('#courseTabs .nav-link');
+    const tabPanes = document.querySelectorAll('.tab-pane');
+
+    tabButtons.forEach(button => {
+        button.addEventListener('shown.bs.tab', function() {
+            const targetPane = document.querySelector(this.getAttribute('data-bs-target'));
+            targetPane.style.animation = 'none';
+            targetPane.offsetHeight; // Trigger reflow
+            targetPane.style.animation = 'fadeIn 0.3s ease-in-out';
+        });
+    });
+
+    // Enrollment button interaction
+    const enrollBtn = document.querySelector('.enroll-btn');
+    enrollBtn.addEventListener('click', function() {
+        this.innerHTML = '<div class="loading-spinner"></div> Đang xử lý...';
+        this.disabled = true;
+
+        // Simulate processing
+        setTimeout(() => {
+            this.innerHTML = '<i class="bi bi-check-circle me-2"></i>Đã đăng ký!';
+            this.style.background = 'var(--gradient-accent)';
+        }, 2000);
+    });
+
+    // Curriculum item hover effects
+    const curriculumItems = document.querySelectorAll('.curriculum-item');
+    curriculumItems.forEach(item => {
+        item.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateX(4px)';
+        });
+
+        item.addEventListener('mouseleave', function() {
+            this.style.transform = '';
+        });
+    });
+});
+</script>
+{% endblock %}
+
+

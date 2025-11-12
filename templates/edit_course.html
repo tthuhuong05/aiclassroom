@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Chỉnh sửa khóa học</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .module-card{border:1px solid #e5e7eb;border-radius:12px;padding:16px;margin-bottom:12px;background:#fff}
+    .lesson{border-top:1px dashed #e5e7eb;padding-top:12px;margin-top:12px}
+  </style>
+</head>
+<body>
+<div class="container mt-5">
+  <h1 class="mb-4 text-primary">✏️ Chỉnh sửa: {{ course.title }}</h1>
+
+  <form id="courseForm" action="{{ url_for('edit_course', course_id=course.id) }}" method="POST" enctype="multipart/form-data" class="shadow p-4 rounded bg-light">
+
+    <!-- Thông tin khóa học -->
+    <div class="mb-3">
+      <label class="form-label">Tên khóa học</label>
+      <input type="text" class="form-control" name="title" value="{{ course.title }}" required>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Phân loại</label>
+      <input type="text" class="form-control" name="category" value="{{ course.category or '' }}">
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Tags</label>
+      <input type="text" class="form-control" name="tags" value="{{ course.tags or '' }}">
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Mô tả</label>
+      <textarea class="form-control" name="description" rows="4">{{ course.description or '' }}</textarea>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Ảnh khóa học (chọn nếu muốn thay)</label>
+      <input class="form-control" type="file" name="image" accept="image/*">
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Video tổng quan (chọn nếu muốn thay)</label>
+      <input class="form-control" type="file" name="video" accept="video/*">
+    </div>
+
+    <hr class="my-4">
+
+    <!-- ✅ TRÌNH DỰNG MODULE & BÀI HỌC -->
+    <h5 class="mb-2">Module & Bài học</h5>
+    <div id="modules"></div>
+    <button type="button" id="addModule" class="btn btn-outline-primary btn-sm">+ Thêm module</button>
+
+    <input type="hidden" id="outline_json" name="outline_json" value="">
+
+    <div class="mt-4">
+      <button type="submit" class="btn btn-success">Lưu thay đổi</button>
+      <a href="{{ url_for('manage_courses') }}" class="btn btn-secondary">Quay lại</a>
+    </div>
+  </form>
+</div>
+
+<script>
+(function(){
+  const modulesBox = document.getElementById('modules');
+  const addModuleBtn = document.getElementById('addModule');
+  const form = document.getElementById('courseForm');
+  const outlineInput = document.getElementById('outline_json');
+
+  // đếm để đặt tên field upload duy nhất cho mỗi bài học
+  let lessonFileCounter = 0;
+
+  function esc(s){ return (s||'').replaceAll('"','&quot;'); }
+
+  function addLesson(container, data){
+    const box = document.createElement('div');
+    box.className = 'lesson';
+    const resource = data.resource_url || '';
+    const hasRes = !!resource;
+
+    box.innerHTML = `
+      <div class="row g-2">
+        <div class="col-md-6">
+          <label class="form-label">Tiêu đề bài học</label>
+          <input class="form-control lesson-title" value="${esc(data.title)}">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Loại</label>
+          <select class="form-select lesson-type">
+            <option value="lesson" ${data.item_type==='lesson'?'selected':''}>Lesson</option>
+            <option value="video" ${data.item_type==='video'?'selected':''}>Video</option>
+            <option value="reading" ${data.item_type==='reading'?'selected':''}>Reading</option>
+            <option value="quiz" ${data.item_type==='quiz'?'selected':''}>Quiz</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Thời lượng (giây)</label>
+          <input type="number" class="form-control lesson-duration" min="0" value="${data.duration_sec||''}">
+        </div>
+      </div>
+
+      <div class="mb-2 mt-2">
+        <label class="form-label">URL video/tài nguyên (nếu có)</label>
+        <input class="form-control lesson-url" value="${esc(resource)}">
+        ${hasRes ? `<div class="form-text">Hiện tại: <code>${esc(resource)}</code></div>` : ``}
+      </div>
+
+      <div class="mb-2">
+        <label class="form-label">Upload video (tùy chọn)</label>
+        <input type="file" class="form-control lesson-upload" accept="video/*">
+        <div class="form-text">Nếu chọn file mới, hệ thống sẽ dùng video upload thay cho URL hiện có.</div>
+      </div>
+
+      <div class="mb-2">
+        <label class="form-label">Nội dung bài học</label>
+        <textarea class="form-control lesson-content" rows="4">${(data.content||'').replaceAll('<','&lt;')}</textarea>
+      </div>
+
+      <div class="text-end">
+        <button type="button" class="btn btn-outline-danger btn-sm remove-lesson">Xóa bài học</button>
+      </div>
+    `;
+
+    // gán tên field upload duy nhất
+    const uploadInput = box.querySelector('.lesson-upload');
+    const fieldName = `lesson_file_${++lessonFileCounter}`;
+    uploadInput.name = fieldName;
+    box.dataset.uploadField = fieldName;
+
+    box.querySelector('.remove-lesson').onclick = ()=> box.remove();
+    container.appendChild(box);
+  }
+
+  function addModule(data){
+    const wrap = document.createElement('div');
+    wrap.className = 'module-card';
+    wrap.innerHTML = `
+      <div class="d-flex justify-content-between align-items-center">
+        <div class="w-100 me-3">
+          <label class="form-label">Tên module</label>
+          <input class="form-control module-title" value="${esc(data.title)}">
+        </div>
+        <button type="button" class="btn btn-outline-danger btn-sm remove-module ms-2">Xóa</button>
+      </div>
+      <div class="lessons mt-2"></div>
+      <button type="button" class="btn btn-outline-secondary btn-sm add-lesson mt-2">+ Thêm bài học</button>
+    `;
+    wrap.querySelector('.remove-module').onclick = ()=> wrap.remove();
+    wrap.querySelector('.add-lesson').onclick = ()=> addLesson(wrap.querySelector('.lessons'), {});
+
+    // Prefill lessons
+    (data.items||[]).forEach(it=> addLesson(wrap.querySelector('.lessons'), it));
+
+    modulesBox.appendChild(wrap);
+  }
+
+  // Prefill từ server
+  const sections = {{ (sections|tojson)|safe }};
+  (sections||[]).forEach(s => addModule(s));
+
+  addModuleBtn.onclick = ()=> addModule({});
+
+  // Serialize -> outline_json (kèm upload_field nếu có file)
+  form.addEventListener('submit', ()=>{
+    const sections = [];
+    modulesBox.querySelectorAll('.module-card').forEach((mod,i)=>{
+      const title = mod.querySelector('.module-title').value.trim() || `Module ${i+1}`;
+      const items = [];
+      mod.querySelectorAll('.lesson').forEach((ls,j)=>{
+        const uploadInput = ls.querySelector('.lesson-upload');
+        const hasFile = uploadInput && uploadInput.files && uploadInput.files.length>0;
+        items.push({
+          title: ls.querySelector('.lesson-title').value.trim() || `Bài ${j+1}`,
+          item_type: ls.querySelector('.lesson-type').value || 'lesson',
+          resource_url: ls.querySelector('.lesson-url').value.trim() || null,
+          duration_sec: parseInt(ls.querySelector('.lesson-duration').value||'0') || null,
+          content: ls.querySelector('.lesson-content').value || null,
+          upload_field: hasFile ? uploadInput.name : null   // ✅ server sẽ đọc file theo tên này
+        });
+      });
+      sections.push({title, items});
+    });
+    outlineInput.value = JSON.stringify({sections});
+  });
+})();
+</script>
+</body>
+</html>

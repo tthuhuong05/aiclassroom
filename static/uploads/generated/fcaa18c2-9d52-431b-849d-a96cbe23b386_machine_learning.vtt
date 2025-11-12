@@ -1,0 +1,175 @@
+WEBVTT
+
+00:00:00.000 --> 00:00:05.980
+MATHEMATICS  FOR
+MACHINE LEAR NING
+Marc Peter Deisenroth
+
+00:00:05.980 --> 00:02:00.340
+A. Aldo Faisal
+Cheng Soon On g
+MATHEMATICS FOR MACHINE LEARNING DEISENROTH ET AL.
+The fundamental mathematical tools needed to understand machine
+learning include linear algebra, analytic geometry, matrix decompositions, vector calculus, optimization, probability and statistics. These topics are traditionally taught in disparate courses, making it hard for data science or computer science students, or professionals, to efﬁ  ciently learn the mathematics. This self-contained textbook bridges the gap between mathematical and machine learning texts, introducing the mathematical concepts with a minimum of prerequisites. It uses these concepts to derive four central machine learning methods: linear regression, principal component analysis, Gaussian mixture models and support vector machines. For students and others with a mathematical background, these derivations provide a starting point to machine learning texts. For those learning the mathematics for the ﬁ  rst time, the methods help build intuition and practical experience with applying mathematical concepts. Every chapter includes worked examples and exercises to test understanding. Programming tutorials are offered on the book’s web site.
+MARC PETER DEISENROTH  is Senior Lecturer in Statistical Machine
+Learning at the Department of Computing, Împerial College London.
+
+00:02:00.340 --> 00:06:45.650
+A. ALDO FAISAL  leads the Brain & Behaviour Lab at Imperial College
+London, where he is also Reader in Neurotechnology at the Department of Bioengineering and the Department of Computing. CHENG SOON ONG  is Principal Research Scientist at the Machine Learning
+Research Group, Data61, CSIRO. He is also Adjunct Associate Professor at Australian National University. Cover image courtesy of Daniel Bosma / Moment / Getty Images
+Cover design by Holly Johnson
+Deisenrith et al. 9781108455145 Cover. C M Y K
+
+Contents
+Foreword 1
+Part I Mathematical Foundations 9
+1 Introduction and Motivation 11
+1.1 Finding Words for Intuitions 12
+1.2 Two Ways to Read This Book 13
+1.3 Exercises and Feedback 16
+2 Linear Algebra 17
+2.1 Systems of Linear Equations 19
+2.2 Matrices 22
+2.3 Solving Systems of Linear Equations 27
+2.4 Vector Spaces 35
+2.5 Linear Independence 40
+2.6 Basis and Rank 44
+2.7 Linear Mappings 48
+2.8 Afﬁne Spaces 61
+2.9 Further Reading 63
+Exercises 64
+3 Analytic Geometry 70
+3.1 Norms 71
+3.2 Inner Products 72
+3.3 Lengths and Distances 75
+3.4 Angles and Orthogonality 76
+3.5 Orthonormal Basis 78
+3.6 Orthogonal Complement 79
+3.7 Inner Product of Functions 80
+3.8 Orthogonal Projections 81
+3.9 Rotations 91
+3.10 Further Reading 94
+Exercises 96
+4 Matrix Decompositions 98
+4.1 Determinant and Trace 99
+i
+This material will be published by Cambridge University Press as Mathematics for Machine Learn-
+ingby Marc Peter Deisenroth, A. Aldo Faisal, and Cheng Soon Ong. This pre-publication version is
+free to view and download for personal use only. Not for re-distribution, re-sale or use in deriva-
+tive works. cby M. P. Deisenroth, A. A. Faisal, and C. S. Ong, 2019. https://mml-book.com . ii Contents
+4.2 Eigenvalues and Eigenvectors 105
+4.3 Cholesky Decomposition 114
+4.4 Eigendecomposition and Diagonalization 115
+4.5 Singular Value Decomposition 119
+4.6 Matrix Approximation 129
+4.7 Matrix Phylogeny 134
+4.8 Further Reading 135
+Exercises 137
+5 Vector Calculus 139
+5.1 Differentiation of Univariate Functions 141
+5.2 Partial Differentiation and Gradients 146
+5.3 Gradients of Vector-Valued Functions 149
+5.4 Gradients of Matrices 155
+5.5 Useful Identities for Computing Gradients 158
+5.6 Backpropagation and Automatic Differentiation 159
+5.7 Higher-Order Derivatives 164
+5.8 Linearization and Multivariate Taylor Series 165
+5.9 Further Reading 170
+Exercises 170
+6 Probability and Distributions 172
+6.1 Construction of a Probability Space 172
+6.2 Discrete and Continuous Probabilities 178
+6.3 Sum Rule, Product Rule, and Bayes’ Theorem 183
+6.4 Summary Statistics and Independence 186
+6.5 Gaussian Distribution 197
+6.6 Conjugacy and the Exponential Family 205
+6.7 Change of Variables/Inverse Transform 214
+6.8 Further Reading 221
+Exercises 222
+7 Continuous Optimization 225
+7.1 Optimization Using Gradient Descent 227
+7.2 Constrained Optimization and Lagrange Multipliers 233
+7.3 Convex Optimization 236
+7.4 Further Reading 246
+Exercises 247
+Part II Central Machine Learning Problems 249
+8 When Models Meet Data 251
+8.1 Data, Models, and Learning 251
+8.2 Empirical Risk Minimization 258
+8.3 Parameter Estimation 265
+8.4 Probabilistic Modeling and Inference 272
+8.5 Directed Graphical Models 278
+Draft (2019-10-27) of “Mathematics for Machine Learning”. Feedback: https://mml-book.com .
+
+00:06:45.650 --> 00:11:17.360
+Contents iii
+8.6 Model Selection 283
+9 Linear Regression 289
+9.1 Problem Formulation 291
+9.2 Parameter Estimation 292
+9.3 Bayesian Linear Regression 303
+9.4 Maximum Likelihood as Orthogonal Projection 313
+9.5 Further Reading 315
+10 Dimensionality Reduction with Principal Component Analysis 317
+10.1 Problem Setting 318
+10.2 Maximum Variance Perspective 320
+10.3 Projection Perspective 325
+10.4 Eigenvector Computation and Low-Rank Approximations 333
+10.5 PCA in High Dimensions 335
+10.6 Key Steps of PCA in Practice 336
+10.7 Latent Variable Perspective 339
+10.8 Further Reading 343
+11 Density Estimation with Gaussian Mixture Models 348
+11.1 Gaussian Mixture Model 349
+11.2 Parameter Learning via Maximum Likelihood 350
+11.3 EM Algorithm 360
+11.4 Latent-Variable Perspective 363
+11.5 Further Reading 368
+12 Classiﬁcation with Support Vector Machines 370
+12.1 Separating Hyperplanes 372
+12.2 Primal Support Vector Machine 374
+12.3 Dual Support Vector Machine 383
+12.4 Kernels 388
+12.5 Numerical Solution 390
+12.6 Further Reading 392
+References 395
+Index 407
+c2019 M. P. Deisenroth, A. A. Faisal, C. S. Ong. To be published by Cambridge University Press. Foreword
+Machine learning is the latest in a long line of attempts to distill human
+knowledge and reasoning into a form that is suitable for constructing ma-
+chines and engineering automated systems. As machine learning becomes
+more ubiquitous and its software packages become easier to use, it is nat-
+ural and desirable that the low-level technical details are abstracted away
+and hidden from the practitioner. However, this brings with it the danger
+that a practitioner becomes unaware of the design decisions and, hence,
+the limits of machine learning algorithms. The enthusiastic practitioner who is interested to learn more about the
+magic behind successful machine learning algorithms currently faces a
+daunting set of pre-requisite knowledge:
+Programming languages and data analysis tools
+Large-scale computation and the associated frameworks
+Mathematics and statistics and how machine learning builds on it
+At universities, introductory courses on machine learning tend to spend
+early parts of the course covering some of these pre-requisites. For histori-
+cal reasons, courses in machine learning tend to be taught in the computer
+science department, where students are often trained in the ﬁrst two areas
+of knowledge, but not so much in mathematics and statistics. Current machine learning textbooks primarily focus on machine learn-
+ing algorithms and methodologies and assume that the reader is com-
+petent in mathematics and statistics. Therefore, these books only spend
+one or two chapters of background mathematics, either at the beginning
+of the book or as appendices. We have found many people who want to
+delve into the foundations of basic machine learning methods who strug-
+gle with the mathematical knowledge required to read a machine learning
+textbook. Having taught undergraduate and graduate courses at universi-
+ties, we ﬁnd that the gap between high school mathematics and the math-
+ematics level required to read a standard machine learning textbook is too
+big for many people. This book brings the mathematical foundations of basic machine learn-
+ing concepts to the fore and collects the information in a single place so
+that this skills gap is narrowed or even closed. 1
+This material will be published by Cambridge University Press as Mathematics for Machine Learn-
+ingby Marc Peter Deisenroth, A. Aldo Faisal, and Cheng Soon Ong. This pre-publication version is
+free to view and download for personal use only. Not for re-distribution, re-sale or use in deriva-
+tive works. cby M. P. Deisenroth, A. A. Faisal, and C. S. Ong, 2019. https://mml-book.com . 2 Foreword
+Why Another Book on Machine Learning? Machine learning builds upon the language of mathematics to express
+concepts that seem intuitively obvious but that are surprisingly difﬁcult
+to formalize.

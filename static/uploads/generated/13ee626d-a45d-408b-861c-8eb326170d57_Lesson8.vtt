@@ -1,0 +1,188 @@
+WEBVTT
+
+00:00:00.000 --> 00:01:06.780
+UNIVERSITY OF INFORMATION AND COMMUNICATION TECHNOLOGY
+FACULTY OF INFORMATION TECHNOLOGY
+Lesson #8:
+CONTINUOUS DELIVERY &
+DEPLOYMENT (CD)
+THAI NGUYEN, MONTH … YEAR 2025
+
+Lesson objectives
+1Understand the CD process
+Master the continuous delivery (CD pipeline) and continuous
+deployment processes.
+2Package applications with Docker
+Know how to package applications as images with Docker.
+3Apply CD with Jenkins
+Combine Jenkins with Docker to build an effective CD process.
+University of Information and Communication
+Technology
+
+Main content
+1Continuous delivery & deployment process - CD
+2Package applications with Docker
+CD practice with Jenkins
+University of Information and Communication
+TechnologyUsing Docker with Command Line Tools & Docker Compose3
+4
+
+00:01:06.780 --> 00:01:29.710
+1. Continuous Delivery (CD) Process
+❑Continuous Delivery Process = CI +
+deploy application to deployment
+environments, but deploying to the end -
+user environment (Prod) is still manual.
+University of Information and Communication
+Technology
+
+00:01:29.710 --> 00:01:46.370
+1. Continuous Deployment Process
+Continuous Deployment = CI
++ CD, but automates
+deployment to the end -user
+environment (Prod).
+University of Information and Communication
+Technology
+
+00:01:46.370 --> 00:02:25.850
+2. Package applications with Docker
+a)Introduction
+b)Register & Explore Docker Hub
+c)Install Docker Desktop on Windows
+d)Check installation & view Docker commands
+e)Key elements of Docker
+f)Main/core Docker directives
+g)Create Dockerfile with basic directives
+h)Building a Docker image from Dockerfile
+i)Initialize a new Container of the image
+j)Push the built Image to Docker Hub
+k)Pull the Image from Docker Hub to run a test
+University of Information and Communication
+Technology
+
+00:02:25.850 --> 00:05:17.930
+a. Docker – Introduction
+❑In recent years, a particular technology has attracted attention
+in the market, on social networks and at events, namely Docker.
+❑Docker is an open source containerization tool from 2013,
+which allows isolating applications from the server system.
+▪Helps applications become mobile, can be tested on the developer's
+workstation and deployed to the production environment without
+worrying about runtime dependencies.
+▪It is a cross -platform tool, can be installed on Windows, Linux,
+macOS, ...and is available by default on some cloud providers such as
+AWS, Azure, ...
+University of Information and Communication
+Technology
+
+Container
+A system that embeds the application with its dependencies, containing only a lightweight operating system and
+the necessary elements.
+Comparison with VM
+Unlike virtual machines (VMs) that contain a full operating system, containers rely on the guest operating system
+(the container only contains a lightweight operating system (OS) and the elements necessary for that operating
+system such as system libraries, binary files and code dependencies).
+Portability
+Docker makes applications portable by building images that are easy to deploy across different environments
+without compatibility issues.
+University of Information and Communication
+Technologya. Docker – Introduction
+
+❑To operate,  Docker  needs  the following  elements :
+▪Docker  Desktop  UI: manage  containers
+▪Docker  client : Is a command  line tool (docker)  that you
+use to give commands,  for example : docker  run, docker
+build,  ...
+▪Docker  daemon : Is the "engine"  of Docker,  responsible
+for: Managing  containers,  images,  networks,  volumes ;
+Executing  commands  from  the Docker  Client .
+▪Docker  Registry : This is a public  repository  (Docker  Hub)
+or a private  repository  of Docker  images  (account
+registration  required)
+In Docker Desktop, Docker Client and Docker Daemon are
+available → run directly on Desktop (Windows /Mac/Linux).
+Docker Desktop only connects to Docker Hub by default
+
+00:05:17.930 --> 00:05:20.540
+a. Docker – Introduction
+
+00:05:20.540 --> 00:06:59.620
+2. Package applications with Docker
+a)Introduction
+b)Register & Explore Docker Hub
+c)Install Docker Desktop on Windows
+d)Check installation & view Docker commands
+e)Key elements of Docker
+f)Main/core directives of Docker
+g)Create Dockerfile with basic directives
+h)Building a Docker image from Dockerfile
+i)Initialize a new Container from the image
+j)Push the built Image to Docker Hub
+k)Pull the Image from Docker Hub to test run
+University of Information Technology and
+Communications
+
+Docker Hub is a public space (registry) containing over 2
+million public Docker images from companies,
+communities, and individual users.
+To register, visit https://hub.docker.com/, fill in the
+information and click "Sign Up". This account allows us to
+upload arbitrary images and download Docker Desktop.
+After logging in, we can explore the available images in
+the "Explore" section, with filters to search for official
+images, from verified publishers, or certified by Docker
+(Screenshot – Slide below)
+University of Information Technology and
+Communications
+Registered with account ptthuong@ictu.edu.vnb. Register & Explore Docker Hub
+
+00:06:59.620 --> 00:07:07.940
+b. Register & Explore Docker Hub
+University of Information Technology and
+Communications
+
+00:07:07.940 --> 00:07:16.260
+b. Register & Explore Docker Hub
+University of Information Technology and
+Communications
+
+00:07:16.260 --> 00:07:19.480
+b. Register & Explore Docker Hub
+
+00:07:19.480 --> 00:09:01.790
+2. Package applications with Docker
+a)Introduction
+b)Register & Explore Docker Hub
+c)Install Docker Desktop on Windows
+d)Check installation & view Docker commands
+e)Key elements of Docker
+f)Main/core directives of Docker
+g)Create Dockerfile with basic directives
+h)Building a Docker image from Dockerfile
+i)Initialize a new Container from the image
+j)Push the built Image to Docker Hub
+k)Pull the Image from Docker Hub to test run
+University of Information Technology and
+Communications
+
+❑Docker Desktop is a cross -platform tool, free for developers and small teams.
+To install on Windows, we need to ensure:
+•Windows 10/11 64 -bit with at least 4GB RAM.
+•Windows Subsystem for Linux 2 (WSL 2) backend or Hyper -V is enabled.
+❑Installation:
+(1) Download the installation file from the Docker Desktop for Windows page, then run the .EXE
+file and configure the components for the WSL 2 backend. After the installation is complete; (2)
+Launch Docker Desktop and log in to Docker Hub.
+=> Specifically as follows:
+University of Information Technology and
+Communicationsc. Install Docker Desktop on Windows
+
+00:09:01.790 --> 00:09:23.430
+c. Install Docker Desktop on Windows
+(1) Download  Docker  Desktop  by
+clicking  on the Docker  Desktop  for
+Windows  button  on the page :
+https ://docs .docker .com/desktop/wind
+ows/install/
+▪Screenshot :

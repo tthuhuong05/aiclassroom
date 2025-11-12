@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Transcript Quiz Generator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            padding: 40px;
+        }
+
+        .workflow {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .workflow-step {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s ease;
+        }
+
+        .workflow-step:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+
+        .workflow-step .icon {
+            font-size: 2.5em;
+            margin-bottom: 15px;
+        }
+
+        .workflow-step h3 {
+            color: #495057;
+            margin-bottom: 10px;
+        }
+
+        .workflow-step p {
+            color: #6c757d;
+            font-size: 0.9em;
+        }
+
+        .input-section {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+        }
+
+        .input-section h2 {
+            color: #495057;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .form-group input, .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: #4facfe;
+        }
+
+        .form-group textarea {
+            min-height: 200px;
+            resize: vertical;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(79, 172, 254, 0.3);
+        }
+
+        .btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #4facfe;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .error.show {
+            display: block;
+        }
+
+        .success {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .success.show {
+            display: block;
+        }
+
+        .result-section {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            display: none;
+        }
+
+        .result-section.show {
+            display: block;
+        }
+
+        .question-item {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            border-left: 4px solid #4facfe;
+        }
+
+        .question-text {
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 10px;
+        }
+
+        .question-options {
+            margin-left: 20px;
+        }
+
+        .question-option {
+            margin-bottom: 5px;
+            padding: 5px 0;
+        }
+
+        .question-option.correct {
+            color: #155724;
+            font-weight: 600;
+        }
+
+        .question-explanation {
+            margin-top: 10px;
+            padding: 10px;
+            background: #e9ecef;
+            border-radius: 5px;
+            font-style: italic;
+            color: #6c757d;
+        }
+
+        .question-keywords {
+            margin-top: 10px;
+            padding: 5px 10px;
+            background: #d1ecf1;
+            border-radius: 15px;
+            display: inline-block;
+            font-size: 0.9em;
+            color: #0c5460;
+        }
+
+        .analysis-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #e9ecef;
+            border-radius: 8px;
+        }
+
+        .analysis-section h3 {
+            color: #495057;
+            margin-bottom: 10px;
+        }
+
+        .analysis-item {
+            margin-bottom: 5px;
+        }
+
+        .features-section {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .features-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+
+        .feature-icon {
+            font-size: 1.5em;
+        }
+
+        .feature-text {
+            font-weight: 500;
+            color: #495057;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                border-radius: 15px;
+            }
+
+            .header {
+                padding: 30px 20px;
+            }
+
+            .header h1 {
+                font-size: 2em;
+            }
+
+            .main-content {
+                padding: 20px;
+            }
+
+            .workflow {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 Simple Transcript Quiz Generator</h1>
+            <p>Tạo câu hỏi từ transcript dựa trên nội dung chính, không copy y nguyên text</p>
+        </div>
+
+        <div class="main-content">
+            <!-- Workflow Steps -->
+            <div class="workflow">
+                <div class="workflow-step">
+                    <div class="icon">📝</div>
+                    <h3>1. Paste Transcript</h3>
+                    <p>Dán nội dung transcript video</p>
+                </div>
+                <div class="workflow-step">
+                    <div class="icon">🔍</div>
+                    <h3>2. Smart Analysis</h3>
+                    <p>Phân tích nội dung thông minh</p>
+                </div>
+                <div class="workflow-step">
+                    <div class="icon">🎯</div>
+                    <h3>3. Generate Questions</h3>
+                    <p>Tạo câu hỏi dựa trên ý nghĩa</p>
+                </div>
+                <div class="workflow-step">
+                    <div class="icon">📊</div>
+                    <h3>4. Export Quiz</h3>
+                    <p>Xuất quiz và lưu trữ</p>
+                </div>
+            </div>
+
+            <!-- Input Section -->
+            <div class="input-section">
+                <h2>📝 Nhập Transcript Video</h2>
+                
+                <form id="quizForm">
+                    <div class="form-group">
+                        <label for="video_title">Tiêu đề video:</label>
+                        <input type="text" id="video_title" name="video_title" placeholder="Nhập tiêu đề video..." value="Video Quiz">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="transcript">Nội dung transcript:</label>
+                        <textarea id="transcript" name="transcript" placeholder="Dán nội dung transcript video vào đây..." required></textarea>
+                    </div>
+
+                    <button type="submit" class="btn" id="generateBtn">
+                        🚀 Tạo Câu Hỏi Thông Minh
+                    </button>
+                </form>
+
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <div>Đang phân tích transcript và tạo câu hỏi...</div>
+                </div>
+
+                <div class="error" id="error"></div>
+                <div class="success" id="success"></div>
+            </div>
+
+            <!-- Features Section -->
+            <div class="features-section">
+                <h3>✨ Tính năng Smart Quiz Generator</h3>
+                <div class="features-list">
+                    <div class="feature-item">
+                        <span class="feature-icon">🔍</span>
+                        <span class="feature-text">Phân tích nội dung transcript thông minh</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">🎯</span>
+                        <span class="feature-text">Tạo câu hỏi dựa trên ý nghĩa, không copy text</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">📊</span>
+                        <span class="feature-text">Nhiều loại câu hỏi: MCQ, Essay, Oral</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">🧠</span>
+                        <span class="feature-text">Kiểm tra hiểu biết sâu về nội dung</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">💡</span>
+                        <span class="feature-text">Gợi ý và giải thích chi tiết</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">📁</span>
+                        <span class="feature-text">Lưu trữ và xuất quiz</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Result Section -->
+            <div class="result-section" id="resultSection">
+                <h3>🎉 Kết quả tạo câu hỏi</h3>
+                <div id="resultContent"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const quizForm = document.getElementById('quizForm');
+        const generateBtn = document.getElementById('generateBtn');
+        const loading = document.getElementById('loading');
+        const error = document.getElementById('error');
+        const success = document.getElementById('success');
+        const resultSection = document.getElementById('resultSection');
+        const resultContent = document.getElementById('resultContent');
+
+        // Form submission
+        quizForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(quizForm);
+            const data = {
+                video_title: formData.get('video_title'),
+                transcript: formData.get('transcript')
+            };
+            
+            // Show loading
+            generateBtn.disabled = true;
+            loading.classList.add('show');
+            error.classList.remove('show');
+            success.classList.remove('show');
+            resultSection.classList.remove('show');
+            
+            try {
+                const response = await fetch('/generate_quiz', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    success.textContent = '✅ Câu hỏi đã được tạo thành công!';
+                    success.classList.add('show');
+                    
+                    // Show results
+                    displayQuizResults(result.quiz_data);
+                    resultSection.classList.add('show');
+                } else {
+                    error.textContent = `❌ Lỗi: ${result.error}`;
+                    error.classList.add('show');
+                }
+            } catch (err) {
+                error.textContent = `❌ Lỗi kết nối: ${err.message}`;
+                error.classList.add('show');
+            } finally {
+                generateBtn.disabled = false;
+                loading.classList.remove('show');
+            }
+        });
+
+        function displayQuizResults(quizData) {
+            let html = `
+                <div class="analysis-section">
+                    <h3>📊 Phân tích nội dung</h3>
+                    <div class="analysis-item"><strong>Video:</strong> ${quizData.video_title}</div>
+                    <div class="analysis-item"><strong>Transcript:</strong> ${quizData.transcript_length} ký tự</div>
+                    <div class="analysis-item"><strong>Tổng câu hỏi:</strong> ${quizData.total_questions}</div>
+                    <div class="analysis-item"><strong>Từ khóa:</strong> ${quizData.content_analysis.keywords.slice(0, 5).join(', ')}</div>
+                    <div class="analysis-item"><strong>Chủ đề:</strong> ${quizData.content_analysis.main_topics.slice(0, 3).join(', ')}</div>
+                    <div class="analysis-item"><strong>Độ khó:</strong> ${quizData.content_analysis.difficulty_level}</div>
+                </div>
+            `;
+            
+            // Questions
+            if (quizData.questions && quizData.questions.length > 0) {
+                html += `<h3>🎯 Câu hỏi đã tạo (${quizData.questions.length} câu)</h3>`;
+                
+                quizData.questions.forEach((q, i) => {
+                    html += `
+                        <div class="question-item">
+                            <div class="question-text">${i + 1}. ${q.question}</div>
+                    `;
+                    
+                    if (q.type === "mcq" && q.options) {
+                        html += `<div class="question-options">`;
+                        q.options.forEach((option, j) => {
+                            const isCorrect = j === q.correct_index;
+                            html += `
+                                <div class="question-option ${isCorrect ? 'correct' : ''}">
+                                    ${String.fromCharCode(65 + j)}. ${option} ${isCorrect ? '✓' : ''}
+                                </div>
+                            `;
+                        });
+                        html += `</div>`;
+                    }
+                    
+                    if (q.keywords) {
+                        html += `<div class="question-keywords">🔑 Từ khóa: ${q.keywords.join(', ')}</div>`;
+                    }
+                    
+                    html += `
+                            <div class="question-explanation">💡 Giải thích: ${q.explanation}</div>
+                        </div>
+                    `;
+                });
+            }
+            
+            resultContent.innerHTML = html;
+        }
+    </script>
+</body>
+</html>
+

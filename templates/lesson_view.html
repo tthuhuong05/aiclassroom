@@ -1,0 +1,173 @@
+<!-- templates/lesson_view.html -->
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <title>{{ lesson_title or "Bài giảng" }}</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    .quiz-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:1000}
+    .quiz-card{background:#fff;max-width:720px;width:92%;border-radius:16px;padding:24px;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+    .quiz-card h3{margin:0 0 8px}
+    .quiz-choices{display:grid;gap:10px;margin:14px 0}
+    .quiz-choices button{padding:12px 14px;border:1px solid #ddd;border-radius:12px;cursor:pointer;text-align:left}
+    .quiz-choices button[disabled]{opacity:.7;cursor:default}
+    .badge{display:inline-block;background:#eef;padding:4px 10px;border-radius:999px;font-size:12px;margin-left:6px}
+  </style>
+</head>
+<body>
+  <main style="max-width:1100px;margin:24px auto;padding:0 16px">
+    <h1 style="margin-bottom:12px">{{ course_title or "Khoá học" }}</h1>
+
+    <video id="player" controls preload="metadata" style="width:100%;border-radius:16px;box-shadow:0 4px 14px rgba(0,0,0,.12)">
+      <source src="{{ video_url }}" type="video/mp4">
+      {% if caption_url %}
+      <track src="{{ caption_url }}" kind="subtitles" srclang="vi" label="Tiếng Việt" default>
+      {% endif %}
+      Trình duyệt của bạn không hỗ trợ video.
+    </video>
+
+    <div style="margin-top:14px;color:#666">
+      Hệ thống sẽ tạm dừng tại <span class="badge">giây thứ 50</span> để kiểm tra nhanh nội dung đã học.
+    </div>
+  </main>
+
+  <!-- QUIZ MODAL -->
+  <div id="quizModal" class="quiz-backdrop" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="quiz-card">
+      <h3 id="q-title">Câu hỏi kiểm tra</h3>
+      <div id="q-text" style="font-size:18px"></div>
+      <div id="q-choices" class="quiz-choices"></div>
+      <div id="q-result" style="min-height:22px;color:#333;margin-top:6px"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:10px">
+        <button id="btn-continue" style="padding:10px 14px;border-radius:10px;border:1px solid #ddd;display:none">Tiếp tục học ▶</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+(function(){
+  const player = document.getElementById('player');
+  const modal  = document.getElementById('quizModal');
+  const qText  = document.getElementById('q-text');
+  const qChoices = document.getElementById('q-choices');
+  const qResult  = document.getElementById('q-result');
+  const btnCont  = document.getElementById('btn-continue');
+
+  const videoId = "{{ video_id }}";                  // gán từ server
+  const captionPathOnServer = "{{ caption_path }}";  // đường dẫn file phụ đề server (để AI đọc khi realtime)
+  const askedAt = new Set(); // các mốc đã hỏi: "50"
+  let nextCheckpoint = 50;  // giây - dừng tại giây thứ 50
+  let quizAnswered = false; // đã trả lời quiz chưa
+  let wrongAnswerCount = 0; // số lần trả lời sai
+
+  function computeNextCheckpoint(t){
+    // Chỉ dừng một lần tại giây 50
+    return 50;
+  }
+
+  function showModal(){ modal.style.display='flex'; modal.setAttribute('aria-hidden','false'); }
+  function hideModal(){ modal.style.display='none'; modal.setAttribute('aria-hidden','true'); }
+
+  async function fetchQuestion(currentTime){
+    const payload = {
+      video_id: videoId,
+      current_time: Math.floor(currentTime),
+      caption_path: captionPathOnServer,  // server cần để real-time slice transcript
+      script_text: "Nội dung video bài giảng từ 0-50 giây"  // nội dung tóm tắt 50 giây đầu
+    };
+    const r = await fetch("/api/ai-quiz/question", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify(payload)
+    });
+    const data = await r.json();
+    if(!data.ok) throw new Error("question failed");
+    return data.qa; // {t_sec, question, choices[], answer_index, explanation}
+  }
+
+  async function grade(t_sec, userIndex){
+    const r = await fetch("/api/ai-quiz/grade", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({video_id: videoId, t_sec, user_answer_index: userIndex})
+    });
+    const data = await r.json();
+    if(!data.ok) throw new Error("grade failed");
+    return data;
+  }
+
+  function renderQuestion(qa){
+    qText.textContent = qa.question;
+    qResult.textContent = "";
+    btnCont.style.display = "none";
+    qChoices.innerHTML = "";
+    qa.options.forEach((c, idx)=>{
+      const b = document.createElement('button');
+      b.textContent = `(${String.fromCharCode(65+idx)}) ${c}`;
+      b.addEventListener('click', async ()=>{
+        // khoá lựa chọn
+        [...qChoices.children].forEach(x=>x.disabled=true);
+        const g = await grade(qa.t_sec, idx);
+        if(g.correct){
+          qResult.textContent = "✅ Chính xác! " + (g.explanation||"");
+          quizAnswered = true;
+        }else{
+          wrongAnswerCount++;
+          const correct = qa.options[g.correct_index];
+          qResult.textContent = `❌ Chưa đúng. Đáp án đúng là (${String.fromCharCode(65+g.correct_index)}) ${correct}. ` + (g.explanation||"");
+          qResult.textContent += " Bạn cần xem lại đoạn video từ đầu để hiểu rõ hơn.";
+        }
+        btnCont.style.display = "inline-block";
+      });
+      qChoices.appendChild(b);
+    });
+  }
+
+  async function maybeAsk(now){
+    // Kiểm tra nếu đã đến giây 50 và chưa hỏi quiz
+    if(now >= 50 && !askedAt.has("50")){
+      player.pause();
+      showModal();
+      try{
+        const qa = await fetchQuestion(now);
+        askedAt.add("50");
+        renderQuestion(qa);
+      }catch(e){
+        qText.textContent = "Không thể tải câu hỏi lúc này. Vui lòng thử lại.";
+        qChoices.innerHTML = "";
+        btnCont.style.display = "inline-block";
+      }
+    }
+  }
+
+  btnCont.addEventListener('click', ()=>{
+    hideModal(); 
+    if(wrongAnswerCount > 0){
+      // Nếu trả lời sai, tua lại từ đầu để xem lại
+      player.currentTime = 0;
+    }
+    player.play();
+  });
+
+  player.addEventListener('loadedmetadata', ()=>{
+    // nếu người học mở giữa chừng → tính mốc tiếp theo
+    nextCheckpoint = computeNextCheckpoint(player.currentTime||0);
+  });
+
+  player.addEventListener('timeupdate', ()=>{
+    const t = player.currentTime || 0;
+    if(t >= 50 && !askedAt.has("50")){    // dừng tại giây 50
+      maybeAsk(t);
+    }
+  });
+
+  player.addEventListener('seeked', ()=>{
+    const t = player.currentTime || 0;
+    // nếu tua qua giây 50 → hỏi ngay quiz
+    if(t >= 50 && !askedAt.has("50")){
+      maybeAsk(t);
+    }
+  });
+})();
+</script>
+</body>
+</html>

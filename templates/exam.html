@@ -1,0 +1,1368 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <title>Bài kiểm tra</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body { background: #f8fafc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    .card { border-radius: 16px; box-shadow: 0 6px 16px rgba(0,0,0,0.1); overflow: hidden; }
+    .question-header { background: linear-gradient(135deg, #e3f2fd, #bbdefb); padding: 1.25rem 1.5rem; }
+    .mcq-opt { cursor: pointer; transition: all 0.2s; border: 1px solid #dee2e6; border-radius: 12px; }
+    .mcq-opt:hover { background-color: #f0f8ff; border-color: #0d6efd; }
+    .mcq-opt input:checked + span { font-weight: 600; color: #0d6efd; }
+    .timer-badge { font-weight: 600; font-size: 0.9rem; }
+    .badge-question { font-size: 0.9rem; }
+    .progress { height: 6px; border-radius: 3px; }
+    .btn-nav { min-width: 110px; }
+    .btn-group-actions { gap: 0.75rem; }
+    .textarea-wrapper { position: relative; }
+    .char-count { position: absolute; bottom: 0.5rem; right: 0.75rem; font-size: 0.8rem; color: #6c757d; background: rgba(255,255,255,0.8); padding: 0.1rem 0.4rem; border-radius: 4px; }
+    #qText { font-size: 1.15rem; line-height: 1.6; }
+    .status-msg { 
+      font-size: 1.1rem; 
+      padding: 15px 20px;
+      border-radius: 8px;
+      text-align: center;
+      margin: 15px 0;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .nav-buttons { display: flex; justify-content: space-between; align-items: center; }
+    .question-nav-info { font-size: 0.9rem; color: #555; }
+    
+    /* Camera monitoring styles */
+    #cameraMonitor {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 180px;
+      height: 135px;
+      z-index: 1000;
+      border: 3px solid #dc3545;
+      border-radius: 8px;
+      overflow: hidden;
+      background: #000;
+      display: none;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    }
+    #cameraMonitor.active {
+      display: block;
+    }
+    #cameraPreview {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    #cameraStatus {
+      position: absolute;
+      bottom: 5px;
+      left: 5px;
+      background: rgba(0,0,0,0.7);
+      color: white;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      transition: all 0.3s ease;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.8; transform: scale(1.05); }
+    }
+    #cameraPermModal {
+      z-index: 9999;
+    }
+  </style>
+</head>
+<body data-course-id="{{ (course.id if course is defined else course_id)|default('') }}">
+<div class="container py-5" id="examRoot" data-course-id="{{ (course.id if course is defined else course_id)|default('') }}">
+  <!-- Header -->
+  <div class="d-flex justify-content-between align-items-center mb-4 position-relative">
+    <h3 class="m-0 fw-bold text-primary"><i class="fas fa-clipboard-list me-2"></i>Bài kiểm tra</h3>
+    <div class="d-flex gap-3 position-relative" style="z-index: 10;">
+      <span class="badge text-bg-secondary timer-badge rounded-pill px-3 py-2" id="globalTimerBadge"><i class="fas fa-clock me-1"></i>Thời gian: <span id="globalTimer">--:--</span></span>
+    </div>
+  </div>
+
+  <!-- Progress Bar -->
+  <div class="mb-4">
+    <div class="progress" role="progressbar">
+      <div id="progressBar" class="progress-bar bg-primary" style="width: 0%"></div>
+    </div>
+    <div class="d-flex justify-content-between mt-1 text-muted small">
+      <span id="progressText">0 / 0 câu</span>
+      <span id="scoreText">Điểm: --</span>
+    </div>
+  </div>
+
+  <!-- Question Panel -->
+  <div id="questionPanel" class="card shadow-lg">
+    <div class="question-header">
+      <div id="qText" class="mb-0 fw-semibold">Đang tải…</div>
+    </div>
+    <div class="card-body pt-4">
+
+      <!-- MCQ -->
+      <div id="mcqBox" class="vstack gap-3 d-none"></div>
+
+      <!-- Essay / Oral -->
+      <div id="ftBox" class="d-none">
+        <div class="d-flex align-items-center gap-2 mb-3">
+          <button id="btnRec" class="btn btn-sm btn-outline-primary d-none" type="button"><i class="fas fa-microphone me-1"></i>Bắt đầu ghi</button>
+          <small class="text-muted">Bạn có thể nhập tay hoặc dùng ghi âm (vấn đáp).</small>
+        </div>
+        <div class="textarea-wrapper">
+          <textarea id="ftAnswer" class="form-control border-primary-subtle" rows="5" placeholder="Nhập câu trả lời ngắn..."></textarea>
+          <div class="char-count"><span id="ftCount">0</span> ký tự</div>
+        </div>
+      </div>
+
+      <!-- Navigation & Actions -->
+      <div class="mt-4 nav-buttons">
+        <div class="d-flex gap-2">
+          <button id="btnPrev" class="btn btn-outline-secondary btn-nav" disabled><i class="fas fa-chevron-left me-1"></i>Câu trước</button>
+          <button id="btnNext" class="btn btn-outline-primary btn-nav"><i class="fas fa-chevron-right me-1"></i>Câu sau</button>
+        </div>
+        <div class="btn-group-actions">
+          <button id="btnSubmit" class="btn btn-success px-4"><i class="fas fa-check me-1"></i>Nộp câu này</button>
+          <button id="btnQuit" class="btn btn-outline-danger px-4"><i class="fas fa-stop me-1"></i>Kết thúc</button>
+          <button id="btnExit" class="btn btn-outline-dark px-4"><i class="fas fa-sign-out-alt me-1"></i>Thoát</button>
+        </div>
+      </div>
+
+      <div id="statusMsg" class="status-msg text-muted mt-3"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Camera Monitor -->
+<div id="cameraMonitor">
+  <video id="cameraPreview" autoplay></video>
+  <div id="cameraStatus">Đang giám sát...</div>
+</div>
+
+<!-- Camera Permission Modal -->
+<div id="cameraPermModal" class="modal fade show" style="display: block;" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title"><i class="fas fa-video me-2"></i>Yêu cầu bật camera</h5>
+      </div>
+      <div class="modal-body">
+        <p class="mb-3">Để đảm bảo tính trung thực trong bài kiểm tra, bạn cần bật camera.</p>
+        <div class="alert alert-info">
+          <i class="fas fa-info-circle me-2"></i>
+          <strong>Camera sẽ được sử dụng để:</strong>
+          <ul class="mb-0 mt-2">
+            <li>Xác minh danh tính bằng nhận dạng khuôn mặt</li>
+            <li>Giám sát trong suốt quá trình làm bài</li>
+            <li>Phát hiện các hành vi gian lận</li>
+          </ul>
+        </div>
+        <p class="text-danger mb-0"><strong>⚠️ Nếu từ chối bật camera, bạn sẽ không thể làm bài kiểm tra.</strong></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" id="btnEnableCamera">
+          <i class="fas fa-video me-2"></i>Bật camera
+        </button>
+        <button type="button" class="btn btn-secondary" id="btnExitWithoutCamera">
+          <i class="fas fa-times me-2"></i>Thoát
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let attemptId, endsAt, curQA, tStart;
+let globalTimerId = null;
+let submitting = false;
+let questionCount = 0;
+let answeredCount = 0;
+let totalQuestions = 0;
+let questionHistory = []; // Lưu lịch sử câu hỏi: { qid, answer, correct, time_spent }
+let currentIndex = -1;
+
+// Camera variables
+let stream = null;
+let captureInterval = null;
+let frameNumber = 0;
+let isCameraActive = false;
+
+// Attention tracking - TĂNG GIỚI HẠN ĐỂ TRÁNH FALSE POSITIVE
+let attentionLossCount = 0;
+const ATTENTION_STRIKE_LIMIT = 10; // Tăng từ 3 lên 10 - cần nhiều lần hơn mới dừng
+let eyeClosedStrikeCount = 0;
+const EYE_CLOSED_LIMIT = 8; // Tăng từ 4 lên 8 - cho phép chớp mắt tự nhiên
+let suspiciousObjectCount = 0;
+const SUSPICIOUS_OBJECT_LIMIT = 3; // Cảnh báo sau 3 lần phát hiện liên tiếp
+let suspiciousObjectConsecutiveCount = 0; // Đếm số lần phát hiện liên tiếp
+let lastSuspiciousObjectTime = 0; // Thời gian phát hiện lần cuối
+const SUSPICIOUS_OBJECT_TIME_WINDOW = 5000; // 5 giây - nếu phát hiện trong vòng này coi như liên tiếp
+
+// ===== Helpers =====
+function $id(id) { return document.getElementById(id); }
+function showInfo(msg) { $id('statusMsg').className = 'status-msg text-success'; $id('statusMsg').textContent = msg || ''; }
+function showError(msg) { $id('statusMsg').className = 'status-msg text-danger'; $id('statusMsg').textContent = msg; $id('qText').textContent = msg; }
+
+function showSuccessMessage(msg) {
+  $id('statusMsg').className = 'status-msg text-success fw-bold fs-5';
+  $id('statusMsg').textContent = msg;
+  $id('statusMsg').style.color = '#28a745';
+  $id('statusMsg').style.animation = 'fadeIn 0.3s ease-in';
+}
+
+function showErrorMessage(msg) {
+  $id('statusMsg').className = 'status-msg text-danger fw-bold fs-5';
+  $id('statusMsg').textContent = msg;
+  $id('statusMsg').style.color = '#dc3545';
+  $id('statusMsg').style.animation = 'fadeIn 0.3s ease-in';
+}
+function setBusy(isBusy) {
+  submitting = isBusy;
+  [$id('btnSubmit'), $id('btnQuit'), $id('btnExit'), $id('btnPrev'), $id('btnNext')].forEach(b => {
+    if (b) b.disabled = !!isBusy;
+  });
+}
+function getCourseId() {
+  // Ưu tiên data-* trên body hoặc container; fallback lấy từ URL /exam/<id>
+  const bodyCid = document.body.getAttribute('data-course-id');
+  const root = $id('examRoot');
+  const divCid = root ? root.getAttribute('data-course-id') : '';
+  let cid = parseInt(bodyCid || divCid || '', 10);
+  if (isNaN(cid)) { const m = location.pathname.match(/\/exam\/(\d+)/); if (m) cid = parseInt(m[1], 10); }
+  if (isNaN(cid)) throw new Error('Không xác định được course_id');
+  return cid;
+}
+async function fetchJson(url, payload) {
+  const r = await fetch(url, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload || {}) });
+  if (!r.ok) { const txt = await r.text(); throw new Error(`HTTP ${r.status} ${r.statusText}${txt ? ': ' + txt : ''}`); }
+  try { return await r.json(); } catch { throw new Error('Phản hồi không phải JSON hợp lệ'); }
+}
+
+// ===== Core flow =====
+async function startExam() {
+  try {
+    const d = await fetchJson('/api/exam/start', { course_id: getCourseId() });
+    attemptId = d.attempt_id; 
+    endsAt = d.ends_at;
+    // Đảm bảo luôn có 20 câu hỏi và 15 phút
+    totalQuestions = d.total_questions || 20;
+    if (!d.total_questions) {
+      console.warn('⚠️ Backend chưa trả về total_questions, sử dụng mặc định: 20');
+    }
+    updateProgress();
+    await loadNextQuestion();
+    tickGlobalTimer();
+  } catch (err) { showError('Không thể bắt đầu: ' + err.message); }
+}
+
+async function loadNextQuestion(similarTo = null) {
+  try {
+    const d = await fetchJson('/api/exam/next', { attempt_id: attemptId, course_id: getCourseId(), similar_to: similarTo });
+    console.log('Received question data:', d);
+    console.log('Options hashes:', d.options_hashes);
+    console.log('Options:', d.options);
+    if (d.done) { finishExam(); return; }
+    curQA = d;
+    currentIndex++;
+    questionHistory[currentIndex] = { qid: d.qid, answer: '', correct: null, time_spent: 0, saved: false };
+    renderQuestion(d);
+    tStart = performance.now();
+    // Không cần timer cho mỗi câu - chỉ dùng global timer 15 phút
+    updateNavButtons();
+  } catch (err) { showError('Không thể tải câu hỏi: ' + err.message); }
+}
+
+async function submitAnswer(auto) {
+  if (submitting || !curQA) {
+    console.log('Cannot submit: submitting=', submitting, 'curQA=', curQA);
+    return;
+  }
+  
+  const answer = getCurrentAnswer();
+  console.log('Getting answer:', answer, 'auto:', auto);
+  
+  if (!answer) {
+    showInfo('Vui lòng chọn hoặc nhập câu trả lời.'); 
+    return; 
+  }
+  
+  // Nếu auto submit mà không có đáp án -> lấy đáp án đầu tiên (làm sai)
+  if (auto && !answer) {
+    console.log('Auto submit with no answer, using empty string');
+  }
+
+  try {
+    setBusy(true);
+    console.log('Submitting answer:', answer);
+    
+    const spent = Math.round(performance.now() - tStart);
+    questionHistory[currentIndex].time_spent = spent;
+    questionHistory[currentIndex].answer = answer;
+
+    const d = await fetchJson('/api/exam/submit', {
+      attempt_id: attemptId,
+      qid: curQA.qid,
+      answer,
+      time_spent_ms: spent
+    });
+
+    console.log('Submit response:', d);
+    console.log('CurQA:', curQA);
+    console.log('Answer sent:', answer);
+
+    if (d.ok) {
+      // Chỉ lưu câu trả lời, không kiểm tra đúng/sai ngay
+      questionHistory[currentIndex].correct = null; // Chưa chấm
+      questionHistory[currentIndex].saved = true;
+      
+      console.log('Answer saved successfully');
+      
+      // Hiển thị thông báo đã lưu
+      showInfo('Đã lưu câu trả lời. Chuyển sang câu tiếp theo...');
+      
+      // Kiểm tra đã làm đủ 20 câu chưa
+      const answeredCount = questionHistory.filter(q => q.saved).length;
+      if (answeredCount >= 20) {
+        setTimeout(() => {
+          showInfo('Bạn đã hoàn thành 20 câu hỏi! Đang nộp bài...');
+          finishExam();
+        }, 1000);
+      } else {
+        setTimeout(() => {
+          loadNextQuestion(null);
+        }, 1000);
+      }
+    }
+  } catch (err) {
+    console.error('Submit error:', err);
+    showError('Nộp thất bại: ' + err.message);
+  } finally {
+    setBusy(false);
+    updateProgress();
+  }
+}
+
+function getCurrentAnswer() {
+  if ((curQA.type || 'mcq').toLowerCase() === 'mcq') {
+    const pick = document.querySelector('input[name="mcq"]:checked');
+    console.log('Checked radio button:', pick);
+    if (!pick) {
+      console.log('No radio button selected');
+      return '';
+    }
+
+    const value = String(pick.value || '');
+    console.log('Selected value (hash):', value);
+    console.log('Pick.value type:', typeof pick.value);
+    console.log('Pick.value raw:', pick.value);
+
+    // Kiểm tra nếu value rỗng hoặc không hợp lệ
+    if (!value || value === 'undefined' || value === '') {
+      console.log('Invalid value, trying to find by position');
+      // Tìm index bằng cách check tất cả radio buttons
+      const allRadios = document.querySelectorAll('input[name="mcq"]');
+      console.log('All radios:', allRadios.length);
+      for (let i = 0; i < allRadios.length; i++) {
+        console.log(`Radio ${i}: checked=${allRadios[i].checked}, value="${allRadios[i].value}"`);
+        if (allRadios[i].checked && allRadios[i].value) {
+          console.log('Found checked radio at index:', i, 'with value:', allRadios[i].value);
+          return allRadios[i].value; // Return hash value
+        }
+      }
+      return '';
+    }
+    
+    // Return hash value directly - backend sẽ so sánh với correct_hash
+    console.log('Returning hash value:', value);
+    return value;
+  } else {
+    return $id('ftAnswer').value.trim();
+  }
+}
+
+// ===== Navigation =====
+function goToQuestion(index) {
+  if (index < 0 || index >= questionHistory.length || submitting) return;
+  saveCurrentAnswer();
+  currentIndex = index;
+  const saved = questionHistory[currentIndex];
+  // giữ lại thông tin câu hỏi hiện tại
+  renderSavedQuestion(saved);
+  tStart = performance.now() - (saved.time_spent || 0);
+  // Không cần timer cho mỗi câu
+  updateNavButtons();
+}
+
+function saveCurrentAnswer() {
+  const answer = getCurrentAnswer();
+  if (questionHistory[currentIndex]) {
+    questionHistory[currentIndex].answer = answer;
+  }
+}
+
+function updateNavButtons() {
+  $id('btnPrev').disabled = currentIndex <= 0;
+  // Disable nút Next khi đã làm đủ 20 câu hỏi
+  const maxQuestions = totalQuestions || 20;
+  $id('btnNext').disabled = currentIndex >= questionHistory.length - 1 || questionHistory.length >= maxQuestions;
+}
+
+function updateProgress() {
+  const answered = questionHistory.filter(q => q.saved).length;
+  const percent = totalQuestions > 0 ? (answered / totalQuestions) * 100 : 0;
+  $id('progressBar').style.width = percent + '%';
+  $id('progressText').textContent = `${answered} / ${totalQuestions} câu đã làm`;
+  $id('scoreText').textContent = `Đã làm: ${answered}/${totalQuestions}`;
+}
+
+// ===== Render =====
+let rec = null, recognizing = false;
+
+function setupRecorderIfNeeded(isOral) {
+  const btn = $id('btnRec');
+  if (!isOral) { btn.classList.add('d-none'); try { rec?.stop?.(); } catch {}; recognizing = false; btn.innerHTML = '<i class="fas fa-microphone me-1"></i>Bắt đầu ghi'; return; }
+  if ('webkitSpeechRecognition' in window) {
+    btn.classList.remove('d-none');
+    if (!rec) {
+      rec = new webkitSpeechRecognition();
+      rec.lang = 'vi-VN'; rec.continuous = false; rec.interimResults = true;
+      rec.onresult = (e) => {
+        let t = ''; for (let i = 0; i < e.results.length; i++) { t += e.results[i][0].transcript; }
+        $id('ftAnswer').value = t; $id('ftCount').textContent = String(t.length);
+      };
+      rec.onend = () => { recognizing = false; btn.innerHTML = '<i class="fas fa-microphone me-1"></i>Bắt đầu ghi'; };
+    }
+    btn.onclick = () => {
+      if (!recognizing) { recognizing = true; btn.innerHTML = '<i class="fas fa-stop me-1"></i>Dừng'; rec.start(); }
+      else { recognizing = false; btn.innerHTML = '<i class="fas fa-microphone me-1"></i>Bắt đầu ghi'; rec.stop(); }
+    };
+  } else {
+    btn.classList.add('d-none');
+  }
+}
+
+function renderQuestion(d) {
+  questionCount++;
+  resetUI();
+  const qEl = $id('qText');
+  const displayQ = d.number !== undefined && d.total !== undefined
+    ? `<span class="badge bg-primary me-2 badge-question">Câu ${d.number}/${d.total}</span> `
+    : `<span class="badge bg-primary me-2 badge-question">Câu ${questionCount}</span> `;
+  qEl.innerHTML = displayQ + (d.question || '');
+  curQA = d; // giữ lại để dùng khi quay lại câu này
+  renderOptionsOrInput(d);
+}
+
+function renderSavedQuestion(saved) {
+  resetUI();
+  const qEl = $id('qText');
+  const displayQ = `<span class="badge bg-primary me-2 badge-question">Câu ${currentIndex + 1}</span> `;
+  qEl.innerHTML = displayQ + (curQA && curQA.question ? curQA.question : '');
+  renderOptionsOrInput(curQA || {}, saved.answer || '');
+}
+
+function renderOptionsOrInput(d, savedAnswer = '') {
+  const mcqBox = $id('mcqBox');
+  const ftBox = $id('ftBox');
+
+  if ((d.type || 'mcq').toLowerCase() === 'mcq') {
+    setupRecorderIfNeeded(false);
+    ftBox.classList.add('d-none');
+    mcqBox.classList.remove('d-none');
+    
+    // Render với value là HASH (không phải index)
+    mcqBox.innerHTML = (d.options || []).map((t, i) => {
+      // Luôn dùng hash làm value, nếu không có hash thì tạo từ option text
+      const hashes = d.options_hashes || [];
+      
+      // Fallback: Tạo hash từ text nếu không có
+      if (hashes.length !== (d.options || []).length) {
+        showError('Thiếu mã lựa chọn từ máy chủ. Vui lòng tải lại câu hỏi.');
+        // Tạo hash đơn giản từ text
+        return;
+      }
+      const hash = hashes[i];
+      const isChecked = savedAnswer === hash;
+      
+      return `
+        <label class="border rounded p-3 mcq-opt d-flex gap-3 align-items-start bg-white shadow-sm">
+          <input type="radio" name="mcq" value="${hash}" class="form-check-input mt-1" ${isChecked ? 'checked' : ''}>
+          <span><strong>${String.fromCharCode(65 + i)}.</strong> ${t}</span>
+        </label>
+      `;
+    }).join('');
+  } else {
+    mcqBox.classList.add('d-none');
+    ftBox.classList.remove('d-none');
+    setupRecorderIfNeeded((d.type || '').toLowerCase() === 'oral');
+    $id('ftAnswer').value = savedAnswer;
+    $id('ftCount').textContent = savedAnswer.length;
+  }
+}
+
+function resetUI() {
+  // Không cần clear per-question timer nữa
+  showInfo('');
+  $id('ftAnswer').value = ''; $id('ftCount').textContent = '0';
+}
+
+// ===== Timers =====
+function tickGlobalTimer() {
+  const el = $id('globalTimer');
+  const left = Math.max(0, Math.floor((endsAt * 1000 - Date.now()) / 1000));
+  const mm = String(Math.floor(left / 60)).padStart(2, '0');
+  const ss = String(left % 60).padStart(2, '0');
+  el.textContent = mm + ':' + ss;
+  
+  // Cảnh báo khi còn 1 phút
+  if (left <= 60 && left > 0) {
+    el.style.color = '#dc3545';
+    el.style.fontWeight = 'bold';
+  }
+  
+  if (left <= 0) {
+    // Hết thời gian - tự động nộp bài
+    showInfo('Hết thời gian! Đang tự động nộp bài...');
+    finishExam();
+  } else {
+    globalTimerId = setTimeout(tickGlobalTimer, 1000);
+  }
+}
+
+// Loại bỏ timer cho mỗi câu - chỉ dùng global timer 15 phút
+function runPerQuestionTimer(ms) {
+  // Không làm gì - đã loại bỏ timer cho mỗi câu
+}
+
+// ===== Finish =====
+async function finishExam() {
+  try { clearTimeout(globalTimerId); } catch (_) {}
+  setBusy(true);
+  showInfo('Đang nộp bài và chấm điểm bằng AI...');
+  try {
+    if (attemptId) {
+      // Nộp tất cả câu trả lời chưa được nộp
+      for (let i = 0; i < questionHistory.length; i++) {
+        const q = questionHistory[i];
+        if (q && q.answer && !q.saved) {
+          try {
+            await fetchJson('/api/exam/submit', {
+              attempt_id: attemptId,
+              qid: q.qid,
+              answer: q.answer,
+              time_spent_ms: q.time_spent || 0
+            });
+            q.saved = true;
+          } catch (e) {
+            console.error('Error submitting answer:', e);
+          }
+        }
+      }
+      
+      // Gọi API finish để AI chấm và phân tích
+      const r = await fetchJson('/api/exam/finish', { attempt_id: attemptId });
+      if (r && r.ok) {
+        // Chuyển đến trang kết quả
+        window.location.href = `/exam/${getCourseId()}/result?attempt_id=${attemptId}`;
+      } else {
+        showError('Lỗi khi nộp bài: ' + (r?.error || 'Unknown error'));
+      }
+    }
+  } catch (err) {
+    console.error('Finish exam error:', err);
+    showError('Lỗi khi nộp bài: ' + err.message);
+  } finally {
+    [$id('btnSubmit'), $id('btnQuit'), $id('btnExit'), $id('btnPrev'), $id('btnNext')].forEach(b => b.disabled = true);
+  }
+}
+
+// ===== Anti-cheat =====
+let cheatCount = 0;
+let cheatThreshold = 1; // Dừng ngay lập tức khi phát hiện gian lận
+let cheatDetected = false;
+let lastCheatReason = '';
+
+// Mapping các loại gian lận sang thông báo cụ thể
+const cheatMessages = {
+  'camera_denied': {
+    title: 'Không bật camera',
+    message: 'Bạn đã từ chối bật camera. Camera là yêu cầu bắt buộc để đảm bảo tính trung thực trong bài kiểm tra.',
+    details: 'Theo quy định, người làm bài phải bật camera trong suốt thời gian làm bài.'
+  },
+  'multiple_faces': {
+    title: 'Phát hiện nhiều khuôn mặt',
+    message: 'Hệ thống phát hiện có nhiều hơn 1 khuôn mặt trong khung hình camera.',
+    details: 'Vui lòng đảm bảo chỉ có 1 người trong khung hình khi làm bài.'
+  },
+  'face_mismatch': {
+    title: 'Khuôn mặt không khớp',
+    message: 'Khuôn mặt hiện tại không khớp với ảnh đại diện của tài khoản.',
+    details: 'Bạn phải sử dụng chính tài khoản của mình để làm bài kiểm tra.'
+  },
+  'face_monitoring_failed': {
+    title: 'Không phát hiện khuôn mặt',
+    message: 'Hệ thống không thể phát hiện khuôn mặt trong khung hình.',
+    details: 'Vui lòng đảm bảo khuôn mặt của bạn luôn hiển thị rõ ràng trong camera.'
+  },
+  'suspicious_objects': {
+    title: 'Phát hiện vật thể đáng ngờ',
+    message: 'Hệ thống phát hiện các vật thể không được phép trong khung hình (điện thoại, máy tính bảng, tài liệu, v.v.).',
+    details: 'Vui lòng đảm bảo không có thiết bị điện tử hoặc tài liệu nào trong khu vực làm bài.'
+  },
+  'not_focused': {
+    title: 'Chức năng đã tắt',
+    message: 'Chức năng phát hiện tập trung đã được tắt để tránh cảnh báo sai.',
+    details: 'Bạn có thể tiếp tục làm bài bình thường. Hệ thống sẽ không dừng bài thi về vấn đề tập trung nữa.'
+  },
+  'page_hide': {
+    title: 'Rời khỏi trang làm bài',
+    message: 'Bạn đã chuyển sang tab hoặc cửa sổ khác trong quá trình làm bài.',
+    details: 'Theo quy định, bạn không được phép rời khỏi trang làm bài kiểm tra.'
+  },
+  'window_blur': {
+    title: 'Mất tiêu điểm cửa sổ',
+    message: 'Cửa sổ làm bài kiểm tra đã mất tiêu điểm (chuyển sang cửa sổ khác).',
+    details: 'Bạn phải giữ cửa sổ làm bài ở trạng thái hoạt động.'
+  },
+  'copy': {
+    title: 'Sao chép nội dung',
+    message: 'Hệ thống phát hiện hành vi sao chép nội dung từ bài kiểm tra.',
+    details: 'Không được phép sao chép hoặc chụp màn hình câu hỏi hoặc đáp án.'
+  },
+  'contextmenu_copy': {
+    title: 'Mở menu chuột phải',
+    message: 'Hệ thống phát hiện hành vi mở menu chuột phải.',
+    details: 'Không được phép sử dụng chuột phải để truy cập các chức năng trình duyệt.'
+  },
+  'suspicious_keyboard': {
+    title: 'Phím tắt đáng ngờ',
+    message: 'Hệ thống phát hiện các phím tắt không được phép (Ctrl+C, Ctrl+V, Ctrl+A, F12, Developer Tools).',
+    details: 'Không được phép sử dụng các phím tắt sao chép, dán, hoặc mở công cụ phát triển.'
+  },
+  'middle_click': {
+    title: 'Nhấp chuột giữa',
+    message: 'Hệ thống phát hiện hành vi nhấp chuột giữa.',
+    details: 'Không được phép sử dụng chuột giữa để mở tab mới.'
+  },
+  'window_resize': {
+    title: 'Thay đổi kích thước cửa sổ',
+    message: 'Hệ thống phát hiện hành vi thay đổi kích thước cửa sổ.',
+    details: 'Cửa sổ làm bài không được phép thay đổi kích thước.'
+  },
+  'right_click': {
+    title: 'Nhấp chuột phải',
+    message: 'Hệ thống phát hiện hành vi nhấp chuột phải.',
+    details: 'Không được phép sử dụng chuột phải để truy cập menu ngữ cảnh.'
+  },
+  'multiple_faces_detected': {
+    title: 'Nhiều khuôn mặt trong quá trình giám sát',
+    message: 'Hệ thống phát hiện có nhiều hơn 1 khuôn mặt trong khung hình camera trong quá trình giám sát.',
+    details: 'Vui lòng đảm bảo chỉ có 1 người trong khung hình trong suốt thời gian làm bài.'
+  }
+};
+
+function getCheatMessage(kind) {
+  return cheatMessages[kind] || {
+    title: 'Phát hiện gian lận',
+    message: 'Hệ thống đã phát hiện hành vi gian lận trong quá trình làm bài.',
+    details: 'Hành vi này vi phạm quy định làm bài kiểm tra trực tuyến.'
+  };
+}
+
+function onCheat(kind) {
+  if (cheatDetected) return; // Đã phát hiện gian lận, không xử lý thêm
+  
+  // IGNORE "not_focused" - Tắt hoàn toàn chức năng này
+  if (kind === 'not_focused') {
+    console.log('[IGNORED] not_focused cheat detection - feature disabled to prevent false positives');
+    return; // Không làm gì cả, chỉ log
+  }
+  
+  cheatCount++;
+  lastCheatReason = kind;
+  const cheatInfo = getCheatMessage(kind);
+  
+  console.log(`Cheat detected: ${kind} (${cheatCount}/${cheatThreshold})`);
+  console.log(`Reason: ${cheatInfo.title} - ${cheatInfo.message}`);
+  
+  // Gửi sự kiện gian lận lên server
+  fetch('/api/exam/event', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    attempt_id: attemptId,
+    event: 'cheat',          // Tên sự kiện chuẩn
+    reason: kind,            // Lý do cụ thể: 'window_blur'/'multiple_faces'/...
+    confidence: 1.0,
+    course_id: getCourseId()
+  })
+}).catch(()=>{});
+  
+  // DỪNG NGAY LẬP TỨC khi phát hiện gian lận
+  if (cheatCount >= cheatThreshold) {
+    handleCheatingDetected(kind);
+  }
+}
+
+function stopAllExamActivities() {
+  // DỪNG tất cả timer
+  clearTimeout(globalTimerId);
+  
+  // Vô hiệu hóa tất cả nút bấm
+  setBusy(true);
+  
+  // Ẩn giao diện câu hỏi
+  $id('questionPanel').style.display = 'none';
+  $id('globalTimer').textContent = '00:00';
+  
+  // Khóa toàn bộ tương tác
+  //document.body.style.pointerEvents = 'none';
+ // document.body.style.userSelect = 'none';
+  
+  // Hiển thị thông báo dừng
+  $id('qText').innerHTML = '<div class="text-center text-danger"><i class="fas fa-ban fa-3x mb-3"></i><h4>BÀI KIỂM TRA ĐÃ BỊ DỪNG DO GIAN LẬN</h4></div>';
+}
+
+function playWarningSound() {
+  // Tạo âm thanh cảnh báo bằng Web Audio API
+  try {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    oscillator.frequency.value = 800; // Tần số cao
+    oscillator.type = 'sine';
+    
+    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+    
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.5);
+    
+    // Phát thêm 2 lần nữa
+    setTimeout(() => {
+      const osc2 = audioContext.createOscillator();
+      const gain2 = audioContext.createGain();
+      osc2.connect(gain2);
+      gain2.connect(audioContext.destination);
+      osc2.frequency.value = 800;
+      osc2.type = 'sine';
+      gain2.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gain2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+      osc2.start();
+      osc2.stop(audioContext.currentTime + 0.5);
+    }, 200);
+    
+    setTimeout(() => {
+      const osc3 = audioContext.createOscillator();
+      const gain3 = audioContext.createGain();
+      osc3.connect(gain3);
+      gain3.connect(audioContext.destination);
+      osc3.frequency.value = 800;
+      osc3.type = 'sine';
+      gain3.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gain3.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+      osc3.start();
+      osc3.stop(audioContext.currentTime + 0.5);
+    }, 400);
+  } catch(e) {
+    console.log('Cannot play warning sound:', e);
+  }
+}
+
+function showCheatingModal(kind) {
+  const cheatInfo = getCheatMessage(kind || lastCheatReason);
+  
+  const modalHTML = `
+    <div id="cheatingModal" class="modal fade show" style="display: block; background: rgba(0,0,0,0.9);" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-danger" style="border-width: 3px;">
+          <div class="modal-header bg-danger text-white">
+            <h5 class="modal-title"><i class="fas fa-exclamation-triangle me-2"></i>CẢNH BÁO: PHÁT HIỆN GIAN LẬN</h5>
+          </div>
+          <div class="modal-body py-4">
+            <div class="text-center mb-4">
+              <i class="fas fa-ban text-danger" style="font-size: 5rem;"></i>
+            </div>
+            
+            <!-- Loại gian lận cụ thể -->
+            <div class="alert alert-danger mb-4">
+              <h5 class="alert-heading mb-2">
+                <i class="fas fa-times-circle me-2"></i>${cheatInfo.title}
+              </h5>
+              <p class="mb-0 fw-bold">${cheatInfo.message}</p>
+            </div>
+            
+            <!-- Chi tiết -->
+            <div class="alert alert-warning mb-4">
+              <i class="fas fa-info-circle me-2"></i>
+              <strong>Chi tiết:</strong> ${cheatInfo.details}
+            </div>
+            
+            <!-- Thông báo hệ quả -->
+            <div class="text-center mb-3">
+              <h4 class="text-danger fw-bold mb-3">
+                <i class="fas fa-stop-circle me-2"></i>BÀI KIỂM TRA ĐÃ BỊ DỪNG
+              </h4>
+              <div class="alert alert-light border-danger border-2">
+                <p class="mb-2"><i class="fas fa-clock me-2 text-danger"></i>Tất cả câu hỏi và thời gian đã bị dừng lại.</p>
+                <p class="mb-2"><i class="fas fa-graduation-cap me-2 text-danger"></i>Bạn cần phải xem lại video và học lại ngay lập tức.</p>
+                <p class="mb-0 fw-bold text-danger" style="font-size: 1.3rem;">
+                  <i class="fas fa-times-circle me-2"></i>Số điểm của bạn sẽ là 0
+                </p>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer justify-content-center">
+            <button type="button" class="btn btn-danger btn-lg px-5" onclick="confirmCheating()">
+              <i class="fas fa-check me-2"></i>Tôi đã hiểu và đồng ý
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  document.body.insertAdjacentHTML('beforeend', modalHTML);
+  document.getElementById('cheatingModal').addEventListener('click',(e)=>{ if(e.target.id==='cheatingModal'){ e.preventDefault(); e.stopPropagation(); }});
+}
+
+function confirmCheating() {
+  fetch('/api/exam/cheating', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      attempt_id: attemptId,
+      force: true,
+      course_id: getCourseId()
+    })
+  }).finally(() => {
+    const courseId = getCourseId();
+    window.location.href = `/course/${courseId}`;
+  });
+}
+
+
+function showWarning(message) {
+  const warningHTML = `
+    <div class="alert alert-warning alert-dismissible fade show position-fixed" style="top: 20px; right: 20px; z-index: 9999; max-width: 400px;">
+      <i class="fas fa-exclamation-triangle me-2"></i>${message}
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>`;
+  document.body.insertAdjacentHTML('beforeend', warningHTML);
+  setTimeout(()=>{ const alert=document.querySelector('.alert-warning'); if(alert) alert.remove(); }, 5000);
+}
+
+// Event listeners cho phát hiện gian lận
+document.addEventListener('visibilitychange',()=>{ if(document.hidden) onCheat('page_hide'); });
+window.addEventListener('blur',()=> onCheat('window_blur'));
+document.addEventListener('copy',()=> onCheat('copy'));
+document.addEventListener('contextmenu',e=>{ onCheat('contextmenu_copy'); e.preventDefault(); });
+document.addEventListener('keydown',(e)=>{
+  if ((e.ctrlKey && (['c','v','a'].includes(e.key.toLowerCase()))) || e.key==='F12' || (e.ctrlKey && e.shiftKey && e.key.toLowerCase()==='i')) {
+    onCheat('suspicious_keyboard');
+  }
+});
+document.addEventListener('mousedown',(e)=>{ if(e.button===1) onCheat('middle_click'); });
+window.addEventListener('resize',()=> onCheat('window_resize'));
+document.addEventListener('mousedown',(e)=>{ if(e.button===2) onCheat('right_click'); });
+
+// ===== Wiring =====
+$id('btnSubmit').addEventListener('click', () => submitAnswer(false));
+$id('btnQuit').addEventListener('click', finishExam);
+$id('btnExit').addEventListener('click', () => {
+  if (confirm('Bạn có chắc chắn muốn thoát? Toàn bộ tiến độ sẽ bị mất.')) finishExam();
+});
+$id('btnPrev').addEventListener('click', () => goToQuestion(currentIndex - 1));
+$id('btnNext').addEventListener('click', () => { 
+  // Kiểm tra đã làm đủ 20 câu chưa
+  const answeredCount = questionHistory.filter(q => q.saved).length;
+  if (answeredCount >= 20) {
+    showInfo('Bạn đã hoàn thành 20 câu hỏi! Đang nộp bài...');
+    finishExam();
+  } else {
+    saveCurrentAnswer(); 
+    loadNextQuestion(null); 
+  }
+});
+$id('ftAnswer').addEventListener('input', () => { $id('ftCount').textContent = String($id('ftAnswer').value.length); });
+
+// ===== Camera Functions =====
+async function startCamera() {
+  try {
+    $id('cameraPermModal').style.display = 'none';
+    
+    stream = await navigator.mediaDevices.getUserMedia({ 
+      video: { 
+        facingMode: 'user',
+        width: { ideal: 640 },
+        height: { ideal: 480 }
+      }
+    });
+    
+    const video = $id('cameraPreview');
+    video.srcObject = stream;
+    isCameraActive = true;
+    
+    $id('cameraMonitor').classList.add('active');
+    
+    // Initial face verification
+    await captureAndVerifyFace();
+    
+    // Start periodic monitoring (every 3 seconds để phát hiện nhanh hơn)
+    captureInterval = setInterval(async () => {
+      if (isCameraActive && !cheatDetected) {
+        await captureAndMonitorFrame();
+      }
+    }, 3000);  // GIẢM TỪ 5 giây XUỐNG 3 giây để phát hiện nhanh hơn
+    
+    showInfo('Camera đã bật. Bắt đầu giám sát...');
+    
+    // Start exam after camera is ready
+    await startExam();
+    
+  } catch (error) {
+    console.error('Camera error:', error);
+    showError('Không thể bật camera. Nếu từ chối camera, bạn không thể làm bài kiểm tra.');
+    
+    // Show modal again
+    $id('cameraPermModal').style.display = 'block';
+    
+    // If user denied, show warning and don't start exam
+    if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+      onCheat('camera_denied');
+    }
+  }
+}
+
+async function captureAndVerifyFace() {
+  try {
+    const video = $id('cameraPreview');
+    
+    // Chờ video sẵn sàng
+    let attempts = 0;
+    while ((!video.videoWidth || !video.videoHeight) && attempts < 50) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+      attempts++;
+    }
+    
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0);
+    
+    const imageBase64 = canvas.toDataURL('image/jpeg', 0.8);
+    
+    // Send to server for face verification
+    const response = await fetch('/api/exam/verify-face', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        attempt_id: attemptId || 'initial',
+        image_base64: imageBase64
+      })
+    });
+    
+    const result = await response.json();
+    console.log('Initial face verification:', result);
+    
+    
+
+    if (result.ok && !result.verified) {
+      // Face mismatch or multiple faces
+      if (result.face_count > 1) {
+        onCheat('multiple_faces');
+      } else if (result.face_count === 0) {
+        // Không có khuôn mặt - cho phép tiếp tục nhưng cảnh báo
+        showWarning('⚠️ Không phát hiện khuôn mặt. Hãy đảm bảo camera hướng về mặt bạn.');
+      } else {
+        onCheat('face_mismatch');
+      }
+    }
+    
+  } catch (error) {
+    console.error('Face verification error:', error);
+    showWarning('⚠️ Lỗi xác minh khuôn mặt. Có thể tiếp tục nhưng cần cẩn thận.');
+  }
+}
+
+let faceDetectionAttempts = 0;
+const MAX_FACE_FAILURES = 30; // TĂNG TỪ 10 LÊN 30 lần (2.5 phút) để cho phép di chuyển camera
+
+async function captureAndMonitorFrame() {
+  try {
+    const video = $id('cameraPreview');
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0);
+    
+    // Tăng chất lượng ảnh để cải thiện face detection
+    const imageBase64 = canvas.toDataURL('image/jpeg', 0.95);  // Tăng từ 0.8 lên 0.95
+    frameNumber++;
+    
+    // Send to server for monitoring
+    const response = await fetch('/api/proctor/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        attempt_id: attemptId,
+        frame_number: frameNumber,
+        image_base64: imageBase64
+      })
+    });
+    
+    const result = await response.json();
+    // Server trả { ok:true, result:{...} } -> unwrap ra object phẳng cho FE
+    const r = result.result || result;
+    Object.assign(result, r);
+
+    
+    // Log debug info
+    if (result.debug_info) {
+      console.log('Face detection:', result.debug_info);
+    }
+    
+    // Kiểm tra lỗi OpenCV/MediaPipe chưa cài đặt
+    if (result.error && (result.error.includes('OpenCV not installed') || result.error.includes('cv2'))) {
+      console.error('⚠️ OpenCV chưa được cài đặt:', result.error);
+      $id('cameraStatus').textContent = '⚠️ OpenCV chưa cài đặt';
+      $id('cameraStatus').style.background = 'rgba(255, 165, 0, 0.9)';
+      showWarning('⚠️ Hệ thống nhận diện khuôn mặt chưa sẵn sàng. Vui lòng cài đặt: pip install opencv-python mediapipe');
+      return; // Không tiếp tục nhưng cũng không dừng bài thi
+    }
+    
+    if (result.ok) {
+      // SỬ DỤNG GIÁ TRỊ THỰC TỪ BACKEND
+      // Chỉ set giá trị mặc định nếu thực sự không có
+      if (typeof result.attention_score !== 'number' || isNaN(result.attention_score)) {
+        result.attention_score = 0.50; // Giá trị mặc định thấp hơn để không che giấu vấn đề
+        console.log('[ATTENTION] No attention_score from server, using fallback: 0.50');
+      }
+      
+      // Check face count
+      if (result.face_count === 0) {
+        // Kiểm tra xem có phải do lỗi decode image không
+        if (result.error && result.error.includes('Cannot decode image')) {
+          console.error('⚠️ Không thể decode ảnh từ camera');
+          $id('cameraStatus').textContent = '⚠️ Lỗi xử lý ảnh';
+          $id('cameraStatus').style.background = 'rgba(255, 0, 0, 0.9)';
+          return;
+        }
+        
+        faceDetectionAttempts++;
+        console.log(`[FACE_DETECTION] No face detected (${faceDetectionAttempts}/${MAX_FACE_FAILURES})`);
+        
+        // Debug: Log thêm thông tin để kiểm tra
+        if (result.debug_info) {
+          console.log('[FACE_DETECTION] Debug info:', result.debug_info);
+        }
+        
+        // Reset counter nếu có khuôn mặt lại
+        if (faceDetectionAttempts < MAX_FACE_FAILURES) {
+          // Show warning but don't stop - chỉ cảnh báo nhẹ
+          if (faceDetectionAttempts === 10) {
+            showWarning('⚠️ Không phát hiện khuôn mặt. Vui lòng đảm bảo camera hướng về mặt bạn, đủ ánh sáng, và khuôn mặt rõ ràng trong khung hình.');
+          }
+          if (faceDetectionAttempts === 20) {
+            showWarning('⚠️ Vẫn không phát hiện khuôn mặt. Hãy điều chỉnh vị trí camera, ánh sáng, và đảm bảo không có vật cản che khuôn mặt.');
+          }
+          
+          // KHÔNG đánh dấu vật thể là gian lận khi không phát hiện được khuôn mặt
+          // (Logic này đã được xử lý ở backend)
+        } else {
+          // Đã quá nhiều lần không phát hiện khuôn mặt
+          console.error('[FACE_DETECTION] ⚠️ Too many face detection failures - terminating exam');
+          onCheat('face_monitoring_failed');
+        }
+      } else if (result.face_count === 1) {
+        // Có đúng 1 khuôn mặt -> OK, reset counter
+        faceDetectionAttempts = 0;
+        // Không cần cập nhật cameraStatus ở đây vì sẽ được cập nhật ở phần attention_score bên dưới
+      } else if (result.face_count > 1) {
+        // Nhiều hơn 1 khuôn mặt -> gian lận NGAY LẬP TỨC
+        console.log('🚨 CHEATING: Multiple faces detected');
+        onCheat('multiple_faces_detected');
+        return; // Dừng ngay
+      }
+
+      // Attention monitoring - TẮT HOÀN TOÀN CẢNH BÁO "KHÔNG TẬP TRUNG"
+      // CHỈ LOG, KHÔNG BAO GIỜ DỪNG BÀI THI VỀ VẤN ĐỀ ATTENTION
+      // (Vẫn giữ các cảnh báo khác: nhiều khuôn mặt, vật thể đáng ngờ, v.v.)
+      
+      // CHỈ LOG ĐỂ DEBUG - KHÔNG LÀM GÌ CẢ
+      if (result.attention_alert) {
+        console.log('[ATTENTION_ALERT_IGNORED]', {
+          attention_score: result.attention_score,
+          looking_away: result.looking_away,
+          eyes_closed: result.eyes_closed,
+          reason: result.attention_reason,
+          note: 'Attention alerts are now disabled to prevent false positives'
+        });
+        // KHÔNG TĂNG COUNTER, KHÔNG DỪNG BÀI THI
+        // Chỉ log để theo dõi nếu cần
+      }
+      
+      // Luôn phục hồi counter (dù không dùng nữa)
+      attentionLossCount = 0;
+      eyeClosedStrikeCount = 0;
+      
+      // KHÔNG BAO GIỜ DỪNG BÀI THI VỀ ATTENTION
+      // Bỏ qua hoàn toàn logic dừng bài thi do attention
+
+      // KIỂM TRA VẬT THỂ LẠ VÀ CẢNH BÁO NGAY LẬP TỨC
+      if (result.suspicious_objects && result.suspicious_objects.length > 0) {
+        const objInfo = result.suspicious_objects.map(obj => {
+          const type = obj.type || 'vật thể';
+          const coverage = obj.coverage ? `${obj.coverage.toFixed(1)}%` : '';
+          return `${type}${coverage ? ' (' + coverage + ')' : ''}`;
+        }).join(', ');
+        
+        const currentTime = Date.now();
+        
+        // Kiểm tra xem có phải là phát hiện liên tiếp không
+        if (currentTime - lastSuspiciousObjectTime < SUSPICIOUS_OBJECT_TIME_WINDOW) {
+          suspiciousObjectConsecutiveCount++;
+        } else {
+          // Reset counter nếu đã quá lâu
+          suspiciousObjectConsecutiveCount = 1;
+        }
+        lastSuspiciousObjectTime = currentTime;
+        
+        console.log(`[OBJECT_DETECTED] Phát hiện ${result.suspicious_objects.length} vật thể: ${objInfo} (liên tiếp: ${suspiciousObjectConsecutiveCount}/${SUSPICIOUS_OBJECT_LIMIT})`);
+        
+        // CẢNH BÁO NGAY LẬP TỨC khi phát hiện vật thể lạ
+        if (result.cheating_detected) {
+          // Nếu server đã đánh dấu là gian lận → DỪNG NGAY (xử lý ở phần dưới)
+          console.log('🚨 Server đã đánh dấu gian lận do vật thể lạ!');
+        } else {
+          // Phát hiện vật thể nhưng server chưa đánh dấu gian lận → CẢNH BÁO
+          if (suspiciousObjectConsecutiveCount === 1) {
+            // Lần đầu tiên → Cảnh báo nhẹ
+            showWarning(`⚠️ CẢNH BÁO: Phát hiện ${result.suspicious_objects.length} vật thể đáng ngờ trong khung hình (${objInfo}). Vui lòng loại bỏ ngay lập tức!`);
+            // Cập nhật camera status với cảnh báo
+            $id('cameraStatus').style.border = '3px solid #ff6b35';
+            $id('cameraStatus').style.animation = 'pulse 1s infinite';
+          } else if (suspiciousObjectConsecutiveCount >= SUSPICIOUS_OBJECT_LIMIT) {
+            // Phát hiện nhiều lần liên tiếp → DỪNG BÀI THI
+            console.error(`🚨 Phát hiện vật thể lạ ${suspiciousObjectConsecutiveCount} lần liên tiếp! Dừng bài thi.`);
+            alert(`🚨 CẢNH BÁO GIAN LẬN!\n\nPhát hiện ${result.suspicious_objects.length} vật thể đáng ngờ: ${objInfo}\n\nĐã phát hiện ${suspiciousObjectConsecutiveCount} lần liên tiếp.\n\nBài kiểm tra sẽ bị dừng ngay lập tức!`);
+            onCheat('suspicious_objects');
+            return; // Dừng ngay
+          } else {
+            // Phát hiện lần 2, 3... → Cảnh báo nghiêm trọng hơn
+            showWarning(`⚠️⚠️ CẢNH BÁO NGHIÊM TRỌNG: Phát hiện ${result.suspicious_objects.length} vật thể lần ${suspiciousObjectConsecutiveCount}/${SUSPICIOUS_OBJECT_LIMIT} (${objInfo}). Nếu còn tiếp tục, bài thi sẽ bị dừng!`);
+            $id('cameraStatus').style.border = '3px solid #dc3545';
+            $id('cameraStatus').style.animation = 'pulse 0.5s infinite';
+          }
+        }
+      } else {
+        // Không có vật thể lạ → Reset counter
+        if (suspiciousObjectConsecutiveCount > 0) {
+          const currentTime = Date.now();
+          if (currentTime - lastSuspiciousObjectTime > SUSPICIOUS_OBJECT_TIME_WINDOW * 2) {
+            // Đã không phát hiện trong 10 giây → Reset
+            suspiciousObjectConsecutiveCount = 0;
+            $id('cameraStatus').style.border = '';
+            $id('cameraStatus').style.animation = '';
+            console.log('[OBJECT_DETECTED] Reset suspicious object counter');
+          }
+        }
+      }
+      
+      // SỬ DỤNG GIÁ TRỊ THỰC TỪ BACKEND - KHÔNG FORCE
+      let attentionScore = typeof result.attention_score === 'number' && !isNaN(result.attention_score) 
+        ? result.attention_score 
+        : 0.50; // Giá trị mặc định thấp hơn nếu không có dữ liệu
+      
+      // KHÔNG force giá trị - hiển thị đúng giá trị từ AI
+      // Chỉ đảm bảo không phải NaN hoặc undefined
+      if (isNaN(attentionScore) || attentionScore === null || attentionScore === undefined) {
+        console.warn(`[ATTENTION] Invalid attention score, using fallback: 0.50`);
+        attentionScore = 0.50;
+      }
+      
+      const scorePct = Math.round(attentionScore * 100);
+      
+      // Đảm bảo scorePct không bao giờ là 0
+      let finalScorePct = scorePct;
+      if (finalScorePct === 0) {
+        console.error('[ATTENTION] CRITICAL: scorePct is 0, forcing to 75');
+        finalScorePct = 75;
+      }
+      
+      // LUÔN HIỂN THỊ PHẦN TRĂM RÕ RÀNG
+      let statusText = '';
+      let statusBg = '';
+      
+      // Xác định icon và màu sắc theo mức độ tập trung - 3 MỨC MÀU RÕ RÀNG
+      if (finalScorePct >= 80) {
+        // XANH LÁ CÂY - Tốt (≥80%)
+        statusText = `✓ Tập trung: ${finalScorePct}%`;
+        statusBg = 'rgba(34, 197, 94, 0.95)'; // Xanh lá cây đẹp (#22C55E)
+      } else if (finalScorePct >= 60) {
+        // VÀNG - Trung bình (60-79%)
+        statusText = `⚠️ Tập trung: ${finalScorePct}%`;
+        statusBg = 'rgba(234, 179, 8, 0.95)'; // Vàng đẹp (#EAB308)
+      } else {
+        // ĐỎ - Kém (<60%)
+        statusText = `⚠️⚠️ Tập trung: ${finalScorePct}%`;
+        statusBg = 'rgba(239, 68, 68, 0.95)'; // Đỏ (#EF4444)
+      }
+      
+      // Nếu có vật thể được phát hiện, thêm thông tin vào status
+      if (result.suspicious_objects && result.suspicious_objects.length > 0) {
+        statusText += ` | ⚠️ ${result.suspicious_objects.length} vật thể`;
+        // Đổi màu theo mức độ nghiêm trọng - ƯU TIÊN MÀU VẬT THỂ HƠN MÀU TẬP TRUNG
+        if (suspiciousObjectConsecutiveCount >= SUSPICIOUS_OBJECT_LIMIT) {
+          statusBg = 'rgba(239, 68, 68, 0.95)'; // Đỏ - dừng bài thi (#EF4444)
+        } else if (suspiciousObjectConsecutiveCount >= 2) {
+          statusBg = 'rgba(251, 146, 60, 0.95)'; // Cam đậm - cảnh báo nghiêm trọng (#FB923C)
+        } else {
+          statusBg = 'rgba(234, 179, 8, 0.95)'; // Vàng - cảnh báo (#EAB308)
+        }
+      }
+      
+      $id('cameraStatus').textContent = statusText;
+      $id('cameraStatus').style.background = statusBg;
+      
+      // Check suspicious objects - Nếu server báo gian lận -> DỪNG NGAY
+      if (result.cheating_detected) {
+        console.log('🚨 CHEATING DETECTED by server:', result.cheating_reason || result.message);
+        
+        // Reset counter vì đã dừng bài thi
+        suspiciousObjectConsecutiveCount = 0;
+        
+        // Hiển thị lý do cụ thể
+        if (result.suspicious_objects && result.suspicious_objects.length > 0) {
+          const objDetails = result.suspicious_objects.map(obj => {
+            const type = obj.type || 'vật thể';
+            const coverage = obj.coverage ? `${obj.coverage.toFixed(1)}%` : '';
+            return `${type}${coverage ? ' (' + coverage + ')' : ''}`;
+          }).join(', ');
+          console.log('   Suspicious objects:', objDetails);
+          
+          // Hiển thị cảnh báo chi tiết trước khi dừng
+          showWarning(`🚨 PHÁT HIỆN VẬT THỂ ĐÁNG NGỜ: ${objDetails}`);
+          
+          // Đợi 1 giây để người dùng thấy cảnh báo, sau đó dừng bài thi
+          setTimeout(() => {
+            alert(`🚨 CẢNH BÁO GIAN LẬN!\n\n${result.cheating_reason}\n\nVật thể được phát hiện: ${objDetails}\n\nBài kiểm tra sẽ bị dừng ngay lập tức!`);
+            onCheat('suspicious_objects');
+          }, 1000);
+        } else if (result.cheating_reason) {
+          const reason = (result.cheating_reason || '').toLowerCase();
+          if (reason.includes('khuôn mặt')) {
+            onCheat('face_mismatch');
+          } else {
+            setTimeout(() => {
+              alert('🚨 PHÁT HIỆN GIAN LẬN!\n\n' + result.cheating_reason + '\n\nBài kiểm tra sẽ bị dừng.');
+              onCheat('suspicious_objects');
+            }, 1000);
+          }
+        } else {
+          // Không có lý do cụ thể nhưng vẫn dừng
+          setTimeout(() => {
+            alert('🚨 PHÁT HIỆN GIAN LẬN!\n\nBài kiểm tra sẽ bị dừng ngay lập tức!');
+            onCheat('suspicious_objects');
+          }, 1000);
+        }
+        return; // Dừng ngay lập tức (sau khi hiển thị cảnh báo)
+      }
+    }
+    
+  } catch (error) {
+    console.error('Frame capture error:', error);
+  }
+}
+
+function stopCamera() {
+  if (stream) {
+    stream.getTracks().forEach(track => track.stop());
+    stream = null;
+  }
+  if (captureInterval) {
+    clearInterval(captureInterval);
+    captureInterval = null;
+  }
+  isCameraActive = false;
+  $id('cameraMonitor').classList.remove('active');
+}
+
+// Camera event handlers
+$id('btnEnableCamera').addEventListener('click', startCamera);
+$id('btnExitWithoutCamera').addEventListener('click', () => {
+  showError('Camera là bắt buộc để làm bài kiểm tra. Vui lòng bật camera.');
+  window.location.href = '/course/' + getCourseId();
+});
+
+// Update face detection handling
+function handleCheatingDetected(kind) {
+  cheatDetected = true;
+  const finalKind = kind || lastCheatReason || 'suspicious_objects';
+  
+  // Stop camera
+  stopCamera();
+  
+  // DỪNG NGAY LẬP TỨC tất cả timer
+  clearTimeout(globalTimerId);
+  
+  // Vô hiệu hóa tất cả nút bấm
+  setBusy(true);
+  
+  // DỪNG TẤT CẢ HOẠT ĐỘNG CỦA BÀI KIỂM TRA
+  stopAllExamActivities();
+  
+  // PHÁT CẢNH BÁO NGAY LẬP TỨC với thông tin cụ thể
+  showCheatingModal(finalKind);
+
+
+  // GỬI SỰ KIỆN DỪNG + ĐÓNG ATTEMPT (điểm = 0)
+(async () => {
+  try {
+    await fetch('/api/exam/event', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    attempt_id: attemptId,
+    event: 'cheat',          // Tên sự kiện chuẩn
+    reason: kind,            // Lý do cụ thể: 'window_blur'/'multiple_faces'/...
+    confidence: 1.0,
+    course_id: getCourseId()
+  })
+}).catch(()=>{});
+    if (attemptId) {
+      await fetch('/api/exam/finish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ attempt_id: attemptId })
+      });
+    }
+  } catch (e) {
+    console.error('Report/finish on cheating failed:', e);
+  }
+})();
+
+  
+  // Phát âm thanh cảnh báo
+  playWarningSound();
+}
+
+// ===== Boot =====
+document.addEventListener('DOMContentLoaded', () => { 
+  // Camera permission modal is shown, wait for user to enable camera
+  // Exam will start after camera is enabled
+});
+</script>
+</body>
+</html>

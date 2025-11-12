@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Content Processor - Tạo Video Thông Minh</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            padding: 40px;
+        }
+
+        .workflow {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .workflow-step {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s ease;
+        }
+
+        .workflow-step:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+
+        .workflow-step .icon {
+            font-size: 2.5em;
+            margin-bottom: 15px;
+        }
+
+        .workflow-step h3 {
+            color: #495057;
+            margin-bottom: 10px;
+        }
+
+        .workflow-step p {
+            color: #6c757d;
+            font-size: 0.9em;
+        }
+
+        .upload-section {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+        }
+
+        .upload-section h2 {
+            color: #495057;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #4facfe;
+        }
+
+        .file-upload {
+            border: 2px dashed #dee2e6;
+            border-radius: 10px;
+            padding: 30px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .file-upload:hover {
+            border-color: #4facfe;
+            background: #f8f9ff;
+        }
+
+        .file-upload.dragover {
+            border-color: #4facfe;
+            background: #f8f9ff;
+        }
+
+        .file-upload input[type="file"] {
+            display: none;
+        }
+
+        .file-upload-text {
+            font-size: 1.1em;
+            color: #6c757d;
+            margin-bottom: 10px;
+        }
+
+        .file-upload-subtext {
+            font-size: 0.9em;
+            color: #adb5bd;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(79, 172, 254, 0.3);
+        }
+
+        .btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .status-section {
+            margin-top: 30px;
+            padding: 20px;
+            background: #e9ecef;
+            border-radius: 10px;
+        }
+
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .status-item:last-child {
+            border-bottom: none;
+        }
+
+        .status-label {
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .status-value {
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+
+        .status-available {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-unavailable {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .result-section {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            display: none;
+        }
+
+        .result-section.show {
+            display: block;
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .result-item:last-child {
+            border-bottom: none;
+        }
+
+        .result-label {
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .result-value {
+            color: #6c757d;
+        }
+
+        .result-link {
+            color: #4facfe;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .result-link:hover {
+            text-decoration: underline;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #4facfe;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .error.show {
+            display: block;
+        }
+
+        .success {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .success.show {
+            display: block;
+        }
+
+        .features-section {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .features-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+
+        .feature-icon {
+            font-size: 1.5em;
+        }
+
+        .feature-text {
+            font-weight: 500;
+            color: #495057;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                border-radius: 15px;
+            }
+
+            .header {
+                padding: 30px 20px;
+            }
+
+            .header h1 {
+                font-size: 2em;
+            }
+
+            .main-content {
+                padding: 20px;
+            }
+
+            .workflow {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 AI Content Processor</h1>
+            <p>Tạo video thông minh với AI Gemini, hình ảnh chân thật và giọng người thật</p>
+        </div>
+
+        <div class="main-content">
+            <!-- Workflow Steps -->
+            <div class="workflow">
+                <div class="workflow-step">
+                    <div class="icon">📄</div>
+                    <h3>1. Upload File</h3>
+                    <p>Upload file PDF, DOCX, PPTX hoặc TXT</p>
+                </div>
+                <div class="workflow-step">
+                    <div class="icon">🤖</div>
+                    <h3>2. AI Analysis</h3>
+                    <p>AI Gemini phân tích và tóm tắt nội dung</p>
+                </div>
+                <div class="workflow-step">
+                    <div class="icon">🖼️</div>
+                    <h3>3. Realistic Images</h3>
+                    <p>Tìm kiếm hình ảnh chân thật phù hợp</p>
+                </div>
+                <div class="workflow-step">
+                    <div class="icon">🎤</div>
+                    <h3>4. Human Voice</h3>
+                    <p>Tạo giọng người thật với ElevenLabs</p>
+                </div>
+                <div class="workflow-step">
+                    <div class="icon">🎬</div>
+                    <h3>5. Final Video</h3>
+                    <p>Tạo video hoàn chỉnh với hiệu ứng</p>
+                </div>
+            </div>
+
+            <!-- Upload Section -->
+            <div class="upload-section">
+                <h2>📤 Upload File và Tạo Video AI</h2>
+                
+                <form id="uploadForm" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label for="file">Chọn file nội dung:</label>
+                        <div class="file-upload" id="fileUpload">
+                            <input type="file" id="file" name="file" accept=".pdf,.docx,.pptx,.txt" required>
+                            <div class="file-upload-text">📁 Kéo thả file vào đây hoặc click để chọn</div>
+                            <div class="file-upload-subtext">Hỗ trợ: PDF, DOCX, PPTX, TXT (tối đa 50MB)</div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="title">Tiêu đề video:</label>
+                        <input type="text" id="title" name="title" placeholder="Nhập tiêu đề video..." value="AI Generated Video">
+                    </div>
+
+                    <div class="form-group">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="require_human_voice" name="require_human_voice" checked>
+                            <label for="require_human_voice">Bắt buộc sử dụng giọng người thật (ElevenLabs)</label>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn" id="submitBtn">
+                        🚀 Tạo Video AI Thông Minh
+                    </button>
+                </form>
+
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <div>Đang xử lý với AI Content Processor...</div>
+                </div>
+
+                <div class="error" id="error"></div>
+                <div class="success" id="success"></div>
+            </div>
+
+            <!-- Features Section -->
+            <div class="features-section">
+                <h3>✨ Tính năng AI Content Processor</h3>
+                <div class="features-list">
+                    <div class="feature-item">
+                        <span class="feature-icon">🤖</span>
+                        <span class="feature-text">AI Gemini phân tích nội dung thông minh</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">🖼️</span>
+                        <span class="feature-text">Hình ảnh chân thật từ Pexels/Unsplash</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">🎤</span>
+                        <span class="feature-text">Giọng người thật tự nhiên (ElevenLabs)</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">🎬</span>
+                        <span class="feature-text">Video chất lượng cao với hiệu ứng</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">📝</span>
+                        <span class="feature-text">Tự động tạo captions VTT</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">🎯</span>
+                        <span class="feature-text">Cấu trúc bài giảng logic</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Status Section -->
+            <div class="status-section">
+                <h3>🔍 Trạng thái hệ thống</h3>
+                <div id="statusContent">
+                    <div class="status-item">
+                        <span class="status-label">AI Gemini:</span>
+                        <span class="status-value status-checking">Đang kiểm tra...</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">ElevenLabs:</span>
+                        <span class="status-value status-checking">Đang kiểm tra...</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Pexels API:</span>
+                        <span class="status-value status-checking">Đang kiểm tra...</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Unsplash API:</span>
+                        <span class="status-value status-checking">Đang kiểm tra...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Result Section -->
+            <div class="result-section" id="resultSection">
+                <h3>🎉 Kết quả tạo video</h3>
+                <div id="resultContent"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // File upload handling
+        const fileUpload = document.getElementById('fileUpload');
+        const fileInput = document.getElementById('file');
+        const uploadForm = document.getElementById('uploadForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const loading = document.getElementById('loading');
+        const error = document.getElementById('error');
+        const success = document.getElementById('success');
+        const resultSection = document.getElementById('resultSection');
+        const resultContent = document.getElementById('resultContent');
+
+        // Drag and drop handling
+        fileUpload.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            fileUpload.classList.add('dragover');
+        });
+
+        fileUpload.addEventListener('dragleave', () => {
+            fileUpload.classList.remove('dragover');
+        });
+
+        fileUpload.addEventListener('drop', (e) => {
+            e.preventDefault();
+            fileUpload.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                fileInput.files = files;
+                updateFileDisplay();
+            }
+        });
+
+        fileUpload.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', updateFileDisplay);
+
+        function updateFileDisplay() {
+            const file = fileInput.files[0];
+            if (file) {
+                const fileUploadText = fileUpload.querySelector('.file-upload-text');
+                fileUploadText.textContent = `📄 ${file.name} (${(file.size / 1024 / 1024).toFixed(1)} MB)`;
+            }
+        }
+
+        // Form submission
+        uploadForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(uploadForm);
+            
+            // Show loading
+            submitBtn.disabled = true;
+            loading.classList.add('show');
+            error.classList.remove('show');
+            success.classList.remove('show');
+            resultSection.classList.remove('show');
+            
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    success.textContent = '✅ Video AI đã được tạo thành công!';
+                    success.classList.add('show');
+                    
+                    // Show results
+                    resultContent.innerHTML = `
+                        <div class="result-item">
+                            <span class="result-label">📹 Video:</span>
+                            <a href="/video/${data.video_path.split('/').pop()}" class="result-link" target="_blank">Xem video</a>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">📝 Captions:</span>
+                            <a href="/caption/${data.caption_path.split('/').pop()}" class="result-link" target="_blank">Tải captions</a>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">⏱️ Thời lượng:</span>
+                            <span class="result-value">${data.duration.toFixed(1)} giây</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">🎯 Số slides:</span>
+                            <span class="result-value">${data.slide_count}</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">📊 Tiêu đề:</span>
+                            <span class="result-value">${data.title}</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">✨ Tính năng:</span>
+                            <span class="result-value">
+                                ${data.features.ai_analysis ? '🤖 AI Analysis' : ''}
+                                ${data.features.realistic_images ? '🖼️ Realistic Images' : ''}
+                                ${data.features.human_voice ? '🎤 Human Voice' : ''}
+                                ${data.features.professional_video ? '🎬 Professional Video' : ''}
+                                ${data.features.auto_captions ? '📝 Auto Captions' : ''}
+                            </span>
+                        </div>
+                    `;
+                    resultSection.classList.add('show');
+                } else {
+                    error.textContent = `❌ Lỗi: ${data.error}`;
+                    error.classList.add('show');
+                }
+            } catch (err) {
+                error.textContent = `❌ Lỗi kết nối: ${err.message}`;
+                error.classList.add('show');
+            } finally {
+                submitBtn.disabled = false;
+                loading.classList.remove('show');
+            }
+        });
+
+        // Check system status
+        async function checkStatus() {
+            try {
+                const response = await fetch('/status');
+                const data = await response.json();
+                
+                const statusItems = document.querySelectorAll('.status-item');
+                const statusValues = document.querySelectorAll('.status-value');
+                
+                statusValues[0].textContent = data.gemini_available ? '✅ Sẵn sàng' : '❌ Chưa cấu hình';
+                statusValues[0].className = `status-value ${data.gemini_available ? 'status-available' : 'status-unavailable'}`;
+                
+                statusValues[1].textContent = data.elevenlabs_available ? '✅ Sẵn sàng' : '❌ Chưa cấu hình';
+                statusValues[1].className = `status-value ${data.elevenlabs_available ? 'status-available' : 'status-unavailable'}`;
+                
+                statusValues[2].textContent = data.pexels_available ? '✅ Sẵn sàng' : '❌ Chưa cấu hình';
+                statusValues[2].className = `status-value ${data.pexels_available ? 'status-available' : 'status-unavailable'}`;
+                
+                statusValues[3].textContent = data.unsplash_available ? '✅ Sẵn sàng' : '❌ Chưa cấu hình';
+                statusValues[3].className = `status-value ${data.unsplash_available ? 'status-available' : 'status-unavailable'}`;
+                
+            } catch (err) {
+                console.error('Error checking status:', err);
+            }
+        }
+
+        // Check status on page load
+        checkStatus();
+    </script>
+</body>
+</html>

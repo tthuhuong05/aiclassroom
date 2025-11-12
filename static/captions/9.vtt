@@ -1,0 +1,115 @@
+WEBVTT
+
+00:00:00.000 --> 00:00:02.000
+Hey there, Web Explorers!
+
+00:00:02.000 --> 00:00:05.800
+We're looking at where to put JavaScript in your HTML.
+
+00:00:05.800 --> 00:00:09.860
+By the end of this video, you'll know exactly where to place your scripts for maximum efficiency
+
+00:00:09.860 --> 00:00:10.860
+and flexibility.
+
+00:00:10.860 --> 00:00:14.000
+Let's get coding!
+
+00:00:14.000 --> 00:00:15.700
+First things first.
+
+00:00:15.700 --> 00:00:17.820
+JavaScript lives between script tags.
+
+00:00:17.820 --> 00:00:19.220
+That's like it's home.
+
+00:00:19.220 --> 00:00:21.200
+Let's start with an example.
+
+00:00:21.200 --> 00:00:26.440
+This simple script grabs an element with the ID of demo and changes its content.
+
+00:00:26.440 --> 00:00:31.600
+All examples might include type equals text slash javascript, but you don't need that
+
+00:00:31.600 --> 00:00:32.600
+anymore.
+
+00:00:32.600 --> 00:00:35.220
+It's like wearing socks with sandals.
+
+00:00:35.220 --> 00:00:38.000
+Just don't.
+
+00:00:38.000 --> 00:00:39.700
+So where should you place your scripts?
+
+00:00:39.700 --> 00:00:43.480
+You can put them in the head or body or even both.
+
+00:00:43.480 --> 00:00:46.760
+Let's take a look at head.
+
+00:00:46.760 --> 00:00:50.560
+This works, but scripts in the head run before the page content loads.
+
+00:00:50.560 --> 00:00:53.800
+This might slow the rest of the page down.
+
+00:00:53.800 --> 00:00:57.800
+Let's try body.
+
+00:00:57.800 --> 00:01:03.040
+When the script's in the body, it runs as the page loads, making things snappier for
+
+00:01:03.040 --> 00:01:05.920
+users.
+
+00:01:05.920 --> 00:01:08.440
+Want to take things to the next level?
+
+00:01:08.440 --> 00:01:10.080
+External JavaScript is where it's at.
+
+00:01:10.080 --> 00:01:14.400
+It's like having a toolbox you can reuse on every page.
+
+00:01:14.400 --> 00:01:21.040
+Using external scripts keeps your code neat, reusable, and faster thanks to browser caching.
+
+00:01:21.040 --> 00:01:23.800
+You can reference external scripts in different ways.
+
+00:01:23.800 --> 00:01:27.680
+Full URLs, relative paths, or no path at all.
+
+00:01:27.680 --> 00:01:29.720
+The choice depends on your setup.
+
+00:01:29.720 --> 00:01:35.520
+Just remember, no script tags in your JavaScript files.
+
+00:01:35.520 --> 00:01:36.960
+So there you have it.
+
+00:01:36.960 --> 00:01:40.080
+Scripts in the head or body, inline or external.
+
+00:01:40.080 --> 00:01:43.680
+It's all about what works for your project.
+
+00:01:43.680 --> 00:01:45.080
+Thanks for watching.
+
+00:01:45.080 --> 00:01:48.160
+Like and subscribe to get notified about our latest videos.
+
+00:01:48.160 --> 00:01:53.600
+For more coding tips and tricks, keep it locked right here on w3schools.com.
+
+00:01:53.600 --> 00:01:56.680
+Don't forget to try out what you've learned in our interactive editor.
+
+00:01:56.680 --> 00:01:57.480
+Happy coding!

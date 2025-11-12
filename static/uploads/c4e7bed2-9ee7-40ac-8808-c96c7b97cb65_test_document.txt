@@ -1,0 +1,19 @@
+
+            # Introduction to Machine Learning
+            
+            Machine Learning is a subset of artificial intelligence.
+            
+            ## Key Concepts
+            
+            ### Supervised Learning
+            Uses labeled data to train models.
+            
+            ### Unsupervised Learning
+            Finds patterns in unlabeled data.
+            
+            ## Applications
+            Used in healthcare, finance, and technology.
+            
+            ## Conclusion
+            ML is transforming problem-solving approaches.
+            

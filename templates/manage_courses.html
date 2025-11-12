@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Quản lý Khóa học</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+  <style>
+    body {
+      overflow-x: hidden;
+    }
+    .sidebar {
+      height: 100vh;
+      width: 220px;
+      position: fixed;
+      top: 0;
+      left: 0;
+      background-color: #343a40;
+      padding-top: 20px;
+      color: white;
+    }
+    .sidebar a {
+      padding: 12px 20px;
+      display: block;
+      color: white;
+      text-decoration: none;
+    }
+    .sidebar a:hover {
+      background-color: #495057;
+    }
+    .main-content {
+      margin-left: 240px;
+      padding: 20px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<div class="sidebar">
+  <h4 class="text-center fw-bold mb-4"><i class="bi bi-mortarboard"></i> Hệ thống</h4>
+  <a href="{{ url_for('home') }}"><i class="bi bi-house-door"></i> Trang chủ</a>
+  <a href="{{ url_for('course') }}"><i class="bi bi-book"></i> Khóa học</a>
+  <a href="{{ url_for('manage_courses') }}"><i class="bi bi-gear"></i> Quản lý khóa học</a>
+  <a href="{{ url_for('list_users') }}"><i class="bi bi-person-lines-fill"></i> Quản lý người dùng</a>
+  <a href="{{ url_for('logout') }}"><i class="bi bi-box-arrow-right"></i> Đăng xuất</a>
+</div>
+
+<!-- Main Content -->
+<div class="main-content">
+  <div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h1 class="text-primary fw-bold">📚 Quản lý Khóa học</h1>
+      <a href="{{ url_for('create_course') }}" class="btn btn-success btn-lg shadow">
+        <i class="bi bi-plus-circle me-2"></i> Tạo Khóa học mới
+      </a>
+    </div>
+
+    <div class="table-responsive shadow">
+      <table class="table table-striped table-hover align-middle">
+        <thead class="table-dark text-center">
+          <tr>
+            <th>#</th>
+            <th>Ảnh</th>
+            <th>Tên</th>
+            <th>Mô tả</th>
+             <th>Video</th>
+            <th>Hành động</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for course in courses %}
+          <tr class="text-center">
+            <th class="fw-bold text-primary">{{ loop.index }}</th>
+            <td>
+              {% if course.image_url %}
+                <img src="{{ course.image_url }}" alt="{{ course.title }}" style="width: 80px;" class="rounded shadow-sm">
+              {% else %}
+                <span class="text-muted fst-italic">No image</span>
+              {% endif %}
+            </td>
+            <td class="fw-semibold text-dark">{{ course.title }}</td>
+            <td class="text-wrap" style="max-width: 300px;">{{ course.description }}</td>
+            <td>
+              {% if course.video_url %}
+                <video width="120" controls>
+                  <source src="{{ course.video_url }}" type="video/mp4">
+                  Trình duyệt không hỗ trợ video.
+               </video>
+             {% else %}
+            <span class="text-muted fst-italic">No video</span>
+             {% endif %}
+           </td>
+
+            <td>
+              <a href="{{ url_for('edit_course', course_id=course.id) }}" class="btn btn-warning btn-sm me-1 shadow-sm"
+                 onclick="return confirm('Bạn muốn sửa khóa học này?')">
+                <i class="bi bi-pencil-square"></i> Sửa
+              </a>
+              <a href="{{ url_for('delete_course', course_id=course.id) }}" class="btn btn-danger btn-sm shadow-sm"
+                 onclick="return confirm('Bạn muốn xóa khóa học này?')">
+                <i class="bi bi-trash"></i> Xóa
+              </a>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="5" class="text-center text-muted py-4">
+              <i class="bi bi-folder-x fs-3"></i>
+              <p class="mt-2">Không có khóa học nào.</p>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

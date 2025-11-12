@@ -168,56 +168,48 @@ def _finalize_hashes(item: dict) -> dict:
 @app.post("//api/proctor/analyze/ai-quiz/prefill")
 def api_ai_quiz_prefill():
     """
-    Pre-create quiz questions at every interval for a video.
-    Body JSON: {video_id, duration, caption_path?, caption_url?}
+    Pre-create the first 50s quiz question for a video from REAL subtitles (or provided text),
+    using Gemini with a safe fallback.
+    Body JSON: {video_id, duration, caption_path?, caption_url?, subtitle_text?, language?}
     """
     p = request.get_json(force=True) or {}
-    video_id = p.get("video_id") or "no-video-id"
-    duration = int(p.get("duration") or 0)
-    caption_p = p.get("caption_path")
-    caption_u = p.get("caption_url")
-    if not caption_p and caption_u:
-        caption_p = caption_u.lstrip("/")
+    video_id   = p.get("video_id") or "no-video-id"
+    language   = p.get("language") or "vi"
+    # 0–50s đoạn đầu
+    start_sec, end_sec = 0, QUIZ_INTERVAL_SEC
 
-    # TUYỆT ĐỐI KHÔNG sử dụng transcript - Chỉ tạo câu hỏi từ script content
-    created = 0
-    session_id = session.get("user", {}).get("id", "anonymous")
-    
-    # Fallback: Tạo câu hỏi mặc định nếu module không tồn tại
-    try:
-        from video_script_quiz_service import video_script_quiz_service
-        script_qa = video_script_quiz_service.get_next_question_from_video_script(
-            course_id=str(video_id),
-            script_content="Nội dung video bài giảng",
-            session_id=str(session_id),
-            question_type="mcq",
-            language="vi"
+    # 1) Lấy phụ đề: ưu tiên subtitle_text do FE gửi; nếu không có thì đọc từ caption_path/url
+    subtitle_text = (p.get("subtitle_text") or "").strip()
+    caption_p = p.get("caption_path") or (p.get("caption_url") or "").lstrip("/")
+    if not subtitle_text and caption_p:
+        # đọc toàn bộ file phụ đề (đơn giản); nếu cần chia khoảng thời gian, có thể nâng cấp parser .vtt
+        subtitle_text = _read_vtt_as_text(caption_p)
+
+    if not subtitle_text or len(subtitle_text) < 10:
+        # vẫn tạo 1 câu hỏi để không vỡ luồng, nhưng log cảnh báo cho dev
+        current_app.logger.warning("[prefill] No subtitles provided. Falling back.")
+        qa = create_fallback_question_from_subtitles("intro")
+    else:
+        # 2) Gọi pipeline Gemini-based (có backoff + fallback sẵn)
+        qa = generate_question_from_subtitles(
+            subtitle_text=subtitle_text,
+            time_range=f"{start_sec}-{end_sec} seconds",
+            language=language
         )
-        item = {
-            "t_sec": QUIZ_INTERVAL_SEC,
-            "question": script_qa.get("question", "Câu hỏi về nội dung video bài giảng từ 0-50 giây"),
-            "options": script_qa.get("options", ["Đáp án A", "Đáp án B", "Đáp án C", "Đáp án D"]),
-            "answer_index": script_qa.get("correct_index", 0),
-            "explanation": script_qa.get("explanation", "Giải thích dựa trên nội dung video từ 0-50 giây"),
-        }
-        item = _shuffle_options(item)
-        item = _finalize_hashes(item)
-        _QUIZ_STORE[_key(video_id, QUIZ_INTERVAL_SEC)] = item
-        created = 1
-    except (ImportError, Exception) as e:
-        print(f"Error creating quiz question: {e}")
-        item = {
-            "t_sec": QUIZ_INTERVAL_SEC,
-            "question": "Câu hỏi về nội dung video bài giảng từ 0-50 giây",
-            "options": ["Đáp án A", "Đáp án B", "Đáp án C", "Đáp án D"],
-            "answer_index": 0,
-            "explanation": "Giải thích dựa trên nội dung video từ 0-50 giây",
-        }
-        item = _shuffle_options(item)
-        item = _finalize_hashes(item)
-        _QUIZ_STORE[_key(video_id, QUIZ_INTERVAL_SEC)] = item
-        created = 1
-    return jsonify({"ok": True, "count": created})
+
+    # 3) Chuẩn hoá & lưu vào store 50s cho FE hiển thị
+    item = {
+        "t_sec": end_sec,
+        "question": qa["question"],
+        "options": qa["options"],
+        "answer_index": int(qa.get("correct_index", 0)),
+        "explanation": qa.get("explanation", ""),
+    }
+    item = _shuffle_options(item)
+    item = _finalize_hashes(item)
+    _QUIZ_STORE[_key(video_id, end_sec)] = item
+    return jsonify({"ok": True, "count": 1})
+
 
 @app.post("/api/ai-quiz/question")
 def api_ai_quiz_question():

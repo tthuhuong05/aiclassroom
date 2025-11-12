@@ -1,0 +1,288 @@
+<!-- templates/test_quiz_video.html -->
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <title>Test Quiz Video - Dừng tại giây 50</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 4px 14px rgba(0,0,0,.12);
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .video-container {
+      position: relative;
+      width: 100%;
+      max-width: 800px;
+      margin: 0 auto 20px;
+    }
+    video {
+      width: 100%;
+      border-radius: 12px;
+      box-shadow: 0 4px 14px rgba(0,0,0,.12);
+    }
+    .info {
+      background: #e3f2fd;
+      padding: 16px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      border-left: 4px solid #2196f3;
+    }
+    .quiz-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.45);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .quiz-card {
+      background: #fff;
+      max-width: 720px;
+      width: 92%;
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.25);
+    }
+    .quiz-card h3 {
+      margin: 0 0 8px;
+      color: #333;
+    }
+    .quiz-choices {
+      display: grid;
+      gap: 10px;
+      margin: 14px 0;
+    }
+    .quiz-choices button {
+      padding: 12px 14px;
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      cursor: pointer;
+      text-align: left;
+      background: white;
+      transition: all 0.2s;
+    }
+    .quiz-choices button:hover {
+      background: #f0f0f0;
+      border-color: #2196f3;
+    }
+    .quiz-choices button[disabled] {
+      opacity: .7;
+      cursor: default;
+    }
+    .badge {
+      display: inline-block;
+      background: #e3f2fd;
+      color: #1976d2;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      margin-left: 6px;
+      font-weight: 500;
+    }
+    .result {
+      min-height: 22px;
+      color: #333;
+      margin-top: 6px;
+      padding: 8px;
+      border-radius: 8px;
+    }
+    .result.correct {
+      background: #e8f5e8;
+      color: #2e7d32;
+    }
+    .result.wrong {
+      background: #ffebee;
+      color: #c62828;
+    }
+    .btn-continue {
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: 1px solid #ddd;
+      background: #2196f3;
+      color: white;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    .btn-continue:hover {
+      background: #1976d2;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎥 Test Video Quiz - Dừng tại giây 50</h1>
+    
+    <div class="info">
+      <strong>📋 Hướng dẫn:</strong>
+      <ul>
+        <li>Video sẽ tự động dừng tại <span class="badge">giây thứ 50</span></li>
+        <li>Hệ thống sẽ hiển thị câu hỏi trắc nghiệm về nội dung 50 giây đầu</li>
+        <li>Nếu trả lời <strong>sai</strong>, video sẽ tua lại từ đầu để bạn xem lại</li>
+        <li>Nếu trả lời <strong>đúng</strong>, video sẽ tiếp tục phát bình thường</li>
+      </ul>
+    </div>
+
+    <div class="video-container">
+      <video id="player" controls preload="metadata">
+        <source src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" type="video/mp4">
+        Trình duyệt của bạn không hỗ trợ video.
+      </video>
+    </div>
+
+    <div class="info">
+      <strong>🎯 Mục tiêu:</strong> Kiểm tra xem bạn có hiểu nội dung 50 giây đầu của video hay không.
+    </div>
+  </div>
+
+  <!-- QUIZ MODAL -->
+  <div id="quizModal" class="quiz-backdrop" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="quiz-card">
+      <h3>📝 Câu hỏi kiểm tra</h3>
+      <div id="q-text" style="font-size:18px; margin-bottom: 16px;"></div>
+      <div id="q-choices" class="quiz-choices"></div>
+      <div id="q-result" class="result"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:10px">
+        <button id="btn-continue" class="btn-continue" style="display:none">Tiếp tục học ▶</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+(function(){
+  const player = document.getElementById('player');
+  const modal  = document.getElementById('quizModal');
+  const qText  = document.getElementById('q-text');
+  const qChoices = document.getElementById('q-choices');
+  const qResult  = document.getElementById('q-result');
+  const btnCont  = document.getElementById('btn-continue');
+
+  const videoId = "test-video-50s";
+  const askedAt = new Set();
+  let quizAnswered = false;
+  let wrongAnswerCount = 0;
+
+  function showModal(){ 
+    modal.style.display='flex'; 
+    modal.setAttribute('aria-hidden','false'); 
+  }
+  function hideModal(){ 
+    modal.style.display='none'; 
+    modal.setAttribute('aria-hidden','true'); 
+  }
+
+  // Tạo câu hỏi mẫu về nội dung 50 giây đầu
+  function createSampleQuestion() {
+    return {
+      question: "Trong 50 giây đầu của video, nhân vật chính là gì?",
+      options: [
+        "Một con thỏ",
+        "Một con sóc", 
+        "Một con chim",
+        "Một con chó"
+      ],
+      correct_index: 0,
+      explanation: "Nhân vật chính trong video là một con thỏ tên Big Buck Bunny."
+    };
+  }
+
+  function renderQuestion(qa){
+    qText.textContent = qa.question;
+    qResult.textContent = "";
+    qResult.className = "result";
+    btnCont.style.display = "none";
+    qChoices.innerHTML = "";
+    
+    qa.options.forEach((c, idx)=>{
+      const b = document.createElement('button');
+      b.textContent = `(${String.fromCharCode(65+idx)}) ${c}`;
+      b.addEventListener('click', ()=>{
+        // khoá lựa chọn
+        [...qChoices.children].forEach(x=>x.disabled=true);
+        
+        if(idx === qa.correct_index){
+          qResult.textContent = "✅ Chính xác! " + qa.explanation;
+          qResult.className = "result correct";
+          quizAnswered = true;
+        }else{
+          wrongAnswerCount++;
+          const correct = qa.options[qa.correct_index];
+          qResult.textContent = `❌ Chưa đúng. Đáp án đúng là (${String.fromCharCode(65+qa.correct_index)}) ${correct}. ` + qa.explanation;
+          qResult.textContent += " Bạn cần xem lại đoạn video từ đầu để hiểu rõ hơn.";
+          qResult.className = "result wrong";
+        }
+        btnCont.style.display = "inline-block";
+      });
+      qChoices.appendChild(b);
+    });
+  }
+
+  async function maybeAsk(now){
+    // Kiểm tra nếu đã đến giây 50 và chưa hỏi quiz
+    if(now >= 50 && !askedAt.has("50")){
+      player.pause();
+      showModal();
+      try{
+        const qa = createSampleQuestion();
+        askedAt.add("50");
+        renderQuestion(qa);
+      }catch(e){
+        qText.textContent = "Không thể tải câu hỏi lúc này. Vui lòng thử lại.";
+        qChoices.innerHTML = "";
+        btnCont.style.display = "inline-block";
+      }
+    }
+  }
+
+  btnCont.addEventListener('click', ()=>{
+    hideModal(); 
+    if(wrongAnswerCount > 0){
+      // Nếu trả lời sai, tua lại từ đầu để xem lại
+      player.currentTime = 0;
+      wrongAnswerCount = 0; // reset counter
+    }
+    player.play();
+  });
+
+  player.addEventListener('timeupdate', ()=>{
+    const t = player.currentTime || 0;
+    if(t >= 50 && !askedAt.has("50")){    // dừng tại giây 50
+      maybeAsk(t);
+    }
+  });
+
+  player.addEventListener('seeked', ()=>{
+    const t = player.currentTime || 0;
+    // nếu tua qua giây 50 → hỏi ngay quiz
+    if(t >= 50 && !askedAt.has("50")){
+      maybeAsk(t);
+    }
+  });
+
+  // Reset quiz khi video được reset
+  player.addEventListener('loadstart', ()=>{
+    askedAt.clear();
+    quizAnswered = false;
+    wrongAnswerCount = 0;
+  });
+})();
+</script>
+</body>
+</html>
+

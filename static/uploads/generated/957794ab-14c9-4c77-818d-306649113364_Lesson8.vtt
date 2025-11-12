@@ -1,0 +1,569 @@
+WEBVTT
+
+00:00:00.000 --> 00:05:20.600
+UNIVERSITY OF INFORMATION AND COMMUNICATION TECHNOLOGY
+FACULTY OF INFORMATION TECHNOLOGY
+Lesson #8:
+CONTINUOUS DELIVERY &
+DEPLOYMENT (CD)
+THAI NGUYEN, MONTH … YEAR 2025
+
+Lesson objectives
+1Understand the CD process
+Master the continuous delivery (CD pipeline) and continuous
+deployment processes. 2Package applications with Docker
+Know how to package applications as images with Docker. 3Apply CD with Jenkins
+Combine Jenkins with Docker to build an effective CD process. University of Information and Communication
+Technology
+
+Main content
+1Continuous delivery & deployment process - CD
+2Package applications with Docker
+CD practice with Jenkins
+University of Information and Communication
+TechnologyUsing Docker with Command Line Tools & Docker Compose3
+4
+
+1. Continuous Delivery (CD) Process
+❑Continuous Delivery Process = CI +
+deploy application to deployment
+environments, but deploying to the end -
+user environment (Prod) is still manual. University of Information and Communication
+Technology
+
+1. Continuous Deployment Process
+Continuous Deployment = CI
++ CD, but automates
+deployment to the end -user
+environment (Prod). University of Information and Communication
+Technology
+
+2. Package applications with Docker
+a)Introduction
+b)Register & Explore Docker Hub
+c)Install Docker Desktop on Windows
+d)Check installation & view Docker commands
+e)Key elements of Docker
+f)Main/core Docker directives
+g)Create Dockerfile with basic directives
+h)Building a Docker image from Dockerfile
+i)Initialize a new Container of the image
+j)Push the built Image to Docker Hub
+k)Pull the Image from Docker Hub to run a test
+University of Information and Communication
+Technology
+
+a. Docker – Introduction
+❑In recent years, a particular technology has attracted attention
+in the market, on social networks and at events, namely Docker. ❑Docker is an open source containerization tool from 2013,
+which allows isolating applications from the server system. ▪Helps applications become mobile, can be tested on the developer's
+workstation and deployed to the production environment without
+worrying about runtime dependencies. ▪It is a cross -platform tool, can be installed on Windows, Linux,
+macOS, ...and is available by default on some cloud providers such as
+AWS, Azure, ... University of Information and Communication
+Technology
+
+Container
+A system that embeds the application with its dependencies, containing only a lightweight operating system and
+the necessary elements. Comparison with VM
+Unlike virtual machines (VMs) that contain a full operating system, containers rely on the guest operating system
+(the container only contains a lightweight operating system (OS) and the elements necessary for that operating
+system such as system libraries, binary files and code dependencies). Portability
+Docker makes applications portable by building images that are easy to deploy across different environments
+without compatibility issues. University of Information and Communication
+Technologya. Docker – Introduction
+
+❑To operate,  Docker  needs  the following  elements :
+▪Docker  Desktop  UI: manage  containers
+▪Docker  client : Is a command  line tool (docker)  that you
+use to give commands,  for example : docker  run, docker
+build,  ... ▪Docker  daemon : Is the "engine"  of Docker,  responsible
+for: Managing  containers,  images,  networks,  volumes ;
+Executing  commands  from  the Docker  Client . ▪Docker  Registry : This is a public  repository  (Docker  Hub)
+or a private  repository  of Docker  images  (account
+registration  required)
+In Docker Desktop, Docker Client and Docker Daemon are
+available → run directly on Desktop (Windows /Mac/Linux). Docker Desktop only connects to Docker Hub by default
+a. Docker – Introduction
+
+2.
+
+00:05:20.600 --> 00:11:14.330
+Package applications with Docker
+a)Introduction
+b)Register & Explore Docker Hub
+c)Install Docker Desktop on Windows
+d)Check installation & view Docker commands
+e)Key elements of Docker
+f)Main/core directives of Docker
+g)Create Dockerfile with basic directives
+h)Building a Docker image from Dockerfile
+i)Initialize a new Container from the image
+j)Push the built Image to Docker Hub
+k)Pull the Image from Docker Hub to test run
+University of Information Technology and
+Communications
+
+Docker Hub is a public space (registry) containing over 2
+million public Docker images from companies,
+communities, and individual users. To register, visit https://hub.docker.com/, fill in the
+information and click "Sign Up". This account allows us to
+upload arbitrary images and download Docker Desktop. After logging in, we can explore the available images in
+the "Explore" section, with filters to search for official
+images, from verified publishers, or certified by Docker
+(Screenshot – Slide below)
+University of Information Technology and
+Communications
+Registered with account ptthuong@ictu.edu.vnb. Register & Explore Docker Hub
+
+b. Register & Explore Docker Hub
+University of Information Technology and
+Communications
+
+b. Register & Explore Docker Hub
+University of Information Technology and
+Communications
+
+b. Register & Explore Docker Hub
+
+2. Package applications with Docker
+a)Introduction
+b)Register & Explore Docker Hub
+c)Install Docker Desktop on Windows
+d)Check installation & view Docker commands
+e)Key elements of Docker
+f)Main/core directives of Docker
+g)Create Dockerfile with basic directives
+h)Building a Docker image from Dockerfile
+i)Initialize a new Container from the image
+j)Push the built Image to Docker Hub
+k)Pull the Image from Docker Hub to test run
+University of Information Technology and
+Communications
+
+❑Docker Desktop is a cross -platform tool, free for developers and small teams. To install on Windows, we need to ensure:
+•Windows 10/11 64 -bit with at least 4GB RAM. •Windows Subsystem for Linux 2 (WSL 2) backend or Hyper -V is enabled. ❑Installation:
+(1) Download the installation file from the Docker Desktop for Windows page, then run the .EXE
+file and configure the components for the WSL 2 backend. After the installation is complete; (2)
+Launch Docker Desktop and log in to Docker Hub. => Specifically as follows:
+University of Information Technology and
+Communicationsc. Install Docker Desktop on Windows
+
+c. Install Docker Desktop on Windows
+(1) Download  Docker  Desktop  by
+clicking  on the Docker  Desktop  for
+Windows  button  on the page :
+https ://docs .docker .com/desktop/wind
+ows/install/
+▪Screenshot :
+
+c. Install Docker Desktop on Windows
+❑Installation  & configuration :
+Click  on the downloaded
+executable  file (.EXE)  to install,
+during  the installation  we need  to
+install  the components  for the
+WSL  2 backend,  by checking  the
+box (as shown  in screen  1):
+Successful  installation  result :
+screen  2
+
+c. Install Docker Desktop on Windows
+(2) Launch  Docker  Desktop,  register  & log in
+to Docker  Hub. ❑Startup  Docker  Desktop  as shown  in the
+screenshot :
+❑Register  & Login  to Docker  Hub (at the Docker
+Desktop  screen)
+=> Result : screenshot  (slide  below)
+
+2. Package applications with Docker
+a)Introduction
+b)Register & Explore Docker Hub
+c)Install Docker Desktop on Windows
+d)Check installation & view Docker commands
+e)Key elements of Docker
+f)Main/core directives of Docker
+g)Create Dockerfile with basic directives
+h)Building a Docker image from Dockerfile
+i)Initialize a new Container from the image
+j)Push the built Image to Docker Hub
+k)Pull the Image from Docker Hub to test run
+University of Information Technology and
+Communications
+
+d. Check installation
+& view Docker
+commands
+❑To see the Docker commands,
+open DOS, or PowerShell and
+execute the command:
+ docker --help
+❑To check the installed Docker
+version, run the command:
+docker --version
+University of Information Technology and
+Communications
+
+2.
+
+00:11:14.330 --> 00:17:06.530
+Packaging applications with Docker
+a)Introduction
+b)Register & Explore Docker Hub
+c)Install Docker Desktop on Windows
+d)Check installation & view Docker commands
+e)Key elements of Docker
+f)Main/core directives of Docker
+g)Create Dockerfile with basic directives
+h)Building a Docker image from Dockerfile
+i)Initialize a new Container from the image
+j)Push the built Image to Docker Hub
+k)Pull the Image from Docker Hub to test run
+University of Information Technology and
+Communications
+
+1. Docker Image
+A basic element of Docker, created
+from a Dockerfile, containing the
+binaries and application files to be
+packaged.2. Docker Registry
+A centralized storage system for
+shared Docker images, which can be
+public (Docker Hub) or private (ACR).3. Container
+An instance executed from a Docker
+image, where the application will run. There can be multiple instances from
+the same image. 4. Volume
+Physical storage space on the host OS, outside the container,
+that can be shared between multiple containers to store data.5. Dockerfile
+A basic element of Docker, containing instructions for building
+a Docker image. University of Information Technology and
+CommunicationsBefore learning Docker commands, we need to familiarize ourselves with the concepts:
+Docker images, Dockerfiles, containers, and volumes, … to understand the elements of
+Dockere. Key elements of Docker
+
+2. Packaging applications with Docker
+a)Introduction
+b)Register & Explore Docker Hub
+c)Install Docker Desktop on Windows
+d)Check installation & view Docker commands
+e)Key elements of Docker
+f)Main/core directives of Docker
+g)Create Dockerfile with basic directives
+h)Building a Docker image from Dockerfile
+i)Initialize a new Container from the image
+j)Push the built Image to Docker Hub
+k)Pull the Image from Docker Hub to test run
+University of Information Technology and
+Communications
+
+f. Main/core directives of Docker
+University of Information Technology and
+Communications1.FROM  directive :
+▪Used  to specify  the base  image  that  the container  will inherit . ▪Each  Dockerfile  must  start  with  at least  one  FROM . ▪Example : FROM  openjdk :11 => Use  the openjdk :11 image  as a base  to build  a
+container  to run the Java  application . 2.COPY  directive :
+▪Used  to copy  files/folders  from  the host  machine  (where  you  write  the Dockerfile)
+into  the container . ▪Example : COPY  target/myapp .war  /usr/local/tomcat/webapps/  => Copy  the
+myapp .war  file from  the target  folder  on the host  machine  to the webapps  folder  in
+the Tomcat  container . f. Main/core directives of Docker
+University of Information Technology and
+Communications3. ADD  directive :
+▪Similar  to COPY  but more  powerful  (Can  automatically  extract  .tar files,  Supports  URLs  to
+download  files from  the Internet)
+▪Example : ADD  https ://example .com/app .tar.gz /app/  => Download  the app .tar.gz file
+from  the Internet,  copy  it to /app/  in the container  and  automatically  extract  it. 4. RUN  directive :
+▪Used  to run commands  during  the image  build  process,  usually  to install  packages,  set up
+the environment . ▪Example : RUN  apt-get update  && apt-get install  -y curl  => Update  the package  list
+and  install  the curl  tool  into  the image . f. Main/core directives of Docker
+University of Information Technology and
+Communications5. ENV  directive :
+▪Used  to declare  environment  variables  in the container . ▪Example : ENV  APP_HOME=/usr/local/myapp  => Create  the APP_HOME  environment
+variable . Then  it can  be used  in the Dockerfile  or when  the container  is running
+6. WORKDIR  directive :
+▪Sets the default  working  directory  in the container . Subsequent  commands  (RUN,  CMD,
+COPY ,  …) will be executed  in this directory . ▪Example : dockerfile :
+WORKDIR  /app
+COPY  . . RUN  javac  Main .java
+CMD  ["java" ,  "Main"]Meaning:
+▪Set the default working directory to /app. ▪Copy all source code to /app. ▪Compile the Main.java file.
+
+00:17:06.530 --> 00:22:34.450
+▪When the container runs, execute java
+Main. 2. Packaging Applications with Docker
+a)Introduction
+b)Register & Explore Docker Hub
+c)Install Docker Desktop on Windows
+d)Check Installation & View Docker Commands
+e)Key Elements of Docker
+f)Main/Core Directives of Docker
+g)Create Dockerfile with Basic Directives
+h)Building a Docker image from Dockerfile
+i)Initialize a New Container from the Image
+j)Push the Built Image to Docker Hub
+k)Pull the Image from Docker Hub to Test Run
+University of Information Technology and
+Communications
+
+g. Create Dockerfile with Basic Directives
+❑Example of building a Docker image (containing an Apache web server and a web application)
+1.Create a simple web application:
+Create a folder named appdocker, containing the index.html file, for example with the following content:
+2. Then, in the same folder, create a Dockerfile (without extension) with the content (slide below):<html>
+<body>
+<h1>Welcome to my new app</h1>
+This page is test for my demo Dockerfile.<br />
+Enjoy ... </body>
+</html>
+University of Information Technology and
+Communications
+
+g. Create Dockerfile with Basic Directives
+2) Dockerfile content:
+Where:
+oFROM Directive: specifies the base image that the container will inherit => httpd (latest version) is the
+base image in this example. => httpd is the official base image of Apache HTTP Server (the most popular web server in the world) =>
+helps to quickly launch an Apache web server in a container (used to deploy static web applications
+(HTML, CSS, JS))
+oCOPY Directive: executes the image building process. Docker will copy the local index.html file created
+into the /usr/local/apache2/htdocs/ directory of the image. University of Information Technology and
+CommunicationsFROM httpd:latest
+COPY index.html /usr/local/apache2/htdocs/
+
+2. Packaging Applications with Docker
+a)Introduction
+b)Register & Explore Docker Hub
+c)Install Docker Desktop on Windows
+d)Check Installation & View Docker Commands
+e)Key Elements of Docker
+f)Main/Core Directives of Docker
+g)Create Dockerfile with Basic Directives
+h)Building a Docker image from Dockerfile
+i)Initialize a New Container from the Image
+j)Push the Built Image to Docker Hub
+k)Pull the Image from Docker Hub to Test Run
+University of Information Technology and
+Communications
+
+❑Open  a terminal  (PowerShell)  and  navigate  to the directory  containing  the
+Dockerfile,  then  execute  the docker  build  command  as follows :
+docker  build  -t demobook :v1 . ▪Where :
+✓ The  -t argument  specifies  the name  of the image  and  its tag. In this  example,  the name  of the
+image  is demobook  and  its tag is v1. ✓ The  . (dot)  at the end  of the command  specifies  that  we will use  the files  in the current  directory . => Screenshot  of command  execution :h. Building a Docker image from Dockerfile
+~ package application using Docker
+
+h. Building a Docker image from Dockerfile
+❑From the running screen, we see that building a Docker image consists of
+3 steps:
+1)Docker downloads the specified base image (from Docker Hub) (1)
+2)Docker copies the index.html file into the image (2)
+3)Docker creates and tags the image (3)
+Note :
+▪If during the execution of the docker build command you encounter the message:
+https://registry -1.docker.io/v2/library/httpd/manifests/latest: unauthorized:
+incorrect username or password error, try executing the docker logout command. Then, re -execute the docker build command. h. Building a Docker image from Dockerfile
+❑To check if the image has been created successfully, execute the
+command:
+docker images
+=> Screenshot: created successfully
+
+h.
+
+00:22:34.450 --> 00:28:12.370
+Building a Docker image from Dockerfile
+Note:
+▪To build a Docker image from a .jar file
+(Spring Boot or Java app), the Dockerfile
+will be as follows:
+✓Write Dockerfile (screenshot)
+✓After having the Dockerfile, run the
+image build command: docker build
+-t myapp:1.0 Explanation:
+✓ docker build: image build command
+✓ -t myapp:1.0: attach a tag to the image
+(name is myapp, version 1.0)
+✓ .: dot (.) ~ build context, meaning Docker
+takes the Dockerfile in the current
+directory# Use JDK runtime (only need JRE if not building in the
+container)
+FROM openjdk:17 -jdk-slim
+# Set the working directory in the container
+WORKDIR /app
+# Copy the jar file from the host machine to the
+container
+COPY myapp.jar app.jar
+# Open the application port (e.g., 8080)
+EXPOSE 8080
+# Command to run when the container starts
+ENTRYPOINT ["java", " -jar", "app.jar"]
+
+2. Packaging the application with Docker
+a)Introduction
+b)Register & Explore Docker Hub
+c)Install Docker Desktop on Windows
+d)Check installation & view Docker commands
+e)Key elements of Docker
+f)Main/core directives of Docker
+g)Create Dockerfile with basic directives
+h)Building a Docker image from Dockerfile
+i)Initialize a new Container of the image
+j)Push the built Image to Docker Hub
+k)Pull the Image from Docker Hub to test run
+University of Information Technology and
+Communications
+
+❑After building the Docker image for the application, we initialize a new container to test
+run the application, execute the command:
+docker run -d --name demoapp -p 8080:80 demobook:v1
+oWhere:
+✓-d: ~ container will be in background mode
+✓--name: set container name,
+✓-p port mapping, port 80 of the container will be mapped to port 8080 on the host (our PC)
+✓demobook:v1: name of the image and its tag
+University of Information Technology and
+Communicationsi. Initialize a new Container of the image
+
+❑Check the list of running containers using docker ps
+University of Information Technology and
+Communicationsi. Launch a new container of the image
+=> Everything in the container is isolated,
+but thanks to port mapping, we can
+access the application via the browser at
+http://localhost:8080 => Result: The
+content of the index.html page is
+displayed. Press refresh to test again after stopping the application container. 2. Packaging the application with Docker
+a)Introduction
+b)Register & Explore Docker Hub
+c)Install Docker Desktop on Windows
+d)Check installation & view Docker commands
+e)Key elements of Docker
+f)Main/core directives of Docker
+g)Create Dockerfile with basic directives
+h)Building a Docker image from Dockerfile
+i)Initialize a new Container of the image
+j)Push the built Image to Docker Hub
+k)Pull the Image from Docker Hub to test run
+University of Information Technology and
+Communications
+
+j. Push Image to Docker Hub
+❑To share and use Docker images on other computers, we need to push it to a Docker image registry. Docker Hub is a public, free registry. ▪We have registered for Docker Hub (according to the instructions in the previous slides)
+=> Screenshot:
+University of Information Technology and
+Communications
+
+j. Push Image to Docker Hub
+1. Log in to Docker Hub
+Use the command docker login -u <your dockerhub login> and enter your password. 2. Get Image ID
+Run the docker images command to display a list of images and their IDs. 3. Tag Image for Docker Hub
+Use the image ID to tag: docker tag <image ID> <dockerhub login>/demobook:v1
+4. Push Image to Docker Hub
+Execute the command docker push docker.io/<dockerhub login>/demobook:v1 => The image
+will be uploaded to Docker Hub and can be viewed on the web portal. University of Information Technology and
+Communications=> See the push results in the screenshot (slide below)
+
+❑By default,  the image  pushed  to Docker  Hub
+is in public  mode  – everyone  can  view  it in the
+explorer  and  use  it. => It is possible  to create  a private  image  – only  when
+we confirm  can the image  be used  (refer  to textbook
+[1])j. Push Image to Docker Hub
+
+2.
+
+00:28:12.370 --> 00:33:59.240
+Packaging the application with Docker
+a)Introduction
+b)Register & Explore Docker Hub
+c)Install Docker Desktop on Windows
+d)Check installation & view Docker commands
+e)Key elements of Docker
+f)Main/core directives of Docker
+g)Create Dockerfile with basic directives
+h)Building a Docker image from Dockerfile
+i)Initialize a new Container of the image
+j)Push the built Image to Docker Hub
+k)Pull the Image from Docker Hub to test run
+University of Information Technology and
+Communications
+
+k. Pull the Image from Docker Hub to test run
+Stop the running demobook:v1 container (previously), pull the image from Docker Hub, & test
+run
+1. View the list of running containers: use the docker ps command
+2. Stop the container: run the docker stop <Container ID> command
+3. Pull the Image from Docker Hub: run the docker pull phamthuongdocker/demobook:v1 command
+4. Run the container from the image
+Execute the command docker run -d -p 8080:80
+phamthuongdocker/demobook:v1
+University of Information Technology and
+Communications5. Check the application corresponding to the running container
+Access: http://localhost:8080Done! 2. Package the application with Docker
+a)Introduction
+b)Register & Explore Docker Hub
+c)Install Docker Desktop on Windows
+d)Check installation & view Docker commands
+e)Key elements of Docker
+f)Main/core directives of Docker
+g)Create Dockerfile with basic directives
+h)Building a Docker image from Dockerfile
+i)Initialize a new Container of the image
+j)Push the built Image to Docker Hub
+k)Pull the Image from Docker Hub to test run
+University of Information Technology and
+Communications
+
+3. Docker Compose
+❑Modern applications rarely operate independently, often
+requiring dependent services such as databases or APIs. ▪Docker Compose allows defining and managing multiple
+containers in the same application. ▪Docker Compose uses a YAML format configuration file to
+describe the services, volumes, and networks that make up
+the application
+oThat is, instead of running each complex docker run ... command, we only need to write a docker -compose.yml
+file describing the services (applications), then use the
+command: docker compose up
+o→ Docker will automatically build, create a network, and
+launch all containers. Thus: Docker Compose = Managing multi -container applications
+(Microservices, Database + Backend + Frontend). University of Information Technology and
+Communications
+
+3. Docker Compose
+❑Docker Compose is available in Docker Desktop, we can check with the command:
+docker compose version
+University of Information Technology and
+Communications
+
+3. Docker Compose – Usage Process
+University of Information Technology and
+Communications1. Create a docker -compose.yml file to define the services. 2. Execute Docker compose to start the containers described in the YAML configuration file,
+run the docker -compose up -d command in the directory containing the file
+▪ The –d option runs the containers in detached mode, background mode. ▪ You can verify the running containers with the docker ps command, or through Docker Desktop
+2. Container lifecycle management:
+▪Stop: docker compose down
+▪View log: docker compose logs –f
+▪Restart: docker compose restart
+
+University of Information Technology and
+Communications3. Docker Compose – Student Practice
+Docker Compose for Java web application + MySQL + Tomcat. ❑Practice, discussion:
+▪Suppose we have a Java web application (Maven packages to myapp.war file) and
+want to run it on Tomcat. The application needs to connect to the MySQL database. ➢So we will have 2 services in Docker Compose:
+✓tomcat → contains Java web application (deploy .war). ✓mysql → database backend. ➢What is the content of the docker -compose.yml file???? Summary & Reinforcement Questions
+This lesson has covered the basic concepts of Docker, from creating Dockerfiles and
+images to deploying containers locally and to Docker Hub. We've also explored how to
+use Docker Compose to manage multiple containers.
+
+00:33:59.240 --> 00:34:54.060
+Key Concepts
+•Docker Hub and Docker Desktop
+•Dockerfile and Directives
+•docker build, run, push commands
+•Docker ComposeReinforcement Questions
+•What is Docker Hub? •Which directive defines the base image in a Dockerfile? •Which command creates a Docker image? •Which command publishes an image to Docker Hub? •How does CD differ from continuous deployment? University of Information and Communication
+Technology
+
+University of Information and Communication
+TechnologyPractice, discussion
+JOB #3 & JOB #4 PRACTICE:
+SEE HERE
+
+UNIVERSITY OF INFORMATION AND COMMUNICATION TECHNOLOGY
+FACULTY OF INFORMATION TECHNOLOGY
+THAI NGUYEN, MONTH … YEAR 2025Thank you!

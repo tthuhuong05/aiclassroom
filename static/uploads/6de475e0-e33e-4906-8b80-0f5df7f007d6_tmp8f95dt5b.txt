@@ -1,0 +1,13 @@
+
+    Python Programming Fundamentals
+    
+    Python is a high-level programming language known for its simplicity and readability.
+    In this lesson, we will cover:
+    
+    1. Variables and Data Types
+    2. Control Structures
+    3. Functions and Modules
+    4. Object-Oriented Programming
+    
+    Python is widely used in web development, data science, and artificial intelligence.
+    

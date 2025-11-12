@@ -1,0 +1,127 @@
+WEBVTT
+
+00:00:00.000 --> 00:00:06.000
+Hey there! Ever heard of variables? Well, they're like little containers where you can store your data.
+
+00:00:06.000 --> 00:00:13.130
+Kind of like a jar with a label on it. Today, I'm going to show you how to use them to store text, numbers, and more.
+
+00:00:13.130 --> 00:00:17.160
+Ready? Let's go! So what's a variable?
+
+00:00:17.160 --> 00:00:22.160
+In Java, a variable is a container for storing data values.
+
+00:00:22.160 --> 00:00:26.160
+There are different types of variables depending on what kind of data you're working with.
+
+00:00:26.160 --> 00:00:32.480
+For example, a string stores text and int holds whole numbers and a float stores decimals.
+
+00:00:32.480 --> 00:00:38.480
+A char stores single characters and a Boolean stores either true or false.
+
+00:00:38.480 --> 00:00:42.930
+Let's look at some examples. Here's how you declare a variable.
+
+00:00:42.930 --> 00:00:45.930
+First, you have to tell Java what type of variable it is.
+
+00:00:45.930 --> 00:00:50.930
+Let's create a string variable named Name and assign it the value John.
+
+00:00:50.930 --> 00:00:55.850
+This will print John on the screen.
+
+00:00:55.850 --> 00:01:04.420
+Now, let's do the same with a number. This time, we'll create an integer variable called MyNum and set it to 15.
+
+00:01:04.420 --> 00:01:13.340
+What if you want to change the value? Easy, just reassign it. If MyNum starts at 15, we can update it to 20 like this.
+
+00:01:13.340 --> 00:01:25.340
+But what if you don't want your variable to change? You can make it final, which makes it unchangeable like locking your jar lid.
+
+00:01:25.340 --> 00:01:32.340
+Let's say you want to display a message along with your variable. You can combine text and variables using the plus sign like this.
+
+00:01:32.340 --> 00:01:40.680
+You can also add two variables together. For example, we can combine first name and last name to create a full name.
+
+00:01:40.680 --> 00:01:47.630
+Want to declare multiple variables of the same type at once? Easy.
+
+00:01:47.630 --> 00:01:53.580
+Instead of writing them one by one, you can separate them with commas.
+
+00:01:53.580 --> 00:01:59.500
+You can even assign the same value to multiple variables in one line.
+
+00:01:59.500 --> 00:02:06.500
+For numeric values, the plus character works as a mathematical operator. Notice that we use int or integer variables here.
+
+00:02:06.500 --> 00:02:15.970
+Now let's talk about identifiers. Identifiers are unique names that you give your variables.
+
+00:02:15.970 --> 00:02:21.970
+These names can be short, like X and Y, or more descriptive, like age or total volume.
+
+00:02:21.970 --> 00:02:31.000
+It's a good idea to use descriptive names for your variables. For example, it can be easier to remember what minutes per hour is used for than just M.
+
+00:02:31.000 --> 00:02:39.580
+Here are the rules for naming variables in Java. First, names can contain letters, digits, underscores, and dollar signs.
+
+00:02:39.580 --> 00:02:50.540
+But the name should always begin with a lowercase letter. It is technically possible to start names with uppercase letters, a dollar sign or an underscore.
+
+00:02:50.540 --> 00:02:55.540
+But it is not recommended and can make your code harder to read and maintain.
+
+00:02:55.540 --> 00:03:07.210
+Also, remember, Java is case sensitive. So my var with an uppercase V and my var with a lowercase V are treated as two different variables.
+
+00:03:07.210 --> 00:03:16.900
+Finally, you can't use reserved words like int or Boolean as variable names. Here's a real-life example.
+
+00:03:16.900 --> 00:03:25.900
+Imagine you're storing information about a student. We can use different types of variables to store the name, ID, age, V, and grade.
+
+00:03:25.900 --> 00:03:34.930
+Let's break this down step by step. First, we declare a string variable called student name to store the student's name, and we set it to John Doe.
+
+00:03:34.930 --> 00:03:40.930
+Next, we declare an integer variable student ID to store the student's ID, which is 15.
+
+00:03:40.930 --> 00:03:46.930
+We also store the student's age in another integer variable, student age, and set it to 23.
+
+00:03:46.930 --> 00:03:54.020
+The fee is a decimal, so we use a float variable for student fee, setting it to 75.25.
+
+00:03:54.020 --> 00:04:01.220
+Finally, we store the grade using a char variable called student grade and assign it the value B.
+
+00:04:01.220 --> 00:04:12.430
+Now we can print all this info to the screen. And if you ever need to calculate something like the area of a rectangle, you can store the length and width in variables and multiply them.
+
+00:04:12.430 --> 00:04:21.560
+Step by step. First, we declare an integer variable length and set it to 4. Then we declare another integer width and set it to 6.
+
+00:04:21.560 --> 00:04:28.750
+Now to calculate the area, we multiply length by width and store the result in an integer variable area.
+
+00:04:28.750 --> 00:04:32.750
+Finally, we print the length, width, and the area to the screen.
+
+00:04:32.750 --> 00:04:39.040
+And that's it for Java variables. Now you know how to create, update, and use them in your programs.
+
+00:04:39.040 --> 00:04:45.190
+Thanks for watching! Like and subscribe to get notified about our latest videos.
+
+00:04:45.190 --> 00:04:50.190
+For more coding tips and tricks, keep it locked right here on w3schools.com.
+
+00:04:50.190 --> 00:04:54.190
+Don't forget to try out what you've learned in our interactive editor. Happy coding!

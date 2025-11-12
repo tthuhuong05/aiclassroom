@@ -1,0 +1,42 @@
+
+# Machine Learning và Trí Tuệ Nhân Tạo
+
+## Giới thiệu
+Machine Learning (ML) là một nhánh của Trí Tuệ Nhân Tạo (AI) cho phép máy tính học và cải thiện từ kinh nghiệm mà không cần được lập trình rõ ràng. Đây là công nghệ đang thay đổi cách chúng ta làm việc và sống.
+
+## Các loại Machine Learning
+
+### 1. Supervised Learning (Học có giám sát)
+- Sử dụng dữ liệu có nhãn để huấn luyện mô hình
+- Ví dụ: Phân loại email spam, nhận dạng hình ảnh
+- Thuật toán phổ biến: Linear Regression, SVM, Neural Networks
+
+### 2. Unsupervised Learning (Học không giám sát)
+- Làm việc với dữ liệu không có nhãn
+- Tìm kiếm pattern ẩn trong dữ liệu
+- Ví dụ: Phân nhóm khách hàng, giảm chiều dữ liệu
+
+### 3. Reinforcement Learning (Học tăng cường)
+- Agent học cách đưa ra quyết định thông qua tương tác với môi trường
+- Ví dụ: AI chơi game, robot học đi lại
+
+## Ứng dụng thực tế
+
+### Y tế
+- Chẩn đoán bệnh từ hình ảnh X-ray
+- Phát hiện ung thư sớm
+- Phát triển thuốc mới
+
+### Tài chính
+- Phát hiện gian lận giao dịch
+- Đánh giá rủi ro tín dụng
+- Giao dịch tự động
+
+### Thương mại điện tử
+- Hệ thống gợi ý sản phẩm
+- Phân tích hành vi khách hàng
+- Tối ưu hóa giá cả
+
+## Kết luận
+Machine Learning và AI đang mở ra những cơ hội mới trong mọi lĩnh vực. Việc hiểu và áp dụng những công nghệ này sẽ giúp chúng ta tận dụng tối đa tiềm năng của chúng trong tương lai.
+    

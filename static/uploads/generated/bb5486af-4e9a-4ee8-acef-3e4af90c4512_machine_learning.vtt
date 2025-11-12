@@ -1,0 +1,716 @@
+WEBVTT
+
+00:00:00.000 --> 00:00:03.430
+MATHEMATICS  FOR
+MACHINE LEAR NING
+Marc Peter Deisenroth
+
+00:00:03.430 --> 00:01:21.860
+A. Aldo Faisal
+Cheng Soon On g
+MATHEMATICS FOR MACHINE LEARNING DEISENROTH ET AL.
+The fundamental mathematical tools needed to understand machine
+learning include linear algebra, analytic geometry, matrix decompositions, vector calculus, optimization, probability and statistics. These topics are traditionally taught in disparate courses, making it hard for data science or computer science students, or professionals, to efﬁ  ciently learn the mathematics. This self-contained textbook bridges the gap between mathematical and machine learning texts, introducing the mathematical concepts with a minimum of prerequisites. It uses these concepts to derive four central machine learning methods: linear regression, principal component analysis, Gaussian mixture models and support vector machines. For students and others with a mathematical background, these derivations provide a starting point to machine learning texts. For those learning the mathematics for the ﬁ  rst time, the methods help build intuition and practical experience with applying mathematical concepts. Every chapter includes worked examples and exercises to test understanding. Programming tutorials are offered on the book’s web site.
+MARC PETER DEISENROTH  is Senior Lecturer in Statistical Machine
+Learning at the Department of Computing, Împerial College London.
+
+00:01:21.860 --> 00:04:57.860
+A. ALDO FAISAL  leads the Brain & Behaviour Lab at Imperial College
+London, where he is also Reader in Neurotechnology at the Department of Bioengineering and the Department of Computing. CHENG SOON ONG  is Principal Research Scientist at the Machine Learning
+Research Group, Data61, CSIRO. He is also Adjunct Associate Professor at Australian National University. Cover image courtesy of Daniel Bosma / Moment / Getty Images
+Cover design by Holly Johnson
+Deisenrith et al. 9781108455145 Cover. C M Y K
+
+Contents
+Foreword 1
+Part I Mathematical Foundations 9
+1 Introduction and Motivation 11
+1.1 Finding Words for Intuitions 12
+1.2 Two Ways to Read This Book 13
+1.3 Exercises and Feedback 16
+2 Linear Algebra 17
+2.1 Systems of Linear Equations 19
+2.2 Matrices 22
+2.3 Solving Systems of Linear Equations 27
+2.4 Vector Spaces 35
+2.5 Linear Independence 40
+2.6 Basis and Rank 44
+2.7 Linear Mappings 48
+2.8 Afﬁne Spaces 61
+2.9 Further Reading 63
+Exercises 64
+3 Analytic Geometry 70
+3.1 Norms 71
+3.2 Inner Products 72
+3.3 Lengths and Distances 75
+3.4 Angles and Orthogonality 76
+3.5 Orthonormal Basis 78
+3.6 Orthogonal Complement 79
+3.7 Inner Product of Functions 80
+3.8 Orthogonal Projections 81
+3.9 Rotations 91
+3.10 Further Reading 94
+Exercises 96
+4 Matrix Decompositions 98
+4.1 Determinant and Trace 99
+i
+This material will be published by Cambridge University Press as Mathematics for Machine Learn-
+ingby Marc Peter Deisenroth, A. Aldo Faisal, and Cheng Soon Ong. This pre-publication version is
+free to view and download for personal use only. Not for re-distribution, re-sale or use in deriva-
+tive works. cby M. P. Deisenroth, A. A. Faisal, and C. S. Ong, 2019. https://mml-book.com . ii Contents
+4.2 Eigenvalues and Eigenvectors 105
+4.3 Cholesky Decomposition 114
+4.4 Eigendecomposition and Diagonalization 115
+4.5 Singular Value Decomposition 119
+4.6 Matrix Approximation 129
+4.7 Matrix Phylogeny 134
+4.8 Further Reading 135
+Exercises 137
+5 Vector Calculus 139
+5.1 Differentiation of Univariate Functions 141
+5.2 Partial Differentiation and Gradients 146
+5.3 Gradients of Vector-Valued Functions 149
+5.4 Gradients of Matrices 155
+5.5 Useful Identities for Computing Gradients 158
+5.6 Backpropagation and Automatic Differentiation 159
+5.7 Higher-Order Derivatives 164
+5.8 Linearization and Multivariate Taylor Series 165
+5.9 Further Reading 170
+Exercises 170
+6 Probability and Distributions 172
+6.1 Construction of a Probability Space 172
+6.2 Discrete and Continuous Probabilities 178
+6.3 Sum Rule, Product Rule, and Bayes’ Theorem 183
+6.4 Summary Statistics and Independence 186
+6.5 Gaussian Distribution 197
+6.6 Conjugacy and the Exponential Family 205
+6.7 Change of Variables/Inverse Transform 214
+6.8 Further Reading 221
+Exercises 222
+7 Continuous Optimization 225
+7.1 Optimization Using Gradient Descent 227
+7.2 Constrained Optimization and Lagrange Multipliers 233
+7.3 Convex Optimization 236
+7.4 Further Reading 246
+Exercises 247
+Part II Central Machine Learning Problems 249
+8 When Models Meet Data 251
+8.1 Data, Models, and Learning 251
+8.2 Empirical Risk Minimization 258
+8.3 Parameter Estimation 265
+8.4 Probabilistic Modeling and Inference 272
+8.5 Directed Graphical Models 278
+Draft (2019-10-27) of “Mathematics for Machine Learning”. Feedback: https://mml-book.com .
+
+00:04:57.860 --> 00:09:18.430
+Contents iii
+8.6 Model Selection 283
+9 Linear Regression 289
+9.1 Problem Formulation 291
+9.2 Parameter Estimation 292
+9.3 Bayesian Linear Regression 303
+9.4 Maximum Likelihood as Orthogonal Projection 313
+9.5 Further Reading 315
+10 Dimensionality Reduction with Principal Component Analysis 317
+10.1 Problem Setting 318
+10.2 Maximum Variance Perspective 320
+10.3 Projection Perspective 325
+10.4 Eigenvector Computation and Low-Rank Approximations 333
+10.5 PCA in High Dimensions 335
+10.6 Key Steps of PCA in Practice 336
+10.7 Latent Variable Perspective 339
+10.8 Further Reading 343
+11 Density Estimation with Gaussian Mixture Models 348
+11.1 Gaussian Mixture Model 349
+11.2 Parameter Learning via Maximum Likelihood 350
+11.3 EM Algorithm 360
+11.4 Latent-Variable Perspective 363
+11.5 Further Reading 368
+12 Classiﬁcation with Support Vector Machines 370
+12.1 Separating Hyperplanes 372
+12.2 Primal Support Vector Machine 374
+12.3 Dual Support Vector Machine 383
+12.4 Kernels 388
+12.5 Numerical Solution 390
+12.6 Further Reading 392
+References 395
+Index 407
+c2019 M. P. Deisenroth, A. A. Faisal, C. S. Ong. To be published by Cambridge University Press. Foreword
+Machine learning is the latest in a long line of attempts to distill human
+knowledge and reasoning into a form that is suitable for constructing ma-
+chines and engineering automated systems. As machine learning becomes
+more ubiquitous and its software packages become easier to use, it is nat-
+ural and desirable that the low-level technical details are abstracted away
+and hidden from the practitioner. However, this brings with it the danger
+that a practitioner becomes unaware of the design decisions and, hence,
+the limits of machine learning algorithms. The enthusiastic practitioner who is interested to learn more about the
+magic behind successful machine learning algorithms currently faces a
+daunting set of pre-requisite knowledge:
+Programming languages and data analysis tools
+Large-scale computation and the associated frameworks
+Mathematics and statistics and how machine learning builds on it
+At universities, introductory courses on machine learning tend to spend
+early parts of the course covering some of these pre-requisites. For histori-
+cal reasons, courses in machine learning tend to be taught in the computer
+science department, where students are often trained in the ﬁrst two areas
+of knowledge, but not so much in mathematics and statistics. Current machine learning textbooks primarily focus on machine learn-
+ing algorithms and methodologies and assume that the reader is com-
+petent in mathematics and statistics. Therefore, these books only spend
+one or two chapters of background mathematics, either at the beginning
+of the book or as appendices. We have found many people who want to
+delve into the foundations of basic machine learning methods who strug-
+gle with the mathematical knowledge required to read a machine learning
+textbook. Having taught undergraduate and graduate courses at universi-
+ties, we ﬁnd that the gap between high school mathematics and the math-
+ematics level required to read a standard machine learning textbook is too
+big for many people. This book brings the mathematical foundations of basic machine learn-
+ing concepts to the fore and collects the information in a single place so
+that this skills gap is narrowed or even closed. 1
+This material will be published by Cambridge University Press as Mathematics for Machine Learn-
+ingby Marc Peter Deisenroth, A. Aldo Faisal, and Cheng Soon Ong. This pre-publication version is
+free to view and download for personal use only. Not for re-distribution, re-sale or use in deriva-
+tive works. cby M. P. Deisenroth, A. A. Faisal, and C. S. Ong, 2019. https://mml-book.com . 2 Foreword
+Why Another Book on Machine Learning? Machine learning builds upon the language of mathematics to express
+concepts that seem intuitively obvious but that are surprisingly difﬁcult
+to formalize.
+
+00:09:18.430 --> 00:13:36.430
+Once formalized properly, we can gain insights into the task
+we want to solve. One common complaint of students of mathematics
+around the globe is that the topics covered seem to have little relevance
+to practical problems. We believe that machine learning is an obvious and
+direct motivation for people to learn mathematics. This book is intended to be a guidebook to the vast mathematical lit-
+erature that forms the foundations of modern machine learning. We mo- “Math is linked in
+the popular mind
+with phobia and
+anxiety. You’d think
+we’re discussing
+spiders.” (Strogatz,
+2014, page 281)tivate the need for mathematical concepts by directly pointing out their
+usefulness in the context of fundamental machine learning problems. In
+the interest of keeping the book short, many details and more advanced
+concepts have been left out. Equipped with the basic concepts presented
+here, and how they ﬁt into the larger context of machine learning, the
+reader can ﬁnd numerous resources for further study, which we provide at
+the end of the respective chapters. For readers with a mathematical back-
+ground, this book provides a brief but precisely stated glimpse of machine
+learning. In contrast to other books that focus on methods and models
+of machine learning (MacKay, 2003; Bishop, 2006; Alpaydin, 2010; Bar-
+ber, 2012; Murphy, 2012; Shalev-Shwartz and Ben-David, 2014; Rogers
+and Girolami, 2016) or programmatic aspects of machine learning (M ¨uller
+and Guido, 2016; Raschka and Mirjalili, 2017; Chollet and Allaire, 2018),
+we provide only four representative examples of machine learning algo-
+rithms. Instead, we focus on the mathematical concepts behind the models
+themselves. We hope that readers will be able to gain a deeper understand-
+ing of the basic questions in machine learning and connect practical ques-
+tions arising from the use of machine learning with fundamental choices
+in the mathematical model. We do not aim to write a classical machine learning book. Instead, our
+intention is to provide the mathematical background, applied to four cen-
+tral machine learning problems, to make it easier to read other machine
+learning textbooks. Who Is the Target Audience? As applications of machine learning become widespread in society, we
+believe that everybody should have some understanding of its underlying
+principles. This book is written in an academic mathematical style, which
+enables us to be precise about the concepts behind machine learning. We
+encourage readers unfamiliar with this seemingly terse style to persevere
+and to keep the goals of each topic in mind. We sprinkle comments and
+remarks throughout the text, in the hope that it provides useful guidance
+with respect to the big picture. The book assumes the reader to have mathematical knowledge commonly
+Draft (2019-10-27) of “Mathematics for Machine Learning”. Feedback: https://mml-book.com . Foreword 3
+covered in high school mathematics and physics. For example, the reader
+should have seen derivatives and integrals before, and geometric vectors
+in two or three dimensions. Starting from there, we generalize these con-
+cepts. Therefore, the target audience of the book includes undergraduate
+university students, evening learners and learners participating in online
+machine learning courses. In analogy to music, there are three types of interaction that people
+have with machine learning:
+Astute Listener The democratization of machine learning by the pro-
+vision of open-source software, online tutorials and cloud-based tools al-
+lows users to not worry about the speciﬁcs of pipelines. Users can focus on
+extracting insights from data using off-the-shelf tools. This enables non-
+tech-savvy domain experts to beneﬁt from machine learning. This is sim-
+ilar to listening to music; the user is able to choose and discern between
+different types of machine learning, and beneﬁts from it.
+
+00:13:36.430 --> 00:17:50.570
+More experi-
+enced users are like music critics, asking important questions about the
+application of machine learning in society such as ethics, fairness, and pri-
+vacy of the individual. We hope that this book provides a foundation for
+thinking about the certiﬁcation and risk management of machine learning
+systems, and allows them to use their domain expertise to build better
+machine learning systems. Experienced Artist Skilled practitioners of machine learning can plug
+and play different tools and libraries into an analysis pipeline. The stereo-
+typical practitioner would be a data scientist or engineer who understands
+machine learning interfaces and their use cases, and is able to perform
+wonderful feats of prediction from data. This is similar to a virtuoso play-
+ing music, where highly skilled practitioners can bring existing instru-
+ments to life and bring enjoyment to their audience. Using the mathe-
+matics presented here as a primer, practitioners would be able to under-
+stand the beneﬁts and limits of their favorite method, and to extend and
+generalize existing machine learning algorithms. We hope that this book
+provides the impetus for more rigorous and principled development of
+machine learning methods. Fledgling Composer As machine learning is applied to new domains,
+developers of machine learning need to develop new methods and extend
+existing algorithms. They are often researchers who need to understand
+the mathematical basis of machine learning and uncover relationships be-
+tween different tasks. This is similar to composers of music who, within
+the rules and structure of musical theory, create new and amazing pieces. We hope this book provides a high-level overview of other technical books
+for people who want to become composers of machine learning. There is
+a great need in society for new researchers who are able to propose and
+explore novel approaches for attacking the many challenges of learning
+from data. c2019 M. P. Deisenroth, A. A. Faisal, C. S. Ong. To be published by Cambridge University Press. 4 Foreword
+Acknowledgments
+We are grateful to many people who looked at early drafts of the book and
+suffered through painful expositions of concepts. We tried to implement
+their ideas that we did not vehemently disagree with. We would like to
+especially acknowledge Christfried Webers for his careful reading of many
+parts of the book, and his detailed suggestions on structure and presen-
+tation. Many friends and colleagues have also been kind enough to pro-
+vide their time and energy on different versions of each chapter. We have
+been lucky to beneﬁt from the generosity of the online community, who
+have suggested improvements via github.com , which greatly improved
+the book. The following people have found bugs, proposed clariﬁcations and sug-
+gested relevant literature, either via github.com or personal communica-
+tion. Their names are sorted alphabetically. Abdul-Ganiy Usman
+Adam Gaier
+Adele Jackson
+Aditya Menon
+Alasdair Tran
+Aleksandar Krnjaic
+Alexander Makrigiorgos
+Alfredo Canziani
+Ali Shafti
+Amr Khalifa
+Andrew Tanggara
+Angus Gruen
+Antal A. Buss
+Antoine Toisoul Le Cann
+Areg Sarvazyan
+Artem Artemev
+Artyom Stepanov
+Bill Kromydas
+Bob Williamson
+Boon Ping Lim
+Chao Qu
+Cheng Li
+Chris Sherlock
+Christopher Gray
+Daniel McNamara
+Daniel Wood
+Darren Siegel
+David Johnston
+Dawei ChenEllen Broad
+Fengkuangtian Zhu
+Fiona Condon
+Georgios Theodorou
+He Xin
+Irene Raissa Kameni
+Jakub Nabaglo
+James Hensman
+Jamie Liu
+Jean Kaddour
+Jean-Paul Ebejer
+Jerry Qiang
+Jitesh Sindhare
+John Lloyd
+Jonas Ngnawe
+Jon Martin
+Justin Hsi
+Kai Arulkumaran
+Kamil Dreczkowski
+Lily Wang
+Lionel Tondji Ngoupeyou
+Lydia Kn ¨uﬁng
+Mahmoud Aslan
+Mark Hartenstein
+Mark van der Wilk
+Markus Hegland
+Martin Hewing
+Matthew Alger
+Matthew Lee
+Draft (2019-10-27) of “Mathematics for Machine Learning”. Feedback: https://mml-book.com .
+
+00:17:50.570 --> 00:22:10.280
+Foreword 5
+Maximus McCann
+Mengyan Zhang
+Michael Bennett
+Michael Pedersen
+Minjeong Shin
+Mohammad Malekzadeh
+Naveen Kumar
+Nico Montali
+Oscar Armas
+Patrick Henriksen
+Patrick Wieschollek
+Pattarawat Chormai
+Paul Kelly
+Petros Christodoulou
+Piotr Januszewski
+Pranav Subramani
+Quyu Kong
+Ragib Zaman
+Rui Zhang
+Ryan-Rhys Grifﬁths
+Salomon Kabongo
+Samuel Ogunmola
+Sandeep Mavadia
+Sarvesh Nikumbh
+Sebastian Raschka
+Senanayak Sesh Kumar Karri
+Seung-Heon Baek
+Shahbaz ChaudharyShakir Mohamed
+Shawn Berry
+Sheikh Abdul Raheem Ali
+Sheng Xue
+Sridhar Thiagarajan
+Syed Nouman Hasany
+Szymon Brych
+Thomas B ¨uhler
+Timur Sharapov
+Tom Melamed
+Vincent Adam
+Vincent Dutordoir
+Vu Minh
+Wasim Aftab
+Wen Zhi
+Wojciech Stokowiec
+Xiaonan Chong
+Xiaowei Zhang
+Yazhou Hao
+Yicheng Luo
+Young Lee
+Yu Lu
+Yun Cheng
+Yuxiao Huang
+Zac Cranko
+Zijian Cao
+Zoe Nolan
+Contributors through github, whose real names were not listed on their
+github proﬁle, are:
+SamDataMad
+bumptiousmonkey
+idoamihai
+deepakiiminsad
+HorizonP
+cs-maillist
+kudo23empet
+victorBigand
+17SKYE
+jessjing1995
+We are also very grateful to Parameswaran Raman and the many anony-
+mous reviewers, organized by Cambridge University Press, who read one
+or more chapters of earlier versions of the manuscript, and provided con-
+structive criticism that led to considerable improvements. A special men-
+tion goes to Dinesh Singh Negi, our LATEX support, for detailed and prompt
+advice about LATEX-related issues. Last but not least, we are very grateful
+to our editor Lauren Cowles, who has been patiently guiding us through
+the gestation process of this book. c2019 M. P. Deisenroth, A. A. Faisal, C. S. Ong. To be published by Cambridge University Press. 6 Foreword
+Table of Symbols
+Symbol Typical meaning
+a;b;c;;; Scalars are lowercase
+x;y;z Vectors are bold lowercase
+A;B;C Matrices are bold uppercase
+x>;A>Transpose of a vector or matrix
+A 1Inverse of a matrix
+hx;yi Inner product of xandy
+x>y Dot product of xandy
+B= (b1;b2;b3)(Ordered) tuple
+B= [b1;b2;b3]Matrix of column vectors stacked horizontally
+B=fb1;b2;b3gSet of vectors (unordered)
+Z;N Integers and natural numbers, respectively
+R;C Real and complex numbers, respectively
+Rnn-dimensional vector space of real numbers
+8x Universal quantiﬁer: for all x
+9x Existential quantiﬁer: there exists x
+a:=b a is deﬁned as b
+a=:b b is deﬁned as a
+a/b a is proportional to b, i.e.,a=constantb
+gf Function composition: “ gafterf”
+() If and only if
+=) Implies
+A;C Sets
+a2A ais an element of the set A
+; Empty set
+D Number of dimensions; indexed by d= 1;:::;D
+N Number of data points; indexed by n= 1;:::;N
+Im Identity matrix of size mm
+0m;n Matrix of zeros of size mn
+1m;n Matrix of ones of size mn
+ei Standard/canonical vector (where iis the component that is 1)
+dim Dimensionality of vector space
+rk(A) Rank of matrix A
+Im() Image of linear mapping 
+ker() Kernel (null space) of a linear mapping 
+span[b1] Span (generating set) of b1
+tr(A) Trace ofA
+det(A) Determinant of A
+jj Absolute value or determinant (depending on context)
+kk Norm; Euclidean unless speciﬁed
+ Eigenvalue or Lagrange multiplier
+E Eigenspace corresponding to eigenvalue 
+Draft (2019-10-27) of “Mathematics for Machine Learning”. Feedback: https://mml-book.com . Foreword 7
+Symbol Typical meaning
+ Parameter vector
+@f
+@xPartial derivative of fwith respect to x
+df
+dxTotal derivative of fwith respect to x
+r Gradient
+L Lagrangian
+L Negative log-likelihood n
+k
+Binomial coefﬁcient, nchoosek
+VX[x] Variance ofxwith respect to the random variable X
+EX[x] Expectation of xwith respect to the random variable X
+CovX;Y[x;y]Covariance between xandy. X? ?YjZ X is conditionally independent of YgivenZ
+Xp Random variable Xis distributed according to p
+N ;
+Gaussian distribution with mean and covariance 
+Ber() Bernoulli distribution with parameter 
+Bin(N;) Binomial distribution with parameters N;
+Beta(;) Beta distribution with parameters ;
+Table of Abbreviations and Acronyms
+Acronym Meaning
+e.g.
+
+00:22:10.280 --> 00:26:36.850
+Exempli gratia (Latin: for example)
+GMM Gaussian mixture model
+i.e. Id est (Latin: this means)
+i.i.d. Independent, identically distributed
+MAP Maximum a posteriori
+MLE Maximum likelihood estimation/estimator
+ONB Orthonormal basis
+PCA Principal component analysis
+PPCA Probabilistic principal component analysis
+REF Row-echelon form
+SPD Symmetric, positive deﬁnite
+SVM Support vector machine
+c2019 M. P. Deisenroth, A. A. Faisal, C. S. Ong. To be published by Cambridge University Press. Part I
+Mathematical Foundations
+9
+This material will be published by Cambridge University Press as Mathematics for Machine Learn-
+ingby Marc Peter Deisenroth, A. Aldo Faisal, and Cheng Soon Ong. This pre-publication version is
+free to view and download for personal use only. Not for re-distribution, re-sale or use in deriva-
+tive works. cby M. P. Deisenroth, A. A. Faisal, and C. S. Ong, 2019. https://mml-book.com . 1
+Introduction and Motivation
+Machine learning is about designing algorithms that automatically extract
+valuable information from data. The emphasis here is on “automatic”, i.e.,
+machine learning is concerned about general-purpose methodologies that
+can be applied to many datasets, while producing something that is mean-
+ingful. There are three concepts that are at the core of machine learning:
+data, a model, and learning. Since machine learning is inherently data driven, data is at the core data
+of machine learning. The goal of machine learning is to design general-
+purpose methodologies to extract valuable patterns from data, ideally
+without much domain-speciﬁc expertise. For example, given a large corpus
+of documents (e.g., books in many libraries), machine learning methods
+can be used to automatically ﬁnd relevant topics that are shared across
+documents (Hoffman et al., 2010). To achieve this goal, we design mod-
+elsthat are typically related to the process that generates data, similar to model
+the dataset we are given. For example, in a regression setting, the model
+would describe a function that maps inputs to real-valued outputs. To
+paraphrase Mitchell (1997): A model is said to learn from data if its per-
+formance on a given task improves after the data is taken into account. The goal is to ﬁnd good models that generalize well to yet unseen data,
+which we may care about in the future. Learning can be understood as a learning
+way to automatically ﬁnd patterns and structure in data by optimizing the
+parameters of the model. While machine learning has seen many success stories, and software is
+readily available to design and train rich and ﬂexible machine learning
+systems, we believe that the mathematical foundations of machine learn-
+ing are important in order to understand fundamental principles upon
+which more complicated machine learning systems are built. Understand-
+ing these principles can facilitate creating new machine learning solutions,
+understanding and debugging existing approaches, and learning about the
+inherent assumptions and limitations of the methodologies we are work-
+ing with. 11
+This material will be published by Cambridge University Press as Mathematics for Machine Learn-
+ingby Marc Peter Deisenroth, A. Aldo Faisal, and Cheng Soon Ong. This pre-publication version is
+free to view and download for personal use only. Not for re-distribution, re-sale or use in deriva-
+tive works. cby M. P. Deisenroth, A. A. Faisal, and C. S. Ong, 2019. https://mml-book.com . 12 Introduction and Motivation
+1.1 Finding Words for Intuitions
+A challenge we face regularly in machine learning is that concepts and
+words are slippery, and a particular component of the machine learning
+system can be abstracted to different mathematical concepts. For example,
+the word “algorithm” is used in at least two different senses in the con-
+text of machine learning. In the ﬁrst sense, we use the phrase “machine
+learning algorithm” to mean a system that makes predictions based on in-
+put data. We refer to these algorithms as predictors .
+
+00:26:36.850 --> 00:31:18.420
+In the second sense, predictor
+we use the exact same phrase “machine learning algorithm” to mean a
+system that adapts some internal parameters of the predictor so that it
+performs well on future unseen input data. Here we refer to this adapta-
+tion as training a system. training
+This book will not resolve the issue of ambiguity, but we want to high-
+light upfront that, depending on the context, the same expressions can
+mean different things. However, we attempt to make the context sufﬁ-
+ciently clear to reduce the level of ambiguity. The ﬁrst part of this book introduces the mathematical concepts and
+foundations needed to talk about the three main components of a machine
+learning system: data, models, and learning. We will brieﬂy outline these
+components here, and we will revisit them again in Chapter 8 once we
+have discussed the necessary mathematical concepts. While not all data is numerical, it is often useful to consider data in
+a number format. In this book, we assume that data has already been
+appropriately converted into a numerical representation suitable for read-
+ing into a computer program. Therefore, we think of data as vectors. As data as vectors
+another illustration of how subtle words are, there are (at least) three
+different ways to think about vectors: a vector as an array of numbers (a
+computer science view), a vector as an arrow with a direction and magni-
+tude (a physics view), and a vector as an object that obeys addition and
+scaling (a mathematical view). Amodel is typically used to describe a process for generating data, sim- model
+ilar to the dataset at hand. Therefore, good models can also be thought
+of as simpliﬁed versions of the real (unknown) data-generating process,
+capturing aspects that are relevant for modeling the data and extracting
+hidden patterns from it. A good model can then be used to predict what
+would happen in the real world without performing real-world experi-
+ments. We now come to the crux of the matter, the learning component of learning
+machine learning. Assume we are given a dataset and a suitable model. Training the model means to use the data available to optimize some pa-
+rameters of the model with respect to a utility function that evaluates how
+well the model predicts the training data. Most training methods can be
+thought of as an approach analogous to climbing a hill to reach its peak. In this analogy, the peak of the hill corresponds to a maximum of some
+Draft (2019-10-27) of “Mathematics for Machine Learning”. Feedback: https://mml-book.com . 1.2 Two Ways to Read This Book 13
+desired performance measure. However, in practice, we are interested in
+the model to perform well on unseen data. Performing well on data that
+we have already seen (training data) may only mean that we found a
+good way to memorize the data. However, this may not generalize well to
+unseen data, and, in practical applications, we often need to expose our
+machine learning system to situations that it has not encountered before. Let us summarize the main concepts of machine learning that we cover
+in this book:
+We represent data as vectors. We choose an appropriate model, either using the probabilistic or opti-
+mization view. We learn from available data by using numerical optimization methods
+with the aim that the model performs well on data not used for training. 1.2 Two Ways to Read This Book
+We can consider two strategies for understanding the mathematics for
+machine learning:
+Bottom-up: Building up the concepts from foundational to more ad-
+vanced. This is often the preferred approach in more technical ﬁelds,
+such as mathematics. This strategy has the advantage that the reader
+at all times is able to rely on their previously learned concepts. Unfor-
+tunately, for a practitioner many of the foundational concepts are not
+particularly interesting by themselves, and the lack of motivation means
+that most foundational deﬁnitions are quickly forgotten.
+
+00:31:18.420 --> 00:35:49.710
+Top-down: Drilling down from practical needs to more basic require-
+ments. This goal-driven approach has the advantage that the readers
+know at all times why they need to work on a particular concept, and
+there is a clear path of required knowledge. The downside of this strat-
+egy is that the knowledge is built on potentially shaky foundations, and
+the readers have to remember a set of words that they do not have any
+way of understanding. We decided to write this book in a modular way to separate foundational
+(mathematical) concepts from applications so that this book can be read
+in both ways. The book is split into two parts, where Part I lays the math-
+ematical foundations and Part II applies the concepts from Part I to a set
+of fundamental machine learning problems, which form four pillars of
+machine learning as illustrated in Figure 1.1: regression, dimensionality
+reduction, density estimation, and classiﬁcation. Chapters in Part I mostly
+build upon the previous ones, but it is possible to skip a chapter and work
+backward if necessary. Chapters in Part II are only loosely coupled and
+can be read in any order. There are many pointers forward and backward
+c2019 M. P. Deisenroth, A. A. Faisal, C. S. Ong. To be published by Cambridge University Press. 14 Introduction and Motivation
+Figure 1.1 The
+foundations and
+four pillars of
+machine learning. Classiﬁcation
+Density
+Estimation
+Regression
+Dimensionality
+Reduction
+Machine Learning
+Vector Calculus Probability & Distributions Optimization
+Analytic Geometry Matrix Decomposition Linear Algebra
+between the two parts of the book to link mathematical concepts with
+machine learning algorithms. Of course there are more than two ways to read this book. Most readers
+learn using a combination of top-down and bottom-up approaches, some-
+times building up basic mathematical skills before attempting more com-
+plex concepts, but also choosing topics based on applications of machine
+learning. Part I Is about Mathematics
+The four pillars of machine learning we cover in this book (see Figure 1.1)
+require a solid mathematical foundation, which is laid out in Part I. We represent numerical data as vectors and represent a table of such
+data as a matrix. The study of vectors and matrices is called linear algebra ,
+which we introduce in Chapter 2. The collection of vectors as a matrix is linear algebra
+also described there. Given two vectors representing two objects in the real world, we want
+to make statements about their similarity. The idea is that vectors that
+are similar should be predicted to have similar outputs by our machine
+learning algorithm (our predictor). To formalize the idea of similarity be-
+tween vectors, we need to introduce operations that take two vectors as
+input and return a numerical value representing their similarity. The con-
+struction of similarity and distances is central to analytic geometry and is analytic geometry
+discussed in Chapter 3. In Chapter 4, we introduce some fundamental concepts about matri-
+ces and matrix decomposition . Some operations on matrices are extremely matrix
+decomposition useful in machine learning, and they allow for an intuitive interpretation
+of the data and more efﬁcient learning. We often consider data to be noisy observations of some true underly-
+ing signal. We hope that by applying machine learning we can identify the
+signal from the noise. This requires us to have a language for quantify-
+ing what “noise” means. We often would also like to have predictors that
+Draft (2019-10-27) of “Mathematics for Machine Learning”. Feedback: https://mml-book.com . 1.2 Two Ways to Read This Book 15
+allow us to express some sort of uncertainty, e.g., to quantify the conﬁ-
+dence we have about the value of the prediction at a particular test data
+point. Quantiﬁcation of uncertainty is the realm of probability theory and probability theory
+is covered in Chapter 6.
+
+00:35:49.710 --> 00:40:04.280
+To train machine learning models, we typically ﬁnd parameters that
+maximize some performance measure. Many optimization techniques re-
+quire the concept of a gradient, which tells us the direction in which to
+search for a solution. Chapter 5 is about vector calculus and details the vector calculus
+concept of gradients, which we subsequently use in Chapter 7, where we
+talk about optimization to ﬁnd maxima/minima of functions. optimization
+Part II Is about Machine Learning
+The second part of the book introduces four pillars of machine learning
+as shown in Figure 1.1. We illustrate how the mathematical concepts in-
+troduced in the ﬁrst part of the book are the foundation for each pillar. Broadly speaking, chapters are ordered by difﬁculty (in ascending order). In Chapter 8, we restate the three components of machine learning
+(data, models, and parameter estimation) in a mathematical fashion. In
+addition, we provide some guidelines for building experimental set-ups
+that guard against overly optimistic evaluations of machine learning sys-
+tems. Recall that the goal is to build a predictor that performs well on
+unseen data. In Chapter 9, we will have a close look at linear regression , where our linear regression
+objective is to ﬁnd functions that map inputs x2RDto corresponding ob-
+served function values y2R, which we can interpret as the labels of their
+respective inputs. We will discuss classical model ﬁtting (parameter esti-
+mation) via maximum likelihood and maximum a posteriori estimation,
+as well as Bayesian linear regression, where we integrate the parameters
+out instead of optimizing them. Chapter 10 focuses on dimensionality reduction , the second pillar in Fig- dimensionality
+reduction ure 1.1, using principal component analysis. The key objective of dimen-
+sionality reduction is to ﬁnd a compact, lower-dimensional representation
+of high-dimensional data x2RD, which is often easier to analyze than
+the original data. Unlike regression, dimensionality reduction is only con-
+cerned about modeling the data – there are no labels associated with a
+data pointx. In Chapter 11, we will move to our third pillar: density estimation . The density estimation
+objective of density estimation is to ﬁnd a probability distribution that de-
+scribes a given dataset. We will focus on Gaussian mixture models for this
+purpose, and we will discuss an iterative scheme to ﬁnd the parameters of
+this model. As in dimensionality reduction, there are no labels associated
+with the data points x2RD. However, we do not seek a low-dimensional
+representation of the data. Instead, we are interested in a density model
+that describes the data. Chapter 12 concludes the book with an in-depth discussion of the fourth
+c2019 M. P. Deisenroth, A. A. Faisal, C. S. Ong. To be published by Cambridge University Press. 16 Introduction and Motivation
+pillar: classiﬁcation . We will discuss classiﬁcation in the context of support classiﬁcation
+vector machines. Similar to regression (Chapter 9), we have inputs xand
+corresponding labels y. However, unlike regression, where the labels were
+real-valued, the labels in classiﬁcation are integers, which requires special
+care. 1.3 Exercises and Feedback
+We provide some exercises in Part I, which can be done mostly by pen and
+paper. For Part II, we provide programming tutorials (jupyter notebooks)
+to explore some properties of the machine learning algorithms we discuss
+in this book. We appreciate that Cambridge University Press strongly supports our
+aim to democratize education and learning by making this book freely
+available for download at
+https://mml-book.com
+where tutorials, errata, and additional materials can be found. Mistakes
+can be reported and feedback provided using the preceding URL. Draft (2019-10-27) of “Mathematics for Machine Learning”. Feedback: https://mml-book.com .
+
+00:40:04.280 --> 00:41:05.140
+2
+Linear Algebra
+When formalizing intuitive concepts, a common approach is to construct a
+set of objects (symbols) and a set of rules to manipulate these objects. This
+is known as an algebra . Linear algebra is the study of vectors and certain algebra
+rules to manipulate vectors. The vectors many of us know from school are
+called “geometric vectors”, which are usually denoted by a small arrow
+above the letter, e.g.,  !xand  !y. In this book, we discuss more general
+concepts of vectors and use a bold letter to represent them, e.g., xandy. In general, vectors are special objects that can be added together and
+multiplied by scalars to produce another object of the same kind. From
+an abstract mathematical viewpoint, any object that satisﬁes these two
+properties can be considered a vector. Here are some examples of such
+vector objects:

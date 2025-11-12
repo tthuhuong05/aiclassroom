@@ -1,0 +1,266 @@
+<!-- Create new file: templates/detailed_exam_results.html -->
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kết quả chi tiết bài thi</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .question-card {
+            border-left: 4px solid #007bff;
+            margin-bottom: 2rem;
+        }
+        .question-card.correct {
+            border-left-color: #28a745;
+        }
+        .question-card.incorrect {
+            border-left-color: #dc3545;
+        }
+        .explanation-section {
+            background-color: #f8f9fa;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+        .key-concepts {
+            background-color: #e3f2fd;
+            border-radius: 0.25rem;
+            padding: 0.5rem;
+        }
+        .study-tips {
+            background-color: #fff3cd;
+            border-radius: 0.25rem;
+            padding: 0.5rem;
+        }
+        .summary-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .stat-item {
+            text-align: center;
+            padding: 1rem;
+        }
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid py-4">
+        <!-- Summary Section -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card summary-card">
+                    <div class="card-body">
+                        <h2 class="card-title text-center mb-4">
+                            <i class="fas fa-chart-line me-2"></i>
+                            Kết quả chi tiết bài thi
+                        </h2>
+                        
+                        <div class="row text-center">
+                            <div class="col-md-3 stat-item">
+                                <div class="stat-number">{{ accuracy }}%</div>
+                                <div>Độ chính xác</div>
+                            </div>
+                            <div class="col-md-3 stat-item">
+                                <div class="stat-number">{{ correct_count }}/{{ total_questions }}</div>
+                                <div>Câu đúng</div>
+                            </div>
+                            <div class="col-md-3 stat-item">
+                                <div class="stat-number">{{ summary.avg_time_per_question|round(0) }}ms</div>
+                                <div>Thời gian trung bình</div>
+                            </div>
+                            <div class="col-md-3 stat-item">
+                                <div class="stat-number">{{ summary.question_type_breakdown.mcq + summary.question_type_breakdown.essay + summary.question_type_breakdown.oral }}</div>
+                                <div>Tổng câu hỏi</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Question Breakdown -->
+        <div class="row">
+            <div class="col-12">
+                <h3 class="mb-4">
+                    <i class="fas fa-list-alt me-2"></i>
+                    Chi tiết từng câu hỏi
+                </h3>
+                
+                {% for result in results %}
+                <div class="card question-card {{ 'correct' if result.is_correct else 'incorrect' }}">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-question-circle me-2"></i>
+                            Câu {{ loop.index }}
+                            <span class="badge bg-{{ 'success' if result.is_correct else 'danger' }} ms-2">
+                                {{ 'Đúng' if result.is_correct else 'Sai' }}
+                            </span>
+                        </h5>
+                        <div>
+                            <span class="badge bg-info me-1">{{ result.question_type.upper() }}</span>
+                            <span class="badge bg-secondary">{{ result.difficulty }}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="card-body">
+                        <!-- Question -->
+                        <div class="mb-3">
+                            <h6><strong>Câu hỏi:</strong></h6>
+                            <p class="mb-0">{{ result.question }}</p>
+                        </div>
+
+                        <!-- MCQ Options -->
+                        {% if result.question_type == 'mcq' and result.options %}
+                        <div class="mb-3">
+                            <h6><strong>Các lựa chọn:</strong></h6>
+                            <div class="row">
+                                {% for option in result.options %}
+                                <div class="col-md-6 mb-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" disabled
+                                               {% if loop.index0 == result.correct_index %}checked{% endif %}>
+                                        <label class="form-check-label 
+                                               {% if loop.index0 == result.correct_index %}text-success fw-bold{% endif %}
+                                               {% if result.student_answer == option and not result.is_correct %}text-danger{% endif %}">
+                                            {{ chr(65 + loop.index0) }}. {{ option }}
+                                        </label>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Student Answer -->
+                        <div class="mb-3">
+                            <h6><strong>Câu trả lời của bạn:</strong></h6>
+                            <div class="alert alert-{{ 'success' if result.is_correct else 'danger' }}">
+                                {{ result.student_answer or 'Không có câu trả lời' }}
+                            </div>
+                        </div>
+
+                        <!-- AI Explanation -->
+                        {% if result.ai_explanation %}
+                        <div class="explanation-section">
+                            <h6><i class="fas fa-robot me-2"></i><strong>Giải thích AI:</strong></h6>
+                            
+                            <!-- Basic Explanation -->
+                            <div class="mb-3">
+                                <p>{{ result.ai_explanation.explanation or result.ai_explanation.answer_analysis }}</p>
+                            </div>
+
+                            <!-- Why Others Wrong (for MCQ) -->
+                            {% if result.question_type == 'mcq' and result.ai_explanation.why_others_wrong %}
+                            <div class="mb-3">
+                                <h6><i class="fas fa-times-circle me-2"></i>Tại sao các phương án khác sai:</h6>
+                                <p>{{ result.ai_explanation.why_others_wrong }}</p>
+                            </div>
+                            {% endif %}
+
+                            <!-- Strengths and Weaknesses (for Essay/Oral) -->
+                            {% if result.question_type in ['essay', 'oral'] %}
+                            {% if result.ai_explanation.strengths %}
+                            <div class="mb-3">
+                                <h6><i class="fas fa-thumbs-up me-2 text-success"></i>Điểm mạnh:</h6>
+                                <ul>
+                                    {% for strength in result.ai_explanation.strengths %}
+                                    <li>{{ strength }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                            {% endif %}
+
+                            {% if result.ai_explanation.weaknesses %}
+                            <div class="mb-3">
+                                <h6><i class="fas fa-exclamation-triangle me-2 text-warning"></i>Điểm cần cải thiện:</h6>
+                                <ul>
+                                    {% for weakness in result.ai_explanation.weaknesses %}
+                                    <li>{{ weakness }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                            {% endif %}
+
+                            <!-- Sample Answer -->
+                            {% if result.ai_explanation.sample_answer %}
+                            <div class="mb-3">
+                                <h6><i class="fas fa-lightbulb me-2"></i>Đáp án mẫu tham khảo:</h6>
+                                <div class="alert alert-light">
+                                    {{ result.ai_explanation.sample_answer }}
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% endif %}
+
+                            <!-- Key Concepts -->
+                            {% if result.ai_explanation.key_concepts %}
+                            <div class="key-concepts mb-3">
+                                <h6><i class="fas fa-key me-2"></i>Khái niệm cốt lõi:</h6>
+                                <div class="d-flex flex-wrap">
+                                    {% for concept in result.ai_explanation.key_concepts %}
+                                    <span class="badge bg-primary me-1 mb-1">{{ concept }}</span>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            <!-- Study Tips -->
+                            {% if result.ai_explanation.study_tips or result.ai_explanation.improvement_suggestions %}
+                            <div class="study-tips">
+                                <h6><i class="fas fa-graduation-cap me-2"></i>Gợi ý học tập:</h6>
+                                <p>{{ result.ai_explanation.study_tips or result.ai_explanation.improvement_suggestions }}</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+
+                        <!-- Question Metadata -->
+                        <div class="row text-muted small mt-3">
+                            <div class="col-md-6">
+                                <i class="fas fa-clock me-1"></i>
+                                Thời gian: {{ (result.time_spent_ms / 1000)|round(1) }}s
+                            </div>
+                            <div class="col-md-6">
+                                <i class="fas fa-tag me-1"></i>
+                                Chiến lược: {{ result.strategy }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="row mt-4">
+            <div class="col-12 text-center">
+                <a href="/courses" class="btn btn-primary me-2">
+                    <i class="fas fa-arrow-left me-1"></i>
+                    Quay lại khóa học
+                </a>
+                <button onclick="window.print()" class="btn btn-outline-primary me-2">
+                    <i class="fas fa-print me-1"></i>
+                    In kết quả
+                </button>
+                <button onclick="downloadResults()" class="btn btn-outline-success">
+                    <i class="fas fa-download me-1"></i>
+                    Tải xuống
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function downloadResults() {
+            // Implementation for downloading results as PDF or Excel
+            alert('Tính năng tải xuống sẽ được triển khai');
+        }
+    </script>
+</body>
+</html>

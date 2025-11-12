@@ -1,0 +1,64 @@
+WEBVTT
+
+00:00:00.000 --> 00:00:06.840
+Hey there coders! Today we're exploring Python variables. Think of variables as
+
+00:00:06.840 --> 00:00:12.680
+containers for storing data values. In Python, creating a variable is as simple
+
+00:00:12.680 --> 00:00:19.040
+as assigning a value to it. Here's an example. In this code, x is a variable
+
+00:00:19.040 --> 00:00:23.560
+that holds the number 5, which is an integer, and y is a variable that holds
+
+00:00:23.560 --> 00:00:29.880
+the text John, which is a string. Python doesn't need a special command to
+
+00:00:29.920 --> 00:00:36.840
+declare a variable. It's created the moment you assign it a value. Variables in
+
+00:00:36.840 --> 00:00:42.600
+Python are dynamic. They don't need to be of a specific type and can change type
+
+00:00:42.600 --> 00:00:49.160
+after being set. Here x starts as an integer with the value 4, then changes
+
+00:00:49.160 --> 00:00:56.160
+to a string with the value sally. If you want to specify the data type of a
+
+00:00:56.160 --> 00:01:02.160
+variable, you can use casting. This way you can control the data type of your
+
+00:01:02.160 --> 00:01:10.920
+variables. Want to know the type of a variable? Use the type function. Here type
+
+00:01:10.920 --> 00:01:19.400
+x returns class str, type y returns class int, and type z returns class float. In
+
+00:01:19.400 --> 00:01:24.640
+Python, strings can be declared with either single or double quotes. Both
+
+00:01:24.720 --> 00:01:30.160
+lines do the same thing. It's up to you which style you prefer. Remember, variable
+
+00:01:30.160 --> 00:01:35.600
+names in Python are case sensitive. That means lower case a and upper case a are
+
+00:01:35.600 --> 00:01:41.320
+different variables. In this case, lower case a holds the integer 4 and upper case
+
+00:01:41.320 --> 00:01:47.200
+a holds the string sally. One doesn't overwrite the other. And that's a wrap on
+
+00:01:47.200 --> 00:01:54.440
+Python variables. Keep practicing and you'll be a Python pro in no time. Thanks
+
+00:01:54.480 --> 00:01:59.400
+for watching. Like and subscribe to get notified about our latest videos. For more
+
+00:01:59.400 --> 00:02:04.640
+coding tips and tricks, keep it locked right here on w3schools.com. Don't forget
+
+00:02:04.640 --> 00:02:09.880
+to try out what you've learned in our interactive editor. Happy coding.

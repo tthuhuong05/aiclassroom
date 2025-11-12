@@ -1,0 +1,292 @@
+{% extends "base_modern.html" %}
+
+{% block title %}Trang chủ - VirtualRoom{% endblock %}
+
+{% block content %}
+<!-- Modern Hero Section -->
+<section class="hero-section">
+    <div class="hero-background">
+        <div class="hero-slideshow"></div>
+        <div class="hero-overlay"></div>
+        <div class="hero-particles"></div>
+    </div>
+
+    <div class="hero-content">
+        <h1 class="hero-title">
+            Học Tập Thông Minh<br>
+            <span class="text-gradient">Với AI</span>
+        </h1>
+        <p class="hero-subtitle">
+            Khám phá trải nghiệm học tập tương tác với video AI cá nhân hóa,<br>
+            khóa học thông minh và công nghệ giáo dục tiên tiến nhất.
+        </p>
+
+        <div class="hero-cta-group">
+            <a href="#courses" class="hero-btn hero-btn-primary">
+                <i class="bi bi-play-circle-fill me-2"></i>Khám phá ngay
+            </a>
+            <a href="#features" class="hero-btn hero-btn-secondary">
+                <i class="bi bi-info-circle me-2"></i>Tìm hiểu thêm
+            </a>
+        </div>
+    </div>
+
+    <div class="scroll-indicator">
+        <div class="scroll-mouse"></div>
+    </div>
+</section>
+
+<!-- Features Section -->
+<section id="features" class="py-5 bg-light">
+    <div class="container">
+        <div class="section-header">
+            <h2 class="section-title">Tại Sao Chọn VirtualRoom?</h2>
+            <p class="section-subtitle">Công nghệ AI tiên tiến kết hợp với phương pháp học tập hiện đại</p>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="text-center">
+                    <div class="bg-primary rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 80px; height: 80px; margin-bottom: 1rem;">
+                        <i class="bi bi-robot text-white" style="font-size: 2rem;"></i>
+                    </div>
+                    <h4>AI Cá Nhân Hóa</h4>
+                    <p>Hệ thống AI phân tích phong cách học tập của bạn để tạo nội dung phù hợp nhất</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="text-center">
+                    <div class="bg-success rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 80px; height: 80px; margin-bottom: 1rem;">
+                        <i class="bi bi-play-circle text-white" style="font-size: 2rem;"></i>
+                    </div>
+                    <h4>Video Tương Tác</h4>
+                    <p>Video bài giảng được tạo bởi AI với hình ảnh chính xác và nội dung bám sát chủ đề</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="text-center">
+                    <div class="bg-info rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 80px; height: 80px; margin-bottom: 1rem;">
+                        <i class="bi bi-graph-up text-white" style="font-size: 2rem;"></i>
+                    </div>
+                    <h4>Tiến Bộ Thông Minh</h4>
+                    <p>Theo dõi tiến độ học tập với báo cáo chi tiết và đề xuất cải thiện</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Courses Section -->
+<section id="courses" class="courses-section">
+    <div class="container">
+        <div class="section-header">
+            <h2 class="section-title">Khóa Học Nổi Bật</h2>
+            <p class="section-subtitle">Khám phá các khóa học được thiết kế bởi AI để tối ưu hóa trải nghiệm học tập</p>
+        </div>
+
+        <!-- Search and Filter -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-6">
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input id="courseSearch" type="text" class="form-control" placeholder="Tìm kiếm khóa học..." autocomplete="off">
+                </div>
+            </div>
+            <div class="col-md-4">
+                <select id="categoryFilter" class="form-select">
+                    <option value="">Tất cả thể loại</option>
+                    <option value="programming">Lập trình</option>
+                    <option value="ai">AI & Machine Learning</option>
+                    <option value="design">Thiết kế</option>
+                    <option value="business">Kinh doanh</option>
+                    <option value="science">Khoa học</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button id="resetFilters" class="btn btn-outline-secondary w-100">Xóa lọc</button>
+            </div>
+        </div>
+
+        <!-- Course Grid -->
+        <div class="course-grid" id="courseGrid">
+            {% for course in courses %}
+            <div class="course-card" data-title="{{ course.title|lower }}" data-category="{{ course.category|default('general')|lower }}">
+                <div class="course-card-image">
+                    <img src="{{ course.image_url or 'https://placehold.co/400x250?text=Course' }}" alt="{{ course.title }}" loading="lazy">
+                    <div class="course-card-overlay"></div>
+                </div>
+                <div class="course-card-content">
+                    <h3 class="course-card-title">{{ course.title }}</h3>
+                    <p class="course-card-description">{{ course.description|truncate(120) }}</p>
+
+                    {% if course.tags %}
+                    <div class="course-card-tags">
+                        {% for tag in course.tags[:3] %}
+                        <span class="course-tag">{{ tag }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="course-card-footer">
+                    <div class="course-meta">
+                        <i class="bi bi-clock me-1"></i>{{ course.duration or 'Tự do' }}
+                    </div>
+                    <a href="{{ url_for('course_detail', course_id=course.id) }}" class="course-card-btn">
+                        Xem chi tiết
+                        <i class="bi bi-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        {% if not courses %}
+        <div class="text-center py-5">
+            <i class="bi bi-journal-x" style="font-size: 4rem; color: var(--gray-400);"></i>
+            <h4 class="mt-3 text-muted">Chưa có khóa học nào</h4>
+            <p class="text-muted">Các khóa học sẽ xuất hiện tại đây khi được tạo.</p>
+        </div>
+        {% endif %}
+    </div>
+</section>
+
+<!-- Stats Section -->
+<section class="py-5 bg-gradient-primary text-white">
+    <div class="container">
+        <div class="row text-center g-4">
+            <div class="col-md-3">
+                <div class="stat-number" style="font-size: 3rem; font-weight: 800;">1000+</div>
+                <div class="stat-label">Học viên</div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-number" style="font-size: 3rem; font-weight: 800;">50+</div>
+                <div class="stat-label">Khóa học</div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-number" style="font-size: 3rem; font-weight: 800;">24/7</div>
+                <div class="stat-label">Hỗ trợ AI</div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-number" style="font-size: 3rem; font-weight: 800;">95%</div>
+                <div class="stat-label">Hài lòng</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Testimonials Section -->
+<section class="py-5">
+    <div class="container">
+        <div class="section-header">
+            <h2 class="section-title">Ý Kiến Học Viên</h2>
+            <p class="section-subtitle">Những gì học viên nói về trải nghiệm học tập với VirtualRoom</p>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body text-center">
+                        <div class="mb-3">
+                            <i class="bi bi-star-fill text-warning"></i>
+                            <i class="bi bi-star-fill text-warning"></i>
+                            <i class="bi bi-star-fill text-warning"></i>
+                            <i class="bi bi-star-fill text-warning"></i>
+                            <i class="bi bi-star-fill text-warning"></i>
+                        </div>
+                        <p class="card-text mb-3">"VirtualRoom đã thay đổi cách tôi học tập. Video AI cực kỳ chính xác và nội dung được cá nhân hóa hoàn hảo."</p>
+                        <div class="d-flex align-items-center justify-content-center">
+                            <img src="https://placehold.co/40x40?text=A" class="rounded-circle me-3" alt="Avatar">
+                            <div class="text-start">
+                                <div class="fw-bold">Nguyễn Văn A</div>
+                                <small class="text-muted">Developer</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body text-center">
+                        <div class="mb-3">
+                            <i class="bi bi-star-fill text-warning"></i>
+                            <i class="bi bi-star-fill text-warning"></i>
+                            <i class="bi bi-star-fill text-warning"></i>
+                            <i class="bi bi-star-fill text-warning"></i>
+                            <i class="bi bi-star-fill text-warning"></i>
+                        </div>
+                        <p class="card-text mb-3">"Giao diện đẹp và dễ sử dụng. AI hiểu được nhu cầu học tập của tôi và gợi ý nội dung phù hợp."</p>
+                        <div class="d-flex align-items-center justify-content-center">
+                            <img src="https://placehold.co/40x40?text=B" class="rounded-circle me-3" alt="Avatar">
+                            <div class="d-flex align-items-center justify-content-center">
+                                <img src="https://placehold.co/40x40?text=B" class="rounded-circle me-3" alt="Avatar">
+                                <div class="text-start">
+                                    <div class="fw-bold">Trần Thị B</div>
+                                    <small class="text-muted">Designer</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body text-center">
+                        <div class="mb-3">
+                            <i class="bi bi-star-fill text-warning"></i>
+                            <i class="bi bi-star-fill text-warning"></i>
+                            <i class="bi bi-star-fill text-warning"></i>
+                            <i class="bi bi-star-fill text-warning"></i>
+                            <i class="bi bi-star-fill text-warning"></i>
+                        </div>
+                        <p class="card-text mb-3">"Tiết kiệm rất nhiều thời gian với video AI chất lượng cao. Nội dung luôn cập nhật và chính xác."</p>
+                        <div class="d-flex align-items-center justify-content-center">
+                            <img src="https://placehold.co/40x40?text=C" class="rounded-circle me-3" alt="Avatar">
+                            <div class="text-start">
+                                <div class="fw-bold">Lê Văn C</div>
+                                <small class="text-muted">Student</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Course Search and Filter
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('courseSearch');
+    const categoryFilter = document.getElementById('categoryFilter');
+    const resetBtn = document.getElementById('resetFilters');
+    const courseCards = document.querySelectorAll('.course-card');
+
+    function filterCourses() {
+        const searchTerm = searchInput.value.toLowerCase();
+        const categoryValue = categoryFilter.value.toLowerCase();
+
+        courseCards.forEach(card => {
+            const title = card.dataset.title || '';
+            const category = card.dataset.category || '';
+
+            const matchesSearch = title.includes(searchTerm);
+            const matchesCategory = !categoryValue || category === categoryValue;
+
+            card.style.display = matchesSearch && matchesCategory ? 'block' : 'none';
+        });
+    }
+
+    searchInput.addEventListener('input', filterCourses);
+    categoryFilter.addEventListener('change', filterCourses);
+    resetBtn.addEventListener('click', function() {
+        searchInput.value = '';
+        categoryFilter.value = '';
+        filterCourses();
+    });
+});
+</script>
+{% endblock %}

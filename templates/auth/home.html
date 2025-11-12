@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="vi" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Học Tập - Nền tảng học tập AI cá nhân hóa</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'sans-serif'] },
+          animation: { 'fade-in': 'fadeIn 0.5s ease-out', 'slide-up': 'slideUp 0.6s ease-out' },
+          keyframes: {
+            fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
+            slideUp: { '0%': { transform: 'translateY(20px)', opacity: '0' }, '100%': { transform: 'translateY(0)', opacity: '1' } }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <style>
+    .hero-bg { background: linear-gradient(135deg, rgba(30, 58, 138, 0.9), rgba(59, 130, 246, 0.8)), url('https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1950&q=80'); background-size: cover; background-position: center; }
+    .card-hover { transition: all 0.3s ease; }
+    .card-hover:hover { transform: translateY(-8px); box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
+    .search-suggest { scrollbar-width: thin; scrollbar-color: #94a3b8 #f1f5f9; }
+    .search-suggest::-webkit-scrollbar { width: 6px; }
+    .search-suggest::-webkit-scrollbar-track { background: #f1f5f9; }
+    .search-suggest::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 3px; }
+    .skeleton { background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: loading 1.5s infinite; }
+    @keyframes loading { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+  </style>
+</head>
+<body class="bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 text-gray-800 dark:text-gray-200 min-h-screen">
+
+  <!-- Navbar -->
+  <nav class="bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm shadow-lg sticky top-0 z-50 border-b border-gray-200 dark:border-gray-700">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between items-center h-16">
+        <a href="{{ url_for('home') }}" class="flex items-center space-x-2 group">
+          <img src="{{ url_for('static', filename='logo1.jpeg') }}" alt="Logo" class="w-9 h-9 rounded-full ring-2 ring-blue-500 group-hover:ring-blue-600 transition-all">
+          <span class="font-bold text-xl text-gray-800 dark:text-white">Học Tập</span>
+        </a>
+
+        <div class="hidden md:flex items-center space-x-1">
+          <a href="{{ url_for('home') }}" class="px-4 py-2 rounded-lg font-medium transition-all {% if request.endpoint == 'home' %}bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300{% else %}hover:bg-gray-100 dark:hover:bg-gray-800{% endif %}">Trang chủ</a>
+          <a href="{{ url_for('course') }}" class="px-4 py-2 rounded-lg font-medium transition-all {% if request.endpoint == 'course' %}bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300{% else %}hover:bg-gray-100 dark:hover:bg-gray-800{% endif %}">Khóa học</a>
+          {% if username and is_teacher %}
+          <a href="{{ url_for('manage_courses') }}" class="px-4 py-2 rounded-lg font-medium transition-all hover:bg-gray-100 dark:hover:bg-gray-800">Quản lý</a>
+          <a href="{{ url_for('list_users') }}" class="px-4 py-2 rounded-lg font-medium transition-all hover:bg-gray-100 dark:hover:bg-gray-800">Người dùng</a>
+          {% endif %}
+        </div>
+
+        <div class="flex items-center space-x-3">
+          <!-- Dark Mode Toggle -->
+          <button id="themeToggle" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-all">
+            <i class="bi bi-moon-stars-fill text-lg dark:hidden"></i>
+            <i class="bi bi-sun-fill text-lg hidden dark:inline"></i>
+          </button>
+
+          {% if username %}
+          <div class="relative group">
+            <button class="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-all">
+              <img src="{{ user.avatar_url or 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + username }}" class="w-8 h-8 rounded-full ring-2 ring-blue-500">
+              <span class="font-medium hidden sm:inline">{{ username }}</span>
+            </button>
+            <div class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+              <a href="{{ url_for('logout') }}" class="block px-4 py-3 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 rounded-t-xl flex items-center gap-2">
+                <i class="bi bi-box-arrow-right"></i> Đăng xuất
+              </a>
+            </div>
+          </div>
+          {% else %}
+          <div class="flex gap-2">
+            <a href="{{ url_for('login') }}" class="px-4 py-2 rounded-lg font-medium border border-blue-600 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all">Đăng nhập</a>
+            <a href="{{ url_for('register') }}" class="px-4 py-2 rounded-lg font-medium bg-blue-600 text-white hover:bg-blue-700 transition-all">Đăng ký</a>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="hero-bg py-24 md:py-32 relative overflow-hidden">
+    <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
+      <h1 class="text-4xl md:text-6xl font-extrabold text-white mb-4 animate-fade-in">
+        Chào mừng, <span class="text-yellow-400">{{ username or 'Bạn' }}</span>!
+      </h1>
+      <p class="text-xl md:text-2xl text-gray-100 mb-8 max-w-3xl mx-auto font-medium">
+        Khám phá hành trình học tập cá nhân hóa với công nghệ AI hiện đại
+      </p>
+      <a href="#courses" class="inline-flex items-center px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-full hover:from-blue-700 hover:to-indigo-700 transform hover:scale-105 transition-all duration-300 shadow-xl">
+        <i class="bi bi-arrow-down-circle-fill mr-2"></i> Xem Khóa Học
+      </a>
+    </div>
+    <div class="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-gray-50 dark:from-gray-900 to-transparent"></div>
+  </section>
+
+  <!-- Courses Section -->
+  <section id="courses" class="py-16 md:py-20">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-12">
+        <h2 class="text-3xl md:text-4xl font-bold text-gray-800 dark:text-white mb-4">Khám Phá Các Khóa Học</h2>
+        <p class="text-lg text-gray-600 dark:text-gray-400">Hàng trăm khóa học chất lượng cao đang chờ bạn</p>
+      </div>
+
+      <!-- Search & Filter -->
+      <div class="mb-10 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="relative md:col-span-2">
+            <div class="flex">
+              <span class="inline-flex items-center px-4 text-gray-500 bg-gray-100 dark:bg-gray-700 border border-r-0 border-gray-300 dark:border-gray-600 rounded-l-xl">
+                <i class="bi bi-search"></i>
+              </span>
+              <input id="searchTitle" type="text" placeholder="Tìm tên, tag, thể loại..." class="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-r-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white outline-none">
+            </div>
+            <div id="searchSuggest" class="absolute top-full mt-2 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-64 overflow-auto search-suggest hidden z-20"></div>
+          </div>
+          <select id="filterCategory" class="px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none">
+            <option value="">Tất cả thể loại</option>
+            {% for cat in categories or [] %}
+              <option value="{{ cat|lower }}">{{ cat }}</option>
+            {% endfor %}
+          </select>
+          <button id="resetFilter" class="px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-300 dark:hover:bg-gray-600 transition-all font-medium">
+            <i class="bi bi-arrow-counterclockwise"></i> Xóa
+          </button>
+        </div>
+      </div>
+
+      <!-- Course Grid -->
+      <div id="courseGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for course in courses %}
+        {% set _title = course.title or course.name or course.course_name or course.CourseName or course.Title or course.Name %}
+        {% set _desc  = course.description or course.short_description or course.desc or course.summary %}
+        {% set _cate  = course.category or course.cate or course.topic or course.subject or '' %}
+        {% set _tags  = course.tags if course.tags is iterable and course.tags is not string else ([course.tags] if course.tags else []) %}
+
+        <div class="course-item opacity-0 animate-slide-up" 
+             data-title="{{ (_title or '')|lower }}"
+             data-category="{{ _cate|lower }}"
+             data-tags="{{ _tags|join(',')|lower }}"
+             style="animation-delay: {{ loop.index * 0.1 }}s">
+          <div class="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-lg card-hover">
+            <div class="relative group">
+              <img src="{{ course.image_url or 'https://placehold.co/600x400?text=' + (_title[:20] | urlencode) }}" class="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300" alt="{{ _title }}">
+              <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
+                <span class="text-white font-semibold">{{ _cate }}</span>
+              </div>
+            </div>
+            <div class="p-6">
+              <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-2 line-clamp-2">{{ _title }}</h3>
+              <p class="text-gray-600 dark:text-gray-400 text-sm mb-4 line-clamp-2">{{ _desc or 'Khám phá khóa học này để nâng cao kỹ năng.' }}</p>
+              {% if _tags %}
+              <div class="flex flex-wrap gap-2 mb-4">
+                {% for t in _tags %}{% if t %}
+                <span class="px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-xs font-medium rounded-full">{{ t }}</span>
+                {% endif %}{% endfor %}
+              </div>
+              {% endif %}
+              <a href="{{ url_for('course_detail', course_id=(course.id or course.course_id or course.ID or course.Id or course.CourseId)) }}"
+                 class="inline-flex items-center text-blue-600 dark:text-blue-400 font-semibold hover:text-blue-800 dark:hover:text-blue-300 transition-colors">
+                Xem chi tiết <i class="bi bi-arrow-right ml-1"></i>
+              </a>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <div id="noResults" class="text-center py-12 text-gray-500 dark:text-gray-400 hidden">
+        <i class="bi bi-emoji-frown text-4xl mb-4"></i>
+        <p class="text-lg">Không tìm thấy khóa học nào phù hợp.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="bg-gradient-to-t from-gray-900 to-gray-800 text-gray-300 py-12 mt-20">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      <p class="text-sm">&copy; 2025 <span class="text-blue-400 font-semibold">Học Tập</span>. Tất cả quyền được bảo lưu.</p>
+      <p class="text-xs mt-2">Thiết kế với ❤️ cho người học Việt Nam</p>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script>
+    // Dark Mode Toggle
+    const themeToggle = document.getElementById('themeToggle');
+    const html = document.documentElement;
+    themeToggle.addEventListener('click', () => {
+      html.classList.toggle('dark');
+      localStorage.setItem('theme', html.classList.contains('dark') ? 'dark' : 'light');
+    });
+    if (localStorage.getItem('theme') === 'dark' || (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      html.classList.add('dark');
+    }
+
+    // Animation on scroll
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('opacity-100');
+          entry.target.classList.remove('opacity-0');
+        }
+      });
+    }, { threshold: 0.1 });
+
+    document.querySelectorAll('.animate-slide-up').forEach(el => {
+      el.classList.add('opacity-0');
+      observer.observe(el);
+    });
+  </script>
+
+  <!-- SEARCH & FILTER SCRIPT (giữ nguyên, đã tối ưu) -->
+  <script id="course-search-fix">
+  ;(function(){
+    const $ = (s)=>document.querySelector(s);
+    const $$ = (s)=>Array.from(document.querySelectorAll(s));
+
+    const input = $('#searchTitle');
+    const select = $('#filterCategory');
+    const suggest = $('#searchSuggest');
+    const grid = $('#courseGrid');
+    const noResults = $('#noResults');
+
+    function stripVN(s){
+      return s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').replace(/Đ/g,'D').toLowerCase();
+    }
+    function norm(s){ return stripVN(s).replace(/[^a-z0-9+#\s]/g,' ').replace(/\s+/g,' ').trim(); }
+
+    function index(){
+      $$('.course-item').forEach(el => {
+        const title = el.dataset.title || '';
+        const tags = el.dataset.tags || '';
+        const cat = el.dataset.category || '';
+        const blob = [title, tags, cat].join(' ');
+        el.dataset.search = ' ' + norm(blob) + ' ';
+        el.dataset.compact = norm(blob).replace(/\s/g,'');
+      });
+    }
+
+    function filter(){
+      const q = norm(input.value);
+      const tokens = q ? q.split(' ').filter(Boolean) : [];
+      const cat = select.value;
+
+      let visible = 0;
+      $$('.course-item').forEach(el => {
+        const passCat = !cat || el.dataset.category === cat;
+        const passText = tokens.length === 0 || tokens.every(t => 
+          el.dataset.search.includes(' ' + t + ' ') || el.dataset.compact.includes(t)
+        );
+        const show = passCat && passText;
+        el.style.display = show ? '' : 'none';
+        if (show) visible++;
+      });
+
+      noResults.classList.toggle('hidden', visible > 0);
+      suggest.classList.add('hidden');
+    }
+
+    // Suggest
+    input.addEventListener('input', () => {
+      const q = norm(input.value);
+      if (!q) { suggest.classList.add('hidden'); return; }
+
+      const items = $$('.course-item');
+      const matches = items
+        .filter(el => norm(el.dataset.title || '').includes(q))
+        .slice(0, 6);
+
+      if (matches.length === 0) {
+        suggest.classList.add('hidden');
+        return;
+      }
+
+      suggest.innerHTML = matches.map(el => `
+        <a href="${el.querySelector('a').href}" class="flex items-center p-3 hover:bg-gray-100 dark:hover:bg-gray-700 border-b border-gray-200 dark:border-gray-700 last:border-0">
+          <img src="${el.querySelector('img').src}" class="w-10 h-10 rounded-lg object-cover mr-3">
+          <div class="flex-1 min-w-0">
+            <p class="font-medium text-gray-800 dark:text-gray-200 truncate">${el.querySelector('h3').textContent}</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">${el.dataset.category}</p>
+          </div>
+        </a>
+      `).join('');
+      suggest.classList.remove('hidden');
+    });
+
+    // Events
+    input.addEventListener('input', filter);
+    select.addEventListener('change', filter);
+    $('#resetFilter').addEventListener('click', () => {
+      input.value = ''; select.value = ''; filter();
+    });
+
+    // Click outside
+    document.addEventListener('click', (e) => {
+      if (!input.contains(e.target) && !suggest.contains(e.target)) {
+        suggest.classList.add('hidden');
+      }
+    });
+
+    // Init
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => { index(); filter(); });
+    } else {
+      index(); filter();
+    }
+  })();
+  </script>
+</body>
+</html>
