@@ -1,0 +1,170 @@
+WEBVTT
+
+1
+00:00:00.300 --> 00:00:02.300
+Hey there future web developers.
+
+2
+00:00:02.700 --> 00:00:08.720
+Did you know JavaScript has several ways to display data? Whether you're updating a web page or testing code?
+
+3
+00:00:09.320 --> 00:00:15.340
+JavaScript's got you covered. Let's break it down into four simple methods quick and easy just like we like it.
+
+4
+00:00:17.440 --> 00:00:20.080
+First up using inner HTML.
+
+5
+00:00:20.680 --> 00:00:22.840
+This is like filling in a shape or form.
+
+6
+00:00:23.640 --> 00:00:27.200
+JavaScript finds an existing element by its ID and updates the content.
+
+7
+00:00:27.640 --> 00:00:31.300
+Here's how it works.
+
+8
+00:00:31.300 --> 00:00:35.700
+This code grabs the p-tag with the ID demo and changes its content to...
+
+9
+00:00:36.380 --> 00:00:38.020
+You guessed it.
+
+10
+00:00:38.020 --> 00:00:39.700
+Hello world!
+
+11
+00:00:39.700 --> 00:00:42.300
+Super handy for updating content dynamically.
+
+12
+00:00:43.540 --> 00:00:45.540
+Next we have document write.
+
+13
+00:00:46.060 --> 00:00:51.420
+It's like the loudspeaker of JavaScript. It outputs directly into the HTML document.
+
+14
+00:00:51.900 --> 00:00:59.920
+But watch out. If you use document write after the page has loaded it wipes out everything on your page.
+
+15
+00:01:00.400 --> 00:01:03.150
+See this example.
+
+16
+00:01:03.150 --> 00:01:05.510
+Here we run the code when the user clicks the button.
+
+17
+00:01:06.030 --> 00:01:08.550
+So after the page has finished loading.
+
+18
+00:01:09.020 --> 00:01:11.500
+Oops, it replaces our entire page.
+
+19
+00:01:12.760 --> 00:01:15.280
+So great for quick testing but not for production.
+
+20
+00:01:16.460 --> 00:01:18.460
+Want to grab someone's attention?
+
+21
+00:01:18.460 --> 00:01:23.500
+Use an alert box with window alert or just alert since the window part is optional.
+
+22
+00:01:23.940 --> 00:01:33.250
+This pops up a box with the result. Great for quick notifications, but don't overuse it unless you like annoying your users.
+
+23
+00:01:35.880 --> 00:01:38.200
+And finally the secret weapon for debugging.
+
+24
+00:01:38.600 --> 00:01:40.200
+Console Log.
+
+25
+00:01:40.560 --> 00:01:42.560
+Think of it like a journal for your code.
+
+26
+00:01:42.760 --> 00:01:45.400
+It logs messages straight to the browser console.
+
+27
+00:01:47.370 --> 00:01:51.330
+Use this to test your code behind the scenes without interrupting the user experience.
+
+28
+00:01:51.490 --> 00:01:55.020
+It's a developer's best friend.
+
+29
+00:01:55.340 --> 00:01:58.780
+When testing console methods you need to have the console view visible.
+
+30
+00:01:58.980 --> 00:02:01.620
+This is usually opened by pressing F12.
+
+31
+00:02:04.200 --> 00:02:05.360
+One last trick.
+
+32
+00:02:05.840 --> 00:02:11.880
+While JavaScript doesn't have a direct send to printer function you can use window print to print the current page.
+
+33
+00:02:13.160 --> 00:02:15.880
+Easy peasy, just one button click and voila.
+
+34
+00:02:16.320 --> 00:02:18.520
+Old timey paper printed content.
+
+35
+00:02:19.490 --> 00:02:20.690
+So there you have it.
+
+36
+00:02:20.930 --> 00:02:24.610
+Four ways to display data in JavaScript plus a bonus printing tip.
+
+37
+00:02:24.890 --> 00:02:28.050
+Try them out and see which one works best for your projects.
+
+38
+00:02:29.590 --> 00:02:30.590
+Thanks for watching.
+
+39
+00:02:30.790 --> 00:02:33.790
+Like and subscribe to get notified about our latest videos.
+
+40
+00:02:33.990 --> 00:02:38.910
+For more coding tips and tricks keep it locked right here on w3schools.com.
+
+41
+00:02:39.310 --> 00:02:42.270
+Don't forget to try out what you've learned in our interactive editor.
+
+42
+00:02:42.510 --> 00:02:43.510
+Happy coding.
+
