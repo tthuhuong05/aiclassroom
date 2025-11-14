@@ -13,7 +13,8 @@ class ProctorConfig:
     ATTENTION_MIN = 0.60               # dưới mức này coi là thiếu tập trung (so với attention_proba)
     ATTENTION_STRIKES_TO_WARN = 1      # 1 lần liên tiếp -> cảnh báo
     ATTENTION_STRIKES_TO_FLAG = 2      # 2 lần liên tiếp -> gian lận
-    NOFACE_STRIKES_TO_FLAG = 2         # 2 khung liên tiếp không có mặt -> gian lận
+    NOFACE_STRIKES_TO_WARN = 1         # 1 khung không có mặt -> cảnh báo (MỚI)
+    NOFACE_STRIKES_TO_FLAG = 2         # 2 khung liên tiếp không có mặt -> gian lận (giảm từ 3)
     REVERIFY_EVERY_N_FRAMES = 20       # 20 khung thì re-verify avatar 1 lần
     FACE_MATCH_THRESHOLD = 0.55        # đã dùng trong service
     SAVE_EVIDENCE = True
@@ -133,12 +134,22 @@ class ProctorEngine:
 
         # RULE 2: Không thấy mặt & Thiếu tập trung (nếu chưa flag)
         if decision != "flagged":
-            # không thấy mặt liên tiếp
+            # không thấy mặt liên tiếp - CẢNH BÁO SỚM
             if faces == 0:
                 s["noface_strikes"] += 1
-                if s["noface_strikes"] >= getattr(self.cfg, "NOFACE_STRIKES_TO_FLAG", 3):
-                    decision = "flagged"; reasons.append("Không thấy khuôn mặt nhiều khung liên tiếp")
+                noface_warn_threshold = getattr(self.cfg, "NOFACE_STRIKES_TO_WARN", 1)
+                noface_flag_threshold = getattr(self.cfg, "NOFACE_STRIKES_TO_FLAG", 2)
+                
+                if s["noface_strikes"] >= noface_flag_threshold:
+                    decision = "flagged"
+                    reasons.append("Không thấy khuôn mặt trong camera - Có thể đang gian lận")
                     s["violation_counts"]["noface"] += 1
+                elif s["noface_strikes"] >= noface_warn_threshold:
+                    # Cảnh báo ngay khi không có mặt 1 frame
+                    if s["warn_cooldown"] == 0:
+                        decision = "warn"
+                        reasons.append("Không phát hiện khuôn mặt - Vui lòng điều chỉnh camera")
+                        s["warn_cooldown"] = getattr(self.cfg, "WARN_COOLDOWN_FRAMES", 5)
             else:
                 s["noface_strikes"] = 0
 

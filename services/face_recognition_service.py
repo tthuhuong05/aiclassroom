@@ -101,7 +101,7 @@ def _same_class(a: Dict, b: Dict) -> bool:
     return (a.get("type") or "") == (b.get("type") or "")
 
 class _TrackMgr:
-    def __init__(self, iou_min=0.30, req_frames=2, stale_s=2.0):
+    def __init__(self, iou_min=0.30, req_frames=1, stale_s=2.0):  # Giảm từ 2 xuống 1 để phát hiện nhanh hơn
         self.iou_min = float(iou_min)
         self.req_frames = int(req_frames)
         self.stale_s = float(stale_s)
@@ -150,6 +150,7 @@ class FaceRecognitionService:
         # ---- Policy knobs ----
         self._warmup_sec = self._env_float("WARMUP_SEC", 2.0)
         self._warmup_frames_need = _envi("WARMUP_FRAMES", 8)
+        self._near_face_delay = self._env_float("NEAR_FACE_DELAY_SEC", 2.5)
         self._mask_before_arm = self._env_bool("MASK_OBJECTS_BEFORE_ARM", "1")
         self._suppress_attention_before_arm = self._env_bool("SUPPRESS_ATTENTION_BEFORE_ARM", "1")
         self._cooldown_sec = self._env_float("PROCTOR_COOLDOWN_SEC", 0.0)
@@ -212,12 +213,12 @@ class FaceRecognitionService:
         self._armed_since: Optional[float] = None
 
         # ---- Risk scoring knobs (new in v3.6) ----
-        self._risk_w_class  = self._env_float("RISK_W_CLASS", 0.35)
-        self._risk_w_near   = self._env_float("RISK_W_NEAR", 0.25)
+        self._risk_w_class  = self._env_float("RISK_W_CLASS", 0.25)   # Giảm từ 0.35
+        self._risk_w_near   = self._env_float("RISK_W_NEAR", 0.40)   # Tăng từ 0.25 - ƯU TIÊN near_face
         self._risk_w_size   = self._env_float("RISK_W_SIZE", 0.15)
-        self._risk_w_stable = self._env_float("RISK_W_STABLE",0.15)
+        self._risk_w_stable = self._env_float("RISK_W_STABLE",0.10)   # Giảm từ 0.15
         self._risk_w_att    = self._env_float("RISK_W_ATT",   0.10)
-        self._risk_min      = self._env_float("SUSP_MIN_RISK", 0.55)
+        self._risk_min      = self._env_float("SUSP_MIN_RISK", 0.45)  # Giảm từ 0.55 để phát hiện dễ hơn
         self._risk_min_prearm = self._env_float("SUSP_MIN_RISK_PREARM", max(0.0, self._risk_min-0.10))
         self._prearm_surface_susp = self._env_bool("PREARM_SURFACE_SUSP", "0")
         # class base risk (0..1). You can override with env JSON later if needed
@@ -566,9 +567,9 @@ class FaceRecognitionService:
 
             faces_xyxy = [(x,y,x+w,y+h) for (x,y,w,h) in faces_raw]
             only_near  = self._env_bool("SUS_ONLY_NEAR_FACE","1")
-            expand     = self._env_float("NEAR_FACE_EXPAND",2.4)
-            iou_min    = self._env_float("NEAR_FACE_MIN_IOU",0.02)
-            dist_ratio = self._env_float("NEAR_FACE_DIST",0.55)
+            expand     = self._env_float("NEAR_FACE_EXPAND",4.0)  # Tăng từ 3.0 lên 4.0 để phát hiện rộng hơn nhiều
+            iou_min    = self._env_float("NEAR_FACE_MIN_IOU",0.005)  # Giảm từ 0.01 xuống 0.005 để nhạy hơn nhiều
+            dist_ratio = self._env_float("NEAR_FACE_DIST",0.80)    # Tăng từ 0.65 lên 0.80 để phát hiện xa hơn nhiều
 
             def _near(box_xyxy):
                 if not faces_xyxy:
@@ -632,15 +633,27 @@ class FaceRecognitionService:
 
             for o in objects:
                 lbl = (o.get("type") or o.get("label") or "object").lower()
-                # filter by class set if provided
-                class_set = {s.strip().lower() for s in (self._env_list("SUSPICIOUS_CLASSES") or self._env_list("CHEAT_CLASSES"))}
-                if class_set and lbl not in class_set and lbl != "rectangular_device_or_paper":
-                    continue
+                
+                # BỎ QUA filter class nếu object gần mặt - BẤT KỲ object nào gần mặt đều là gian lận
                 x1,y1,x2,y2 = o["bbox"]
                 ow,oh = max(0,x2-x1), max(0,y2-y1)
                 if ow==0 or oh==0: continue
                 size_frac = ((ow*oh)/frame_area) ** 0.5
                 near = bool(o.get("near_face", False))
+                
+                # QUAN TRỌNG: Nếu object gần mặt HOẶC ở cạnh mặt, BẤT KỲ object nào đều là gian lận
+                # Bỏ qua class filter hoàn toàn cho objects gần mặt
+                if not near:
+                    # Chỉ filter class nếu object KHÔNG gần mặt
+                    class_set = {s.strip().lower() for s in (self._env_list("SUSPICIOUS_CLASSES") or self._env_list("CHEAT_CLASSES"))}
+                    # Nếu có class set, chỉ lọc theo set. Nếu không có, lấy tất cả (trừ person)
+                    if class_set and lbl not in class_set and lbl != "rectangular_device_or_paper":
+                        continue
+                else:
+                    # Object gần mặt - BẤT KỲ object nào (trừ person) đều là gian lận
+                    # Không cần filter class nữa
+                    pass
+                
                 tr,iou = _track_for((x1,y1,ow,oh), lbl)
                 hits = int(getattr(tr, "hit", 1)) if tr else 1
                 conf = float(o.get("score",0.0))
@@ -656,9 +669,12 @@ class FaceRecognitionService:
                     inter_x2 = min(x2, fx+fw); inter_y2 = min(y2, fy+fh)
                     iw = max(0, inter_x2 - inter_x1); ih = max(0, inter_y2 - inter_y1)
                     occl_frac = float(iw*ih)/fa
+                
+                # Nếu object gần mặt, tăng risk base lên cao
+                risk_base_multiplier = 2.0 if near else 1.0  # Tăng 100% nếu gần mặt (từ 1.5 lên 2.0)
                 risk = self._risk_score(
                     lbl,                # nhãn của object hiện tại
-                    near,               # “gần mặt” của object hiện tại
+                    near,               # "gần mặt" của object hiện tại
                     size_frac,          # kích thước đã tính: ((ow*oh)/frame_area)**0.5
                     hits,               # độ ổn định từ track (nếu có), mặc định 1
                     conf,               # score detector
@@ -666,10 +682,15 @@ class FaceRecognitionService:
                     near_ear,           # riêng cho phone/tablet
                     occl_frac           # tỉ lệ che mặt đã tính
                 )
+                risk = min(1.0, risk * risk_base_multiplier)  # Áp dụng multiplier
 
-                near_override = (near_ear or (occl_frac >= self._env_float("OCCL_MIN_FOR_NEAR", 0.12)))
+                near_override = (near_ear or (occl_frac >= self._env_float("OCCL_MIN_FOR_NEAR", 0.10)))  # Giảm từ 0.12 xuống 0.10
                 gate_near = (not allow_only_near) or near or near_override
-                if gate_near and risk >= self._risk_min:
+                
+                # Nếu object gần mặt, giảm threshold xuống để phát hiện dễ hơn
+                effective_risk_min = self._risk_min * (0.4 if near else 1.0)  # Giảm 60% nếu gần mặt (từ 0.6 xuống 0.4)
+                
+                if gate_near and risk >= effective_risk_min:
                     suspicious.append({
                         "bbox":[x1,y1,x2,y2],
                         "score": max(conf, risk),
@@ -682,18 +703,28 @@ class FaceRecognitionService:
                     })
                 sus_debug.append({"label": lbl, "near": near, "risk": risk, "hits": hits, "conf": conf, "size": size_frac, "near_ear": near_ear})
 
-            # If nothing passed but we have very stable tracks near face, allow them
-            if not suspicious:
-                for t in stable_tracks:
-                    if allow_only_near and not t.near_face: continue
-                    if t.label.lower() == "person": continue
-                    x,y,w,h = t.box
-                    risk = self._risk_score(
-                       t.label, t.near_face, ((w*h)/frame_area)**0.5,
-                       t.hit, t.score, attention, False, 0.0
-                    )
-
-                    if risk >= self._risk_min:
+            # Nếu có tracks gần mặt, đánh dấu ngay (bất kỳ object nào)
+            for t in stable_tracks:
+                if t.label.lower() == "person": continue  # Bỏ qua person
+                if allow_only_near and not t.near_face: continue
+                
+                x,y,w,h = t.box
+                risk = self._risk_score(
+                   t.label, t.near_face, ((w*h)/frame_area)**0.5,
+                   t.hit, t.score, attention, False, 0.0
+                )
+                
+                # Nếu gần mặt, giảm threshold
+                effective_risk_min = self._risk_min * (0.6 if t.near_face else 1.0)
+                
+                # Kiểm tra xem đã có trong suspicious chưa
+                already_added = any(
+                    abs(s.get("bbox", [0,0,0,0])[0] - x) < 10 and 
+                    abs(s.get("bbox", [0,0,0,0])[1] - y) < 10
+                    for s in suspicious
+                )
+                
+                if not already_added and risk >= effective_risk_min:
                         suspicious.append({
                             "bbox":[x,y,x+w,y+h],
                             "score": max(t.score, risk),
@@ -831,10 +862,20 @@ class FaceRecognitionService:
             time_ok = (self._armed_since is not None) and ((now - self._armed_since) >= self._cheat_start_delay)
             susp_gate_open = bool(armed and time_ok and (baseline_ok or (not self._susp_require_att)))
 
+            near_face_ready = (
+                self._session_started_at is not None
+                and (now - self._session_started_at) >= self._near_face_delay
+            )
             if armed and not in_cooldown and susp_gate_open:
-                if (suspicious_count > 0) or hold_active: event = "susp"
-                elif face_count > 1:     event = "mf"
-                elif face_count == 0:    event = "nf"
+                if near_face_ready and ((suspicious_count > 0) or hold_active):
+                    event = "susp"
+                elif face_count > 1:
+                    event = "mf"
+                elif face_count == 0:
+                    event = "nf"  # No face - cảnh báo ngay
+            # Cảnh báo sớm ngay cả khi chưa armed (nhưng sau warmup)
+            elif not in_warmup and face_count == 0 and (now - self._session_started_at) >= (self._warmup_sec + 1.0):
+                event = "nf"  # Cảnh báo sớm khi không có mặt
             if event:
                 self._votes.append(event)
 
@@ -911,12 +952,11 @@ class FaceRecognitionService:
                 "suspicious_objects": suspicious,
                 "face_count": face_count,
                 "object_count": object_count,
-                "suspicious_count": suspicious_count,
+                "suspicious_count": len(suspicious),
                 "attention_score": float(attention),
                 "attention_score_smooth": float(self._att_ema) if getattr(self, "_att_ema", None) is not None else None,
                 "attention_alert": bool(attention_alert),
                 "looking_away": bool(look_away),
-                "suspicious_objects": objects,
                 "eyes_closed": bool(eyes_closed),
                 "mouth_open": bool(mouth_open),
                 "head_pose": pose,
@@ -933,12 +973,24 @@ class FaceRecognitionService:
             if self._dbg:
                 import traceback; traceback.print_exc()
             return self._empty_result(str(e), alert=True)
+        
+        
 
     def _vote_pick(self):
+        """
+        Quyết định gian lận dựa trên votes
+        Ưu tiên: suspicious objects > multiple faces > no face
+        """
         c = Counter(self._votes)
-        if c.get("susp",0) >= self._req_susp: return True, "suspicious near-face object"
-        if c.get("mf",0)   >= self._req_mf:   return True, "multiple faces detected"
-        if c.get("nf",0)   >= self._req_nf:   return True, "no face detected"
+        # Ưu tiên 1: Suspicious objects (phone, book, etc.)
+        if c.get("susp",0) >= self._req_susp: 
+            return True, "suspicious near-face object"
+        # Ưu tiên 2: Multiple faces (chỉ khi không có suspicious objects)
+        if c.get("mf",0) >= self._req_mf:   
+            return True, "multiple faces detected"
+        # Ưu tiên 3: No face (chỉ khi không có suspicious objects và multiple faces)
+        if c.get("nf",0) >= self._req_nf:   
+            return True, "no face detected"
         return False, None
 
     def _coerce_to_bgr(self, image_input):
@@ -1080,8 +1132,9 @@ class FaceRecognitionService:
         suspicious_pre: List[Dict] = []
 
         H, W = img.shape[:2]
-        conf_thr = self._env_float("CHEAT_OBJ_CONF", 0.20)
-        min_side = max(8, int(min(W,H)*self._env_float("OBJ_MIN_SIDE_RATIO",0.02)))
+        # Giảm threshold để phát hiện tốt hơn các vật thể gian lận
+        conf_thr = self._env_float("CHEAT_OBJ_CONF", 0.10)  # Giảm từ 0.15 xuống 0.10 để phát hiện nhiều hơn
+        min_side = max(6, int(min(W,H)*self._env_float("OBJ_MIN_SIDE_RATIO",0.010)))  # Giảm từ 0.015 xuống 0.010 để phát hiện objects nhỏ hơn
 
         def _canon(name: str) -> str:
             n = (name or "").strip().lower()
@@ -1254,19 +1307,28 @@ class FaceRecognitionService:
         except Exception:
             pass
 
-        # Suspicious classes filtering
+        # Suspicious classes filtering - NHƯNG sẽ được kiểm tra lại ở trên dựa trên near_face
+        # Ở đây chỉ lọc person để không đánh dấu person là suspicious
         susc = set(self._env_list("SUSPICIOUS_CLASSES")) or set(self._env_list("CHEAT_CLASSES"))
         susc = {s.strip().lower() for s in susc}
         def _is_susp(n):
+            # Bỏ qua person - không đánh dấu person là suspicious
+            if n == "person":
+                return False
             mode = (os.getenv("SUS_MODE","cheat_tools") or "").strip().lower()
             if mode == "cheat_tools":
+                # Nếu có class set, chỉ lọc theo set. Nếu không có, lấy tất cả (trừ person)
                 return (not susc) or (n in susc)
             if mode == "non_person":
                 return n != "person"
-            return True
+            # Mặc định: lấy tất cả trừ person
+            return n != "person"
 
         for o in res:
             name = (o["type"] or "object").lower()
+            # Bỏ qua person
+            if name == "person":
+                continue
             if _is_susp(name):
                 x,y,w,h = o["position"]
                 suspicious_pre.append({"type": name, "position": (x,y,w,h), "score": float(o.get("score",0.0)), "source": o.get("source","dnn")})
@@ -1280,10 +1342,10 @@ class FaceRecognitionService:
 
         H, W = img.shape[:2]
         scale   = (self._autoboost_scale if getattr(self,"_roi_autoboost_active",False)
-           else self._env_float("OBJ_EXTRA_SCALE", 2.5))
+           else self._env_float("OBJ_EXTRA_SCALE", 4.0))  # Tăng từ 3.0 lên 4.0 để scan rộng hơn nhiều
         conf_lo = (self._autoboost_conf if getattr(self,"_roi_autoboost_active",False)
-           else self._env_float("CHEAT_OBJ_CONF_ROI", self._env_float("CHEAT_OBJ_CONF",0.08)))
-        min_ratio = self._env_float("OBJ_MIN_SIDE_RATIO_ROI", self._env_float("OBJ_MIN_SIDE_RATIO",0.010))
+           else self._env_float("CHEAT_OBJ_CONF_ROI", self._env_float("CHEAT_OBJ_CONF",0.04)))  # Giảm từ 0.06 xuống 0.04 để phát hiện nhiều hơn
+        min_ratio = self._env_float("OBJ_MIN_SIDE_RATIO_ROI", self._env_float("OBJ_MIN_SIDE_RATIO",0.008))  # Giảm từ 0.010 xuống 0.008
 
         outs: List[Dict] = []
         for (fx,fy,fw,fh) in faces:
@@ -1394,6 +1456,10 @@ class FaceRecognitionService:
         return inter/float(aa+bb-inter+1e-6)
 
     def _near_face(self, box_xyxy, face_xyxy, expand, iou_min, dist_ratio) -> bool:
+        """
+        Kiểm tra object có gần mặt không
+        Cải thiện để phát hiện tốt hơn các object trước mặt và cạnh mặt
+        """
         x1,y1,x2,y2 = face_xyxy
         fw,fh = x2-x1, y2-y1
         cx,cy = x1+fw/2, y1+fh/2
@@ -1401,13 +1467,35 @@ class FaceRecognitionService:
         rx1,ry1 = int(max(0,cx-ex)), int(max(0,cy-ey))
         rx2,ry2 = int(cx+ex), int(cy+ey)
         roi = (rx1,ry1,rx2,ry2)
-        if self._iou(box_xyxy, roi) >= iou_min:
+        
+        # Kiểm tra IoU với ROI mở rộng
+        iou_val = self._iou(box_xyxy, roi)
+        if iou_val >= iou_min:
             return True
+        
+        # Kiểm tra khoảng cách từ tâm object đến tâm mặt
         ox1,oy1,ox2,oy2 = box_xyxy
         ocx,ocy = (ox1+ox2)/2, (oy1+oy2)/2
         fdiag = (fw*fw + fh*fh)**0.5
         dist  = ((ocx-cx)**2 + (ocy-cy)**2)**0.5
-        return (dist/float(fdiag+1e-6)) <= dist_ratio
+        dist_normalized = dist / float(fdiag + 1e-6)
+        
+        # Nếu object ở phía trước mặt (y nhỏ hơn - object ở trên/trước)
+        # hoặc ở cạnh mặt (x gần với cx), coi là gần mặt
+        is_in_front = ocy < cy + fh*0.5  # Object ở phía trên/trước mặt (mở rộng vùng)
+        is_at_side = abs(ocx - cx) < fw * 1.5  # Object ở cạnh mặt (trái/phải)
+        is_below = ocy < cy + fh * 1.2  # Object ở phía dưới mặt nhưng không quá xa
+        
+        # Nếu object ở phía trước mặt, tăng threshold lên 50%
+        if is_in_front:
+            return dist_normalized <= dist_ratio * 1.5
+        
+        # Nếu object ở cạnh mặt, tăng threshold lên 30%
+        if is_at_side and is_below:
+            return dist_normalized <= dist_ratio * 1.3
+        
+        # Kiểm tra khoảng cách thông thường
+        return dist_normalized <= dist_ratio
 
     # ---------- Risk scoring helpers (v3.6) ----------
     def _near_ear(self, face_xywh, obj_xywh) -> bool:
@@ -1426,23 +1514,41 @@ class FaceRecognitionService:
         base = self._risk_class_base.get(label.lower(), 0.40)
         # size_frac is sqrt(area_frac) in [0..1]
         s_size   = min(1.0, max(0.0, size_frac))
-        s_near   = 1.0 if near_face else 0.25
+        # Nếu gần mặt, tăng s_near lên cao để ưu tiên
+        s_near   = 1.0 if near_face else 0.15  # Giảm từ 0.25 xuống 0.15 khi không gần mặt
         s_stable = min(1.0, hits/5.0)  # >=5 frames => 1.0
         s_att    = 1.0 - float(max(0.0, min(1.0, att)))
         s_conf   = float(max(0.0, min(1.0, conf)))
+        
+        # Nếu object gần mặt, tăng base risk lên cao hơn
+        if near_face:
+            base = min(1.0, base + 0.50)  # Tăng base risk thêm 50% nếu gần mặt (từ 0.30 lên 0.50)
         # ear proximity strongly boosts phones/tablets
         if near_ear and label.lower() in {"cell phone","mobile phone","phone","smartphone","tablet"}:
-            base = min(1.0, base + 0.15)
+            base = min(1.0, base + 0.20)  # Tăng từ 0.15 lên 0.20
         # occlusion of face boosts risk for book/paper/rectangular objects
         if label.lower() in {"book","paper","sheet of paper","rectangular_device_or_paper"}:
-            base = min(1.0, base + 0.10 * min(1.0, occl_frac/0.25))
-        score = (
-            self._risk_w_class  * base +
-            self._risk_w_near   * s_near +
-            self._risk_w_size   * s_size +
-            self._risk_w_stable * s_stable +
-            self._risk_w_att    * s_att
-        )
+            base = min(1.0, base + 0.15 * min(1.0, occl_frac/0.20))  # Tăng từ 0.10 lên 0.15 và giảm threshold từ 0.25 xuống 0.20
+        
+        # Nếu object gần mặt, tăng weight của s_near lên
+        if near_face:
+            # Tăng weight của near_face khi object gần mặt
+            score = (
+                self._risk_w_class  * base * 0.8 +  # Giảm weight của class khi gần mặt
+                self._risk_w_near   * s_near * 1.5 +  # Tăng weight của near lên 50%
+                self._risk_w_size   * s_size +
+                self._risk_w_stable * s_stable +
+                self._risk_w_att    * s_att
+            )
+        else:
+            score = (
+                self._risk_w_class  * base +
+                self._risk_w_near   * s_near +
+                self._risk_w_size   * s_size +
+                self._risk_w_stable * s_stable +
+                self._risk_w_att    * s_att
+            )
+        
         # small bonus for high detector confidence
         score = score * (0.85 + 0.30 * s_conf)
         return float(max(0.0, min(1.0, score)))

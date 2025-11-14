@@ -17,7 +17,7 @@ import random
 import re
 import os
 import mimetypes
-import time
+import time, datetime, cv2
 # Load biến môi trường từ file .env
 try:
     from load_env import load_env_file
@@ -43,6 +43,7 @@ from controller.course_controller import CourseController
 from controller.assignment_controller import AssignmentController
 from controller.progress_controller import ProgressController
 from services.face_recognition_service import get_face_recognition_service
+from ai_gemini import chat_about_transcript
 
 
 app = Flask(__name__)
@@ -77,6 +78,48 @@ app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB
 STORE_DIR = os.path.join(os.getcwd(), "data_quiz")
 os.makedirs(STORE_DIR, exist_ok=True)
 mimetypes.add_type("text/vtt", ".vtt")
+
+CHEAT_SCREENSHOT_ROOT = os.getenv("CHEAT_SCREENSHOT_ROOT", "cheat_screenshots")
+
+def save_cheat_frame(frame_bgr, user_identifier: str, cheating_reason: str = None) -> str:
+    """
+    Lưu frame khi phát hiện gian lận vào thư mục theo tên tài khoản + ngày + giờ cụ thể
+    Format: cheat_screenshots/username_YYYYMMDD_HHMMSS/filename.jpg
+    
+    Args:
+        frame_bgr: OpenCV image (BGR format)
+        user_identifier: username hoặc user_id
+        cheating_reason: Lý do gian lận (để thêm vào tên file)
+    
+    Returns:
+        Đường dẫn file đã lưu
+    """
+    now = datetime.datetime.now()
+    # Tạo tên thư mục: username_YYYYMMDD_HHMMSS
+    safe_name = "".join(c for c in str(user_identifier) if c.isalnum() or c in ('-', '_')).strip()
+    if not safe_name:
+        safe_name = "unknown_user"
+    
+    # Format: username_YYYYMMDD_HHMMSS
+    folder_timestamp = now.strftime("%Y%m%d_%H%M%S")
+    folder_name = f"{safe_name}_{folder_timestamp}"
+    
+    # Tạo thư mục
+    user_folder = os.path.join(CHEAT_SCREENSHOT_ROOT, folder_name)
+    os.makedirs(user_folder, exist_ok=True)
+    
+    # Tạo tên file với timestamp chi tiết và lý do (nếu có)
+    file_timestamp = now.strftime("%Y%m%d_%H%M%S_%f")
+    if cheating_reason:
+        # Làm sạch lý do để dùng làm tên file
+        safe_reason = "".join(c for c in cheating_reason[:30] if c.isalnum() or c in ('-', '_', ' ')).strip().replace(' ', '_')
+        filename = f"{file_timestamp}_{safe_reason}.jpg"
+    else:
+        filename = f"{file_timestamp}.jpg"
+    
+    path = os.path.join(user_folder, filename)
+    cv2.imwrite(path, frame_bgr)
+    return path
 
 def _store_path(video_id: str) -> str:
     return os.path.join(STORE_DIR, f"{video_id}.json")
@@ -325,7 +368,11 @@ def generate_question_from_subtitles(subtitle_text, time_range, language="vi"):
     """
     try:
         # Import AI Gemini
-        from google import genai
+        try:
+           import google.generativeai as genai  # ✅ SDK đúng
+        except Exception as _e:
+           genai = None
+           print(f"⚠️ Gemini SDK import failed: {_e}")
         
         # Cấu hình API key (cần thêm vào environment variables)
         api_key = os.getenv('GEMINI_API_KEY')
@@ -523,13 +570,44 @@ def create_fallback_question_from_subtitles(subtitle_text):
         "explanation": "Dựa trên nội dung phụ đề, đây là phần giới thiệu tổng quan về chủ đề."
     }
 
+
+def _gemini_model_candidates():
+    """
+    Danh sách model Gemini hợp lệ, tự sửa lại các alias cũ (gemini-flash, models/gemini-flash, gemini-pro...).
+    Dùng chung cho mọi chỗ gọi Gemini để tránh 404.
+    """
+    import os as _os
+    raw = (_os.getenv("GEMINI_MODEL_QA") or "gemini-2.0-flash").strip()
+    # Nếu người dùng copy nguyên "models/xxx" từ REST API thì bỏ prefix đi
+    if raw.startswith("models/"):
+        raw = raw.split("/", 1)[1]
+
+    # Map các tên cũ sang model mới
+    bad_aliases = {
+        "gemini-flash",
+        "gemini-pro",
+    }
+    if raw in bad_aliases:
+        raw = "gemini-2.0-flash"
+
+    return [
+        raw,
+        "gemini-2.0-flash-001",
+        "gemini-2.5-flash",
+        "gemini-1.5-flash-latest",
+        "gemini-1.5-pro-latest",
+        "gemini-1.5-flash",
+        "gemini-1.5-pro",
+    ]
+
+
 # --- AI-safe explanation helper ---
 def safe_generate_explanation(question_text, options, correct_index, user_index):
     """
     Luôn trả về chuỗi giải thích. Nếu AI không khả dụng, sinh fallback có nghĩa.
     """
     try:
-        from google import genai
+        import google.generativeai as genai
         api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
             raise RuntimeError("No API key")
@@ -627,160 +705,262 @@ def _fetch_courses_catalog() -> list[dict]:
                 "description": getattr(c, "description", ""),
             })
     return out
+def _extract_error_topics(detailed: list[dict]) -> dict:
+    """
+    Đếm lỗi theo chủ đề từ text câu hỏi.
+    """
+    kw_map = {
+        # nền tảng
+        "biến": "Biến & Kiểu dữ liệu", "kiểu dữ liệu": "Biến & Kiểu dữ liệu",
+        "variable": "Biến & Kiểu dữ liệu", "variables": "Biến & Kiểu dữ liệu",
+        "string": "Chuỗi", "char": "Chuỗi",
+        "array": "Mảng", "mảng": "Mảng", "list": "Mảng",
+        # điều khiển
+        "vòng lặp": "Vòng lặp", "for": "Vòng lặp", "while": "Vòng lặp",
+        "điều kiện": "Câu lệnh điều kiện", "if": "Câu lệnh điều kiện", "switch": "Câu lệnh điều kiện",
+        # hàm / OOP
+        "hàm": "Hàm/Method", "method": "Hàm/Method", "function": "Hàm/Method",
+        "class": "OOP cơ bản", "object": "OOP cơ bản",
+        "kế thừa": "Kế thừa (OOP)", "đa hình": "Đa hình (OOP)", "encapsulation": "Đóng gói (OOP)"
+    }
+    topics = {}
+    for d in detailed or []:
+        q = (d.get("question") or d.get("question_text") or "").lower()
+        wrong = int(d.get("user_answer_index", -1)) != int(d.get("correct_index", -1))
+        for k, canon in kw_map.items():
+            if k in q:
+                t = topics.setdefault(canon, {"wrong": 0, "total": 0})
+                t["total"] += 1
+                if wrong:
+                    t["wrong"] += 1
+    return topics
 
 
 def _heuristic_teacher_report(results: dict, catalog: list[dict]) -> dict:
-    """
-    Fallback khi không có Gemini. Phân tích đơn giản dựa trên tỉ lệ đúng và các câu sai.
-    """
     detailed = results.get("detailed_results") or results.get("details") or []
     total = int(results.get("total") or len(detailed) or 0)
-    correct = int(results.get("correct") or sum(1 for d in detailed
-                 if int(d.get("user_answer_index", -1)) == int(d.get("correct_index", -1))))
+    correct = int(results.get("correct") or sum(
+        1 for d in detailed
+        if int(d.get("user_answer_index", -1)) == int(d.get("correct_index", -1))
+    ))
     score = float(results.get("score") or (correct * 100.0 / total if total else 0.0))
 
-    # gom chủ đề thô từ câu hỏi
-    import re
-    topics = {}
-    for d in detailed:
-        q = (d.get("question") or "").lower()
-        # tách vài keyword “thường gặp” (java, biến, kiểu dữ liệu, vòng lặp, điều kiện, class, object…)
-        for kw in ["java", "biến", "kiểu dữ liệu", "string", "int", "float",
-                   "boolean", "char", "vòng lặp", "for", "while", "điều kiện",
-                   "if", "class", "object", "hàm", "method", "mảng", "array",
-                   "oop", "kế thừa", "đa hình"]:
-            if re.search(r"\b" + re.escape(kw) + r"\b", q):
-                topics[kw] = topics.get(kw, 0) + (0 if int(d.get("user_answer_index",-1)) ==
-                                                       int(d.get("correct_index",-1)) else 1)
+    # --- trích chủ đề lỗi
+    topics = _extract_error_topics(detailed)
+    topic_stat = []
+    for name, st in topics.items():
+        r = st["wrong"] / st["total"] if st["total"] else 0.0
+        topic_stat.append((name, st["wrong"], st["total"], r))
+    topic_stat.sort(key=lambda x: (-x[1], -x[3], -x[2]))
+    weak_topics = [n for (n,w,t,r) in topic_stat if t >= 1][:3]
 
-    # strengths / weaknesses
-    if score >= 80:
-        strengths = "Nắm vững khái niệm nền tảng, tốc độ làm bài tốt và ổn định."
-        weaknesses = "Còn rải rác một vài lỗi sai nhỏ ở câu vận dụng; cần kiểm tra kỹ từ khóa loại trừ."
-    elif score >= 50:
-        strengths = "Bám được ý chính, các câu nhận biết/nhớ lại kiến thức làm khá tốt."
-        weaknesses = "Lúng túng ở câu hiểu–vận dụng (so sánh định nghĩa, áp dụng vào ví dụ)."
-    else:
-        strengths = "Có nỗ lực làm bài, trả lời được một phần câu nhận biết."
-        weaknesses = "Hổng nền tảng ở khái niệm cơ bản (định nghĩa, phạm vi áp dụng, ngoại lệ). Nên học lại từ đầu."
+    # --- trình độ theo điểm
+    level_hint = "advanced" if score >= 80 else ("intermediate" if score >= 50 else "beginner")
 
-    # đề xuất lộ trình theo mức điểm
-    def pick_courses(level_hint: str, limit=3):
-        lv = level_hint.lower()
-        bucket = []
-        for c in catalog:
-            ok = (c.get("level") == lv) or (lv in (c.get("tags","").lower() + " " + c.get("category","").lower()))
-            if ok:
-                bucket.append({"id": c.get("id"), "title": c.get("title"), "reason": f"Phù hợp mức {lv}."})
-            if len(bucket) >= limit:
+    # map chủ đề → keyword để so khớp catalog
+    topic2kw = {
+        "Biến & Kiểu dữ liệu": ["variable", "type", "kiểu dữ liệu", "biến"],
+        "Chuỗi": ["string", "chuỗi"],
+        "Mảng": ["array", "list", "mảng"],
+        "Câu lệnh điều kiện": ["if", "else", "switch", "điều kiện"],
+        "Vòng lặp": ["for", "while", "loop", "vòng lặp"],
+        "Hàm/Method": ["function", "method", "hàm"],
+        "OOP cơ bản": ["class", "object", "oop"],
+        "Kế thừa (OOP)": ["inheritance", "kế thừa"],
+        "Đa hình (OOP)": ["polymorphism", "đa hình"],
+        "Đóng gói (OOP)": ["encapsulation", "đóng gói"],
+    }
+    kws = []
+    for t in weak_topics:
+        kws += topic2kw.get(t, [])
+    kws = kws[:6]
+
+    def _match_courses(topic_keywords: list[str], by_level: str, limit=4):
+        picks = []
+        for c in catalog or []:
+            text = f"{(c.get('title') or '')} {(c.get('tags') or '')} {(c.get('category') or '')}".lower()
+            lvl  = (c.get("level") or "").lower()
+            hit_topic = any(k.lower() in text for k in topic_keywords)
+            hit_level = (lvl == by_level.lower()) if by_level else False
+            if hit_topic or hit_level:
+                picks.append({
+                    "id": c.get("id"),
+                    "title": c.get("title"),
+                    "level": c.get("level"),
+                    "thumbnail": c.get("thumbnail"),
+                    "reason": ("Phù hợp chủ đề yếu" if hit_topic else f"Phù hợp trình độ {by_level}.")
+                })
+            if len(picks) >= limit:
                 break
-        return bucket
+        return picks
 
-    if score >= 80:
-        reco_text = "Bạn làm tốt. Có thể chuyển sang các chủ đề nâng cao và bài tập thực hành dự án nhỏ."
-        recos = pick_courses("advanced") or pick_courses("intermediate")
-    elif score >= 50:
-        reco_text = "Nên củng cố phần trung cấp (áp dụng khái niệm vào tình huống), luyện đề phân loại lỗi thường gặp."
-        recos = pick_courses("intermediate") or pick_courses("beginner")
-    else:
-        reco_text = "Khuyến nghị học lại từ nhập môn, đi theo lộ trình bài bản với ví dụ minh hoạ và bài luyện cơ bản."
-        recos = pick_courses("beginner")
+    rec_courses = _match_courses(kws, level_hint, limit=4)
 
-    # thêm gợi ý “theo chủ đề hay sai”
-    if topics:
-        top_bad = sorted(topics.items(), key=lambda x: -x[1])[:3]
-        bad_str = ", ".join(k for k, _ in top_bad)
-        reco_text += f" Chủ đề cần ôn kỹ: {bad_str}."
+    strengths = f"Điểm: {score:.1f}/100 – đúng {correct}/{total} câu."
+    weaknesses = ("Cần củng cố: " + ", ".join(weak_topics)) if weak_topics else "Cần luyện thêm các câu áp dụng."
+    plan_text = (
+        "Nên học lại từ nhập môn theo lộ trình ngắn, có bài tập minh họa mỗi chủ đề."
+        if level_hint == "beginner" else
+        ("Củng cố khái niệm và luyện áp dụng theo tình huống."
+         if level_hint == "intermediate" else
+         "Tiếp tục luyện đề phân hoá và mini-project.")
+    )
 
     return {
         "strengths": strengths,
         "weaknesses": weaknesses,
         "recommendations": {
-            "text": reco_text,
-            "courses": recos
-        }
+            "level_hint": level_hint,
+            "text": plan_text,
+            "courses": rec_courses
+        },
+        "source": "heuristic"
     }
 
 
 def build_teacher_report(results: dict, courses_catalog: list[dict]) -> dict:
     """
-    Dùng Gemini (nếu có) để viết nhận xét chi tiết như giáo viên.
-    Fallback về _heuristic_teacher_report nếu không có API key / model / lỗi mạng.
+    Gọi Gemini (nếu có) để viết nhận xét chi tiết như giáo viên.
+    Nếu lỗi (API / SDK / mạng / model), luôn fallback về _heuristic_teacher_report.
     """
+    import os, json
+
+    # Bước 0: luôn dựng sẵn bản heuristic để làm nền & fallback
+    base = _heuristic_teacher_report(results, courses_catalog) or {}
+    if "recommendations" not in base or not isinstance(base["recommendations"], dict):
+        base["recommendations"] = {"text": "", "courses": []}
+    base_recos = base["recommendations"]
+    rec_courses = base_recos.get("courses") or []
+
+    # Nếu không có API key → trả luôn bản heuristic
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        base["source"] = "heuristic_no_key"
+        return base
+
+    # Thử import SDK (thư viện mới google-generativeai)
     try:
-        from google import genai
-        import json, os
-        api_key = os.getenv("GEMINI_API_KEY")
-        if not api_key:
-            raise RuntimeError("No GEMINI_API_KEY")
+        import google.generativeai as genai
         genai.configure(api_key=api_key)
+    except Exception as e:
+        print(f"[build_teacher_report] Gemini SDK init error: {e}")
+        base["source"] = "heuristic_no_sdk"
+        return base
 
-        # chọn model ưu tiên; nếu lỗi sẽ thử dần
-        model_names = [
-            os.getenv("GEMINI_MODEL_QA", "gemini-2.0-flash"),
-            "gemini-2.0-flash-001", "gemini-2.5-flash",
-            "gemini-1.5-flash-latest", "gemini-1.5-pro-latest"
-        ]
+    # Chuẩn bị dữ liệu tóm tắt cho prompt
+    detailed = results.get("detailed_results") or results.get("details") or []
+    wrong_qs = []
+    for d in detailed:
+        try:
+            cidx = int(d.get("correct_index", 0) or 0)
+            uidx = int(d.get("user_answer_index", -1) or -1)
+        except Exception:
+            cidx = int(d.get("correct_index") or 0)
+            uidx = int(d.get("user_answer_index") or -1)
 
-        # nén dữ liệu gửi lên (tránh dài): chỉ giữ các trường cần thiết
-        detailed = results.get("detailed_results") or results.get("details") or []
-        compact = [{
-            "q": (d.get("question") or "")[:280],
-            "cidx": int(d.get("correct_index", 0) or 0),
-            "uidx": int(d.get("user_answer_index", -1) or -1)
-        } for d in detailed]
+        if uidx == cidx:
+            continue  # chỉ lấy câu sai để phân tích điểm yếu
+        q_text = (d.get("question") or d.get("question_text") or "")[:220]
+        opts = d.get("options") or []
+        wrong_qs.append({
+            "question": q_text,
+            "correct": opts[cidx] if 0 <= cidx < len(opts) else "",
+            "chosen": opts[uidx] if 0 <= uidx < len(opts) else "",
+        })
+        if len(wrong_qs) >= 10:
+            break
 
-        catalog_view = [{
-            "id": c.get("id"),
-            "title": c.get("title"),
-            "category": c.get("category"),
-            "tags": c.get("tags"),
-            "level": c.get("level")
-        } for c in (courses_catalog or [])][:50]
+    # Tóm tắt khóa học đã được hệ thống lọc sẵn (để AI chỉ giải thích chứ không tự bịa khoá mới)
+    course_brief = [{
+        "title": c.get("title"),
+        "level": c.get("level"),
+        "reason": c.get("reason")
+    } for c in rec_courses]
 
-        prompt = f"""
-Bạn là giáo viên bộ môn. Hãy đọc dữ liệu chấm thi và VIẾT NHẬN XÉT CHI TIẾT cho học viên:
-- Phân tích điểm mạnh (cụ thể: dạng câu/khái niệm làm tốt, cách tư duy đúng)
-- Phân tích điểm yếu (cụ thể: nhầm lẫn, hiểu sai, từ khóa hay bỏ sót, chiến lược làm bài)
-- Đề xuất học tập có thể hành động ngay (kế hoạch 1-2-3 bước, kiểu bài tập phù hợp)
-- Gợi ý 2–4 khóa học phù hợp từ CATALOG (nếu khớp chủ đề & mức độ), nêu lý do chọn.
+    score = results.get("score")
+    correct = results.get("correct")
+    total = results.get("total")
 
-DỮ LIỆU TÓM TẮT:
-- score: {results.get("score")}
-- correct/total: {results.get("correct")}/{results.get("total")}
-- answers_compact: {json.dumps(compact, ensure_ascii=False)}
+    prompt = f"""
+Bạn là giáo viên lập trình, đang viết phiếu nhận xét cho học viên sau bài kiểm tra trắc nghiệm.
 
-CATALOG (danh mục khóa học):
-{json.dumps(catalog_view, ensure_ascii=False)}
+Thông tin tổng quan:
+- Điểm số: {score}/100
+- Số câu đúng/số câu: {correct}/{total}
 
-HÃY TRẢ VỀ JSON DUY NHẤT (không thêm lời mở đầu/kết luận), mẫu:
-{{
-  "strengths": "…",
-  "weaknesses": "…",
-  "recommendations": {{
-     "text": "…",
-     "courses": [{{"id": 123, "title": "…", "reason": "…"}}, ...]
-  }}
-}}
+Một số câu làm sai (tối đa 10):
+{json.dumps(wrong_qs, ensure_ascii=False, indent=2)}
+
+Các khóa học hệ thống đang đề xuất sẵn:
+{json.dumps(course_brief, ensure_ascii=False, indent=2)}
+
+Nhiệm vụ:
+1. Phân tích chi tiết ĐIỂM MẠNH: học viên đang làm tốt ở dạng câu nào, khái niệm nào, cách suy luận ra sao.
+2. Phân tích chi tiết ĐIỂM YẾU: hay nhầm ở loại câu nào, khái niệm nào, sai vì thiếu kiến thức hay thiếu cẩn thận, ví dụ cụ thể.
+3. Viết KẾ HOẠCH ÔN TẬP / LỘ TRÌNH học trong 1–2 tuần tới (3–5 gạch đầu dòng, có thể hành động ngay).
+4. Dựa trên danh sách khóa học ở trên, giải thích ngắn gọn vì sao NHỮNG KHÓA HỌC ĐÓ phù hợp với trình độ hiện tại (không cần nghĩ thêm khoá mới).
+
+TRẢ VỀ ĐÚNG ĐỊNH DẠNG SAU (không thêm ký hiệu khác, không dùng markdown, không có JSON):
+
+[STRENGTHS]
+(nội dung 3–6 câu, tiếng Việt, xưng hô "bạn")
+
+[WEAKNESSES]
+(nội dung 3–6 câu, tiếng Việt, nêu rõ lỗi điển hình)
+
+[PLAN]
+(nội dung 3–6 câu hoặc 3–5 gạch đầu dòng, tiếng Việt)
 """
 
-        for name in model_names:
-            try:
-                model = genai.GenerativeModel(name)
-                resp = model.generate_content(prompt)
-                txt = (resp.text or "").strip()
-                jstart, jend = txt.find("{"), txt.rfind("}") + 1
-                payload = json.loads(txt[jstart:jend])
-                # tối thiểu cần có 3 khoá
-                if isinstance(payload, dict) and "strengths" in payload and "weaknesses" in payload and "recommendations" in payload:
-                    return payload
-            except Exception:
+    model_names = _gemini_model_candidates()
+
+    def _extract_section(raw: str, tag: str) -> str:
+        start = raw.find(f"[{tag}]")
+        if start == -1:
+            return ""
+        start += len(tag) + 2  # qua dấu ]
+        end = len(raw)
+        for other in ["STRENGTHS", "WEAKNESSES", "PLAN"]:
+            if other == tag:
+                continue
+            pos = raw.find(f"[{other}]", start)
+            if pos != -1 and pos < end:
+                end = pos
+        return raw[start:end].strip()
+
+    for name in model_names:
+        try:
+            model = genai.GenerativeModel(name)
+            resp = model.generate_content(prompt)
+            raw = (getattr(resp, "text", None) or "").strip()
+            if not raw:
                 continue
 
-        # mọi model đều fail → fallback
-        raise RuntimeError("All models failed")
-    except Exception:
-        return _heuristic_teacher_report(results, courses_catalog)
+            s_txt = _extract_section(raw, "STRENGTHS")
+            w_txt = _extract_section(raw, "WEAKNESSES")
+            p_txt = _extract_section(raw, "PLAN")
+
+            if not (s_txt or w_txt or p_txt):
+                # không parse được → thử model khác
+                continue
+
+            merged = {
+                "strengths": s_txt or base.get("strengths"),
+                "weaknesses": w_txt or base.get("weaknesses"),
+                "recommendations": {
+                    "text": p_txt or base_recos.get("text"),
+                    "courses": rec_courses,
+                },
+                "source": f"gemini_{name}",
+            }
+            return merged
+        except Exception as e:
+            print(f"[build_teacher_report] model {name} error: {e}")
+            continue
+
+    # Nếu tất cả model đều lỗi → quay lại heuristic
+    base["source"] = "heuristic_error"
+    return base
 
 # --- AI-safe DETAILED explanation helper (returns HTML) ---
 def detailed_explain_html(question_text: str, options: list, correct_index: int, user_index: int):
@@ -810,16 +990,15 @@ def detailed_explain_html(question_text: str, options: list, correct_index: int,
 
     # cố gắng dùng Gemini trước
     try:
-        from google import genai
+        import google.generativeai as genai
         api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
             raise RuntimeError("No API key")
         genai.configure(api_key=api_key)
 
-        # Danh sách model hợp lệ; lấy từ env nếu có
-        model_names = [os.getenv("GEMINI_MODEL_QA", "gemini-2.0-flash"),
-                       "gemini-2.0-flash-001", "gemini-2.5-flash",
-                       "gemini-1.5-flash-latest", "gemini-1.5-pro-latest"]
+    # Danh sách model hợp lệ; lấy từ helper chung (có sửa alias cũ)
+        model_names = _gemini_model_candidates()
+
 
         prompt = f"""
 Bạn là trợ giảng lập trình. Hãy GIẢI THÍCH CHI TIẾT cho câu trắc nghiệm dưới dạng HTML (chỉ thẻ cơ bản: p, h6, ul, li, code, strong, em; không dùng script/css).
@@ -1121,7 +1300,7 @@ def _gemini_generate_mcqs(transcript_text: str, n: int = 20, language: str = "vi
             })
         return qs
 
-    from google import genai
+    import google.generativeai as genai
     genai.configure(api_key=api_key)
 
     # Ưu tiên model trong ENV, fallback an toàn
@@ -1243,6 +1422,83 @@ def api_ai_quiz_bulk_from_transcript():
     return jsonify({"ok": True, "created": total_inserted, "levels": {k: len(v) for k,v in level_map.items()}})
 # --- END: Gemini bulk questions from transcript ---
 
+@app.post("/api/ai/video-chat")
+@login_required
+def api_ai_video_chat():
+    """
+    Chat trợ giảng AI dựa trên nội dung bài học.
+    - Nếu câu hỏi thuộc phạm vi bài học -> AI trả lời (có thể dùng kiến thức ngoài transcript).
+    - Nếu câu hỏi ngoài lề -> blocked = True.
+    """
+    try:
+        payload = request.get_json(force=True) or {}
+    except Exception:
+        payload = {}
+
+    course_id = int(payload.get("course_id") or 0)
+    question = (payload.get("question") or "").strip()
+    history  = payload.get("history") or []
+
+    if course_id <= 0 or not question:
+        return jsonify({"ok": False, "error": "Thiếu course_id hoặc question"}), 400
+
+    # 1) Lấy đường dẫn transcript/caption cho khóa học
+    try:
+        cap_path = course_controller.course_model.get_caption_path(course_id)
+    except Exception as e:
+        current_app.logger.exception("get_caption_path failed: %s", e)
+        cap_path = ""
+
+    if not cap_path:
+        return jsonify({"ok": False, "error": "Không tìm thấy transcript cho khóa học"}), 400
+
+    # 2) Đọc transcript từ file .vtt/.srt
+    transcript = _read_vtt_as_text(cap_path)
+    if not transcript:
+        return jsonify({"ok": False, "error": "Không đọc được transcript từ caption"}), 400
+
+    # 3) Heuristic chặn sớm các câu hỏi rõ ràng ngoài lề
+    q_norm = re.sub(r"\s+", " ", question.lower())
+    obvious_off_topics = [
+        "thời tiết", "thoi tiet",
+        "trúng số", "trung so",
+        "bóng đá", "bong da",
+        "chứng khoán", "chung khoan",
+        "crush", "tán gái", "tan gai",
+        "ăn gì", "an gi",
+        "chơi game", "choi game",
+    ]
+    if any(k in q_norm for k in obvious_off_topics):
+        return jsonify({
+            "ok": True,
+            "blocked": True,
+            "answer": None,
+            "reason": "unrelated_or_out_of_scope"
+        })
+
+    # 4) Gọi Gemini để quyết định trong/ngoài phạm vi bài học
+    result = chat_about_transcript(transcript, question, history)
+    if not result:
+        return jsonify({"ok": False, "error": "Gemini không phản hồi"}), 500
+
+    related = bool(result.get("related"))
+    answer = (result.get("answer") or "").strip()
+
+    if not related or not answer:
+        # Câu hỏi ngoài phạm vi bài học
+        return jsonify({
+            "ok": True,
+            "blocked": True,
+            "answer": None,
+            "reason": "unrelated_or_out_of_scope"
+        })
+
+    return jsonify({
+        "ok": True,
+        "blocked": False,
+        "answer": answer
+    })
+
 
 # --- thay toàn bộ route này ---
 @app.post("/api/exam/start")
@@ -1317,7 +1573,8 @@ def api_proctor_analyze():
     if image_payload is None:
         return jsonify({"ok": False, "error": "Missing image payload"}), 400
 
-    # --- coerce to raw bytes ---
+    # --- coerce to raw bytes và lưu để dùng cho screenshot sau ---
+    raw = None
     if isinstance(image_payload, (bytes, bytearray)):
         raw = bytes(image_payload)
     elif isinstance(image_payload, str):
@@ -1342,6 +1599,18 @@ def api_proctor_analyze():
     result = svc.detect_faces_and_objects(raw) or {}
     if result.get("error"):
         return jsonify({"ok": False, "error": result.get("error"), "result": result}), 422
+    
+    # Lưu raw bytes vào result để dùng cho screenshot sau
+    result["_raw_image_bytes"] = raw
+    
+    # --- ENRICH với model đã train (QUAN TRỌNG!) ---
+    try:
+        from services.attention_cheat_monitor import ProctorAugmentor
+        augmentor = ProctorAugmentor()
+        result = augmentor.enrich(result)  # Thêm cheat_proba, attention_proba từ model
+    except Exception as e:
+        if os.getenv("AI_DEBUG", "0").lower() in ("1", "true", "yes", "on"):
+            current_app.logger.warning(f"[ENRICH] Failed to enrich result: {e}")
     
     IGNORE_AS_SUSPICIOUS = {
     c.strip().lower() for c in (os.getenv("IGNORE_SUSPICIOUS_CLASSES", "person,face,human") or "").split(",")
@@ -1403,40 +1672,176 @@ def api_proctor_analyze():
     state = "WARMUP" if in_warmup else "MONITORING"
     policy_level = (result.get("policy_level") or ("monitor" if armed_flag else "warmup")).lower()
 
+    # --- THỨ TỰ ƯU TIÊN: Objects gian lận > Multiple faces > No face ---
+    cheat_proba = float(result.get("cheat_proba") or 0.0)
+    suspicious_count = int(result.get("suspicious_count") or 0)
+    face_count = int(result.get("face_count") or 0)
+    suspicious_objs = result.get("suspicious_objects") or []
+    
+    # Sử dụng model prediction để quyết định
+    block_threshold = float(os.getenv("CHEAT_BLOCK_PROBA", "0.65"))
+    warn_threshold = float(os.getenv("CHEAT_WARN_PROBA", "0.45"))
+    
+    # ƯU TIÊN 1: Objects gian lận (phone, book, tablet, etc.) - QUAN TRỌNG NHẤT
+    has_suspicious_objects = suspicious_count > 0 and len(suspicious_objs) > 0
+    suspicious_summary = result.get("suspicious_summary")
+    
+    # Lấy cheat_type trước để kiểm tra
+    cheat_type = result.get("cheat_type", "unknown")
+    
+    # QUAN TRỌNG: Nếu cheat_type = "normal" thì KHÔNG được coi là gian lận
+    # NHƯNG: looking_down và looking_away VẪN được coi là gian lận
+    if cheat_type == "normal":
+        # Reset các flag gian lận
+        result["should_block"] = False
+        result["should_warn"] = False
+        result["cheating_detected"] = False
+        result["cheating_reason"] = None
+        # Không xử lý thêm, bỏ qua phần dưới
+    elif cheat_type in ["looking_down", "looking_away"]:
+        # Cúi xuống hoặc nhìn ra ngoài = gian lận
+        # Đã được xử lý trong attention_cheat_monitor, chỉ cần đảm bảo flags đúng
+        if not result.get("cheating_reason"):
+            if cheat_type == "looking_down":
+                result["cheating_reason"] = "Phát hiện cúi xuống - Có thể đang xem tài liệu gian lận"
+            else:
+                result["cheating_reason"] = "Phát hiện nhìn ra ngoài màn hình - Có thể đang gian lận"
+    elif has_suspicious_objects or (cheat_proba > 0.0 and cheat_type != "normal"):
+        # Ưu tiên sử dụng cheat_type từ multi-class model (đã được set trong enrich)
+        cheat_type_conf = result.get("cheat_type_confidence", 0.0)
+        
+        # Lấy danh sách objects được phát hiện
+        detected_types = [obj.get("type") or obj.get("label") for obj in suspicious_objs 
+                         if obj.get("type") or obj.get("label")]
+        detected_types = [t for t in detected_types if t.lower() != "person"]  # Bỏ qua person
+        
+        # Tạo thông báo cụ thể dựa trên objects
+        if detected_types:
+            # Loại bỏ duplicate và giới hạn số lượng
+            unique_types = list(dict.fromkeys(detected_types))[:3]  # Giữ thứ tự, tối đa 3
+            object_message = ", ".join(unique_types)
+        else:
+            object_message = None
+        if suspicious_summary:
+            object_message = suspicious_summary
+        
+        # Sử dụng cheat_type từ model nếu có và confidence cao
+        # Ưu tiên sử dụng cheating_reason đã được set trong attention_cheat_monitor
+        if result.get("cheating_reason"):
+            # Đã có thông báo cụ thể từ attention_cheat_monitor - sử dụng luôn
+            reason_message = result.get("cheating_reason")
+        elif cheat_type != "unknown" and cheat_type != "normal" and cheat_type_conf > 0.5:
+            # Model đã predict loại cụ thể - tạo thông báo phù hợp
+            type_messages = {
+                "phone": "⚠️ PHÁT HIỆN ĐIỆN THOẠI - Có thể đang tra cứu đáp án hoặc nhận hỗ trợ từ bên ngoài",
+                "phone_call": "⚠️ PHÁT HIỆN ĐANG GỌI ĐIỆN - Có thể đang nhận hỗ trợ từ bên ngoài",
+                "phone_selfie": "⚠️ PHÁT HIỆN SELFIE/CAMERA - Có thể đang chụp màn hình bài thi",
+                "phone_screenshot": "⚠️ PHÁT HIỆN CHỤP MÀN HÌNH - Có thể đang lưu đề thi",
+                "book": "⚠️ PHÁT HIỆN SÁCH/TÀI LIỆU - Có thể đang tra cứu đáp án",
+                "tablet": "⚠️ PHÁT HIỆN TABLET/LAPTOP - Có thể đang tra cứu tài liệu",
+                "glasses_suspicious": "⚠️ PHÁT HIỆN HÀNH VI ĐÁNG NGỜ VỚI KÍNH - Có thể đang sử dụng thiết bị hỗ trợ",
+                "looking_away": "⚠️ PHÁT HIỆN NHÌN RA NGOÀI MÀN HÌNH - Có thể đang xem tài liệu hoặc nhận hỗ trợ",
+                "looking_down": "⚠️ PHÁT HIỆN CÚI XUỐNG - Có thể đang xem tài liệu gian lận dưới bàn",
+                "cheating_generic": "⚠️ PHÁT HIỆN HÀNH VI GIAN LẬN - Vui lòng tập trung vào bài thi"
+            }
+            reason_message = type_messages.get(cheat_type, f"Phát hiện hành vi gian lận: {cheat_type}")
+        elif object_message:
+            # Fallback: dựa trên objects được phát hiện
+            reason_message = f"Phát hiện vật thể gian lận: {object_message}"
+        else:
+            # Fallback cuối cùng
+            if suspicious_summary:
+                reason_message = f"Phát hiện vật thể đáng ngờ: {suspicious_summary}"
+            else:
+                reason_message = (
+                    f"Phát hiện hành vi gian lận (xác suất: {cheat_proba:.1%})"
+                    if cheat_proba > 0
+                    else "Phát hiện vật thể đáng ngờ"
+                )
+        
+        # Quyết định block/warn dựa trên cheat_proba hoặc suspicious_count
+        # CHỈ block/warn khi:
+        # 1. Có suspicious objects (phone, book, tablet, etc.)
+        # 2. Hoặc cheat_proba cao VÀ cheat_type KHÔNG phải "normal"
+        # 3. Hoặc không có mặt (face_count = 0) - xử lý riêng ở dưới
+        
+        if has_suspicious_objects:
+            # Có vật thể gian lận = chắc chắn gian lận
+            result["should_block"] = True
+            result["cheating_detected"] = True
+            result["cheating_reason"] = reason_message
+        elif cheat_proba >= block_threshold and cheat_type != "normal":
+            # Cheat_proba cao VÀ không phải "normal"
+            result["should_block"] = True
+            result["cheating_detected"] = True
+            result["cheating_reason"] = reason_message
+        elif cheat_proba >= warn_threshold and cheat_type != "normal":
+            # Cheat_proba trung bình VÀ không phải "normal"
+            result["should_warn"] = True
+            result["cheating_reason"] = reason_message
+    
     # Không xoá nghi vấn trong warm-up; chỉ hạ UI action
     if in_warmup or policy_level == "warmup":
         ui_action = "none"
     else:
         ui_action = "block" if result.get("should_block") else ("warn" if result.get("should_warn") else "none")
 
-    # Luật NO-FACE => CHEAT (sau warm-up)
-    no_face_block_sec   = float(os.getenv("NO_FACE_BLOCK_SEC",  "2.0"))
-    no_face_frames_req  = int(os.getenv("NO_FACE_REQ_FRAMES",   "6"))
-    face_count          = int(result.get("face_count") or 0)
+    # ƯU TIÊN 2: Multiple faces - CHỈ khi KHÔNG có objects gian lận
     multi_face_warn  = int(os.getenv("MULTI_FACE_WARN_COUNT", "2"))  # >=2 mặt thì cảnh báo
     multi_face_block = os.getenv("MULTI_FACE_BLOCK", "0").lower() in ("1","true","yes","on")
-
-    if not in_warmup and int(result.get("face_count") or 0) >= multi_face_warn:
-    # không đếm 'person' là vật thể; dùng lý do chuyên biệt
-       result["cheating_reason"] = result.get("cheating_reason") or "multiple_faces_detected"
-       if multi_face_block:
-          result["should_block"] = True
-          ui_action = "block"
-       else:
-          result["should_warn"] = True
-        # Chỉ nâng lên 'warn' nếu chưa block bởi lý do khác
-          if not result.get("should_block"):
-              ui_action = "warn"
     
-    nf = session.get("no_face_frames", 0)
-    nf = (nf + 1) if face_count == 0 else 0
-    session["no_face_frames"] = nf
-    if not in_warmup and face_count == 0:
-        if (elapsed >= (warmup_sec + no_face_block_sec)) or (nf >= no_face_frames_req):
+    # CHỈ xử lý multiple faces nếu:
+    # 1. Chưa có cảnh báo từ objects gian lận
+    # 2. Thực sự có nhiều hơn 1 mặt
+    # 3. Không trong warmup
+    if (not result.get("should_block") and not result.get("should_warn") and 
+        not in_warmup and face_count >= multi_face_warn and 
+        not has_suspicious_objects):  # QUAN TRỌNG: Không có objects gian lận
+        # Chỉ set "nhiều khuôn mặt" khi thực sự có nhiều hơn 1 mặt
+        result["cheating_reason"] = f"Phát hiện {face_count} khuôn mặt trong khung hình - Có thể có người khác hỗ trợ"
+        if multi_face_block:
+            result["should_block"] = True
             result["cheating_detected"] = True
-            result["cheating_reason"]   = result.get("cheating_reason") or "no_face"
-            result["should_block"]      = True
             ui_action = "block"
+        else:
+            result["should_warn"] = True
+            if not result.get("should_block"):
+                ui_action = "warn"
+    
+    # Luật NO-FACE => CẢNH BÁO/BLOCK
+    no_face_warn_frames = int(os.getenv("NO_FACE_WARN_FRAMES", "2"))   # Cảnh báo sau 2 frames
+    no_face_block_sec   = float(os.getenv("NO_FACE_BLOCK_SEC",  "1.5"))  # Block sau 1.5s (giảm từ 2.0)
+    no_face_frames_req  = int(os.getenv("NO_FACE_REQ_FRAMES",   "4"))   # Block sau 4 frames (giảm từ 6)
+    
+    # ƯU TIÊN 3: No face - CHỈ khi KHÔNG có objects gian lận VÀ không có multiple faces
+    if (not result.get("should_block") and not result.get("should_warn") and 
+        not has_suspicious_objects):  # QUAN TRỌNG: Không có objects gian lận
+        nf = session.get("no_face_frames", 0)
+        nf = (nf + 1) if face_count == 0 else 0
+        session["no_face_frames"] = nf
+        
+        if face_count == 0:
+            # CẢNH BÁO ngay cả trong warmup (nhưng không block)
+            if nf >= no_face_warn_frames:
+                result["should_warn"] = True
+                result["cheating_reason"] = "Không phát hiện khuôn mặt trong camera - Vui lòng điều chỉnh camera"
+                if not in_warmup:
+                    ui_action = "warn"
+                else:
+                    # Trong warmup: chỉ cảnh báo, không block
+                    ui_action = "warn"
+            
+            # BLOCK sau warmup nếu không có mặt quá lâu
+            if not in_warmup:
+                if (elapsed >= (warmup_sec + no_face_block_sec)) or (nf >= no_face_frames_req):
+                    result["cheating_detected"] = True
+                    result["cheating_reason"] = "Không phát hiện khuôn mặt - Có thể đang gian lận"
+                    result["should_block"] = True
+                    ui_action = "block"
+        else:
+            # Reset counter khi có mặt lại
+            if nf > 0:
+                session["no_face_frames"] = 0
 
     # --- Finalize policy fields for FE ---
     result["state"] = state
@@ -1449,22 +1854,130 @@ def api_proctor_analyze():
     # --- debug log (optional) ---
     try:
         if os.getenv("AI_DEBUG","0").lower() in ("1","true","yes","on"):
+            cheat_proba = result.get('cheat_proba', 0.0)
+            suspicious_objs = result.get('suspicious_objects', [])
+            detected_types = [obj.get('type') or obj.get('label') for obj in suspicious_objs[:3]]
             current_app.logger.info(
-                "[ANALYZE] faces=%s objs=%s susp=%s state=%s armed=%s warmup=%s action=%s",
+                "[ANALYZE] faces=%s objs=%s susp=%s cheat_proba=%.2f detected=%s state=%s armed=%s warmup=%s action=%s reason=%s",
                 result.get('face_count'), result.get('object_count'), result.get('suspicious_count'),
-                result.get('state'), bool(result.get('armed')), in_warmup, ui_action
+                cheat_proba, detected_types, result.get('state'), bool(result.get('armed')), 
+                in_warmup, ui_action, result.get('cheating_reason', '')[:50]
             )
     except Exception:
         pass
+
+    # --- chuẩn bị thông tin người dùng & chụp screenshot (dù có attempt hay không) ---
+    session_user = session.get("user") or {}
+    user_id = session_user.get("id")
+    username = (
+        session.get("username")
+        or session_user.get("username")
+        or session_user.get("name")
+        or str(user_id or "unknown_user")
+    )
+
+    should_capture = (
+        result.get("cheating_detected")
+        or result.get("should_block")
+        or result.get("should_warn")
+        or (int(result.get("suspicious_count") or 0) > 0)
+        or (len(result.get("suspicious_objects") or []) > 0)
+        or (result.get("cheat_type") not in [None, "normal", "unknown"])
+    )
+
+    screenshot_path = None
+    screenshot_timestamp = None
+
+    if should_capture:
+        frame_bgr = None
+
+        # Ưu tiên: raw bytes đã lưu trong result
+        if result.get("_raw_image_bytes"):
+            try:
+                import numpy as np
+                raw_bytes = result.get("_raw_image_bytes")
+                nparr = np.frombuffer(raw_bytes, np.uint8)
+                frame_bgr = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+                if os.getenv("AI_DEBUG", "0").lower() in ("1", "true", "yes", "on"):
+                    current_app.logger.info(f"[AUTO-CAPTURE] Using raw bytes from result, size: {len(raw_bytes)}")
+            except Exception as e:
+                if os.getenv("AI_DEBUG", "0").lower() in ("1", "true", "yes", "on"):
+                    current_app.logger.warning(f"[AUTO-CAPTURE] Failed to decode raw bytes from result: {e}")
+
+        # Fallback: raw bytes trong scope local
+        if (frame_bgr is None or (hasattr(frame_bgr, "size") and frame_bgr.size == 0)) and raw:
+            try:
+                import numpy as np
+                nparr = np.frombuffer(raw, np.uint8)
+                frame_bgr = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+                if os.getenv("AI_DEBUG", "0").lower() in ("1", "true", "yes", "on"):
+                    current_app.logger.info(f"[AUTO-CAPTURE] Using raw bytes from local scope, size: {len(raw)}")
+            except Exception as e:
+                if os.getenv("AI_DEBUG", "0").lower() in ("1", "true", "yes", "on"):
+                    current_app.logger.warning(f"[AUTO-CAPTURE] Failed to decode raw bytes from local: {e}")
+
+        # Fallback cuối: payload base64
+        if frame_bgr is None or (hasattr(frame_bgr, "size") and frame_bgr.size == 0):
+            img_base64 = p.get("image") or p.get("frame") or p.get("image_base64") or p.get("snapshot")
+            if img_base64:
+                try:
+                    if isinstance(img_base64, str):
+                        if img_base64.startswith("data:image"):
+                            img_base64 = img_base64.split(",", 1)[-1]
+                        img_bytes = base64.b64decode(img_base64, validate=False)
+                    else:
+                        img_bytes = bytes(img_base64)
+
+                    import numpy as np
+                    nparr = np.frombuffer(img_bytes, np.uint8)
+                    frame_bgr = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+                except Exception as e:
+                    if os.getenv("AI_DEBUG", "0").lower() in ("1", "true", "yes", "on"):
+                        current_app.logger.warning(f"[AUTO-CAPTURE] Failed to decode image: {e}")
+
+        if frame_bgr is not None and frame_bgr.size > 0:
+            cheating_reason = result.get("cheating_reason") or result.get("cheat_type") or "cheating_detected"
+            try:
+                screenshot_path = save_cheat_frame(frame_bgr, username, cheating_reason)
+                screenshot_timestamp = datetime.datetime.now().isoformat()
+                result["screenshot_path"] = screenshot_path
+
+                current_app.logger.info(
+                    f"[AUTO-CAPTURE] ✅ Saved cheat screenshot: {screenshot_path} | "
+                    f"Reason: {cheating_reason} | User: {username} | "
+                    f"Flags: detected={result.get('cheating_detected')}, block={result.get('should_block')}, "
+                    f"warn={result.get('should_warn')}, susp_count={result.get('suspicious_count')}, "
+                    f"cheat_type={result.get('cheat_type')}"
+                )
+            except Exception as save_err:
+                current_app.logger.error(f"[AUTO-CAPTURE] ❌ Failed to save screenshot: {save_err}")
+                import traceback
+                current_app.logger.error(traceback.format_exc())
+        else:
+            current_app.logger.warning(
+                f"[AUTO-CAPTURE] ⚠️  Should capture but no image data available | "
+                f"Flags: detected={result.get('cheating_detected')}, block={result.get('should_block')}, "
+                f"warn={result.get('should_warn')}, susp_count={result.get('suspicious_count')}, "
+                f"cheat_type={result.get('cheat_type')}"
+            )
 
     # --- persist frame & events (best-effort) ---
     try:
         attempt_id = (p.get("attempt_id") or "").strip()
         course_id  = int(p.get("course_id") or 0)
-        user_id    = session.get("user", {}).get("id")
+        
+        # QUAN TRỌNG: Luôn lưu event nếu có dấu hiệu gian lận, kể cả khi không có attempt_id/course_id
+        # Điều này đảm bảo tất cả hành vi gian lận đều được ghi vào DB
+        has_cheating = (
+            result.get("should_block") or 
+            result.get("should_warn") or 
+            int(result.get("suspicious_count") or 0) > 0 or 
+            result.get("cheating_detected") or
+            (result.get("cheat_type") not in [None, "normal", "unknown"])
+        )
 
         if attempt_id and user_id and course_id:
-            # 1) lưu frame
+            # 1) lưu frame (chỉ khi có attempt_id)
             course_controller.course_model.log_proctor_frame(
                 attempt_id=attempt_id,
                 user_id=user_id,
@@ -1477,7 +1990,7 @@ def api_proctor_analyze():
             )
 
             # 2) nếu có cảnh báo hoặc nghi vấn thì lưu event
-            if result.get("should_block") or result.get("should_warn") or int(result.get("suspicious_count") or 0) > 0 or result.get("cheating_detected"):
+            if has_cheating:
                 evt = "block" if result.get("should_block") else ("warn" if result.get("should_warn") else ("cheating" if result.get("cheating_detected") else "suspicious_objects"))
                 payload_meta = {
                     "source": "proctor.analyze",
@@ -1486,6 +1999,44 @@ def api_proctor_analyze():
                     "ui_action": result.get("ui_action"),
                     "state": result.get("state"),
                 }
+                
+                if screenshot_path:
+                    payload_meta["screenshot_path"] = screenshot_path
+                    payload_meta["screenshot_saved"] = True
+                    payload_meta["screenshot_timestamp"] = screenshot_timestamp
+                
+                # 4) LƯU ĐẦY ĐỦ THÔNG TIN GIAN LẬN VÀO DATABASE
+                # Bao gồm: hành vi gian lận, ngày, giờ, screenshot path, cheat_type, confidence
+                cheating_reason = result.get("cheating_reason") or "Hành vi gian lận được phát hiện"
+                cheat_type = result.get("cheat_type", "unknown")
+                cheat_type_conf = result.get("cheat_type_confidence", 0.0)
+                cheat_proba = result.get("cheat_proba", 0.0)
+                
+                # Tạo metadata đầy đủ (bao gồm screenshot_path nếu có)
+                full_meta = {
+                    **payload_meta,
+                    "cheating_reason": cheating_reason,
+                    "cheat_type": cheat_type,
+                    "cheat_type_confidence": float(cheat_type_conf),
+                    "cheat_proba": float(cheat_proba),
+                    "suspicious_objects": result.get("suspicious_objects", []),
+                    "suspicious_count": int(result.get("suspicious_count") or 0),
+                    "face_count": int(result.get("face_count") or 0),
+                    "attention_score": float(result.get("attention_score") or 0.0),
+                    "should_block": bool(result.get("should_block")),
+                    "should_warn": bool(result.get("should_warn")),
+                    "cheating_detected": bool(result.get("cheating_detected")),
+                    "detected_at": datetime.datetime.now().isoformat(),  # Thời gian phát hiện chính xác
+                    "detected_date": datetime.datetime.now().strftime("%Y-%m-%d"),  # Ngày phát hiện
+                    "detected_time": datetime.datetime.now().strftime("%H:%M:%S"),  # Giờ phát hiện
+                }
+                
+                # Đảm bảo screenshot_path được thêm vào full_meta nếu có
+                if screenshot_path:
+                    full_meta["screenshot_path"] = screenshot_path
+                    full_meta["screenshot_saved"] = True
+                    full_meta["screenshot_timestamp"] = screenshot_timestamp
+                
                 # thử 2 chữ ký khác nhau tuỳ DB của bạn
                 try:
                     course_controller.course_model.log_proctor_event(
@@ -1493,8 +2044,8 @@ def api_proctor_analyze():
                         user_id=user_id,
                         course_id=course_id,
                         event=evt,
-                        reason=result.get("cheating_reason"),
-                        meta=json.dumps(payload_meta, ensure_ascii=False)
+                        reason=cheating_reason,
+                        meta=json.dumps(full_meta, ensure_ascii=False)
                     )
                 except TypeError:
                     course_controller.course_model.log_proctor_event(
@@ -1502,15 +2053,79 @@ def api_proctor_analyze():
                         user_id=user_id,
                         course_id=course_id,
                         event_type=evt,
-                        confidence=1.0,
-                        meta_json=json.dumps(payload_meta, ensure_ascii=False)
+                        confidence=float(cheat_proba) if cheat_proba > 0 else 1.0,
+                        meta_json=json.dumps(full_meta, ensure_ascii=False)
                     )
+        elif has_cheating and user_id:
+            # QUAN TRỌNG: Lưu event ngay cả khi KHÔNG có attempt_id/course_id
+            # Đảm bảo tất cả hành vi gian lận đều được ghi vào DB
+            evt = "block" if result.get("should_block") else ("warn" if result.get("should_warn") else ("cheating" if result.get("cheating_detected") else "suspicious_objects"))
+            cheating_reason = result.get("cheating_reason") or "Hành vi gian lận được phát hiện"
+            cheat_type = result.get("cheat_type", "unknown")
+            cheat_type_conf = result.get("cheat_type_confidence", 0.0)
+            cheat_proba = result.get("cheat_proba", 0.0)
+            
+            full_meta = {
+                "source": "proctor.analyze",
+                "suspicious_count": int(result.get("suspicious_count") or 0),
+                "cheating_reason": cheating_reason,
+                "ui_action": result.get("ui_action"),
+                "state": result.get("state"),
+                "cheat_type": cheat_type,
+                "cheat_type_confidence": float(cheat_type_conf),
+                "cheat_proba": float(cheat_proba),
+                "suspicious_objects": result.get("suspicious_objects", []),
+                "face_count": int(result.get("face_count") or 0),
+                "attention_score": float(result.get("attention_score") or 0.0),
+                "should_block": bool(result.get("should_block")),
+                "should_warn": bool(result.get("should_warn")),
+                "cheating_detected": bool(result.get("cheating_detected")),
+                "detected_at": datetime.datetime.now().isoformat(),
+                "detected_date": datetime.datetime.now().strftime("%Y-%m-%d"),
+                "detected_time": datetime.datetime.now().strftime("%H:%M:%S"),
+            }
+            
+            # Thêm screenshot_path nếu có
+            if screenshot_path:
+                full_meta["screenshot_path"] = screenshot_path
+                full_meta["screenshot_saved"] = True
+                full_meta["screenshot_timestamp"] = screenshot_timestamp
+            
+            # Lưu event với attempt_id=None, course_id=0
+            try:
+                course_controller.course_model.log_proctor_event(
+                    attempt_id=None,
+                    user_id=user_id,
+                    course_id=0,  # 0 = không xác định được course
+                    event=evt,
+                    reason=cheating_reason,
+                    meta=json.dumps(full_meta, ensure_ascii=False)
+                )
+            except TypeError:
+                course_controller.course_model.log_proctor_event(
+                    attempt_id=None,
+                    user_id=user_id,
+                    course_id=0,
+                    event_type=evt,
+                    confidence=float(cheat_proba) if cheat_proba > 0 else 1.0,
+                    meta_json=json.dumps(full_meta, ensure_ascii=False)
+                )
+            
+            current_app.logger.info(
+                f"[EVENT] ✅ Saved cheating event (no attempt_id) | "
+                f"User: {username} | Reason: {cheating_reason} | "
+                f"Screenshot: {screenshot_path or 'none'}"
+            )
     except Exception as _e:
         try:
             current_app.logger.exception("persist proctor data failed: %s", _e)
         except Exception:
             pass
 
+    # --- Xóa _raw_image_bytes khỏi result trước khi trả về JSON (bytes không thể serialize) ---
+    if "_raw_image_bytes" in result:
+        del result["_raw_image_bytes"]
+    
     # --- always return JSON ---
     return jsonify({"ok": True, "result": result}), 200
 
@@ -1954,6 +2569,29 @@ def ai_debug():
     frs = get_face_recognition_service()
     return jsonify(frs.debug_status())
 
+@app.route("/api/proctor/debug_frs")
+def debug_frs():
+    from services.face_recognition_service import get_face_recognition_service
+    svc = get_face_recognition_service()
+    return jsonify(svc.debug_status())
+
+
+@app.get("/api/proctor/model-status")
+@login_required
+def api_proctor_model_status():
+    from services.attention_calibration import load_calibration
+    data = load_calibration()
+    
+    return jsonify({
+        "ok": True,
+        "model_loaded": bool(data.get("logreg")),
+        "cheat_model_loaded": bool(data.get("cheat_logreg")),
+        "calibration_file": data.get("trained_at"),
+        "n_samples": data.get("n_samples"),
+        "attention_acc": data.get("logreg", {}).get("acc"),
+        "cheat_acc": data.get("cheat_logreg", {}).get("acc")
+    })
+
 
 @app.post("/api/convert-doc-to-video")
 @login_required
@@ -2126,6 +2764,34 @@ def api_ai_progress():
         abort(403)
     return course_controller.api_ai_progress()
 
+@app.get("/api/ai/cheating-incidents")
+@login_required
+def api_ai_cheating_incidents():
+    """API lấy danh sách chi tiết các sự kiện gian lận"""
+    if session.get("role") != "teacher":
+        abort(403)
+    course_id = request.args.get("course_id", type=int)
+    user_id = request.args.get("user_id", type=int)
+    limit = request.args.get("limit", type=int, default=100)
+    
+    incidents = course_controller.course_model.get_cheating_incidents(
+        course_id=course_id,
+        user_id=user_id,
+        limit=limit
+    )
+    return jsonify({"ok": True, "incidents": incidents, "count": len(incidents)})
+
+@app.route("/cheat_screenshots/<path:filename>")
+@login_required
+def serve_cheat_screenshot(filename):
+    """Serve screenshot files từ thư mục cheat_screenshots"""
+    if session.get("role") != "teacher":
+        abort(403)
+    from flask import send_from_directory
+    import os
+    screenshot_dir = os.path.join(os.getcwd(), CHEAT_SCREENSHOT_ROOT)
+    return send_from_directory(screenshot_dir, filename)
+
 # --- Proctoring (camera/face) ---
 
 @app.post("/api/exam/verify-face")
@@ -2194,6 +2860,7 @@ def _coerce_frame_to_bytes(frame):
 @app.post("/api/exam/capture-frame")
 def api_capture_frame_unified():
     from services.face_recognition_service import get_face_recognition_service
+    from flask import current_app
     data = request.get_json(silent=True) or {}
     frame = data.get("frame") or data.get("image") or data.get("image_base64")
     img_bytes = _coerce_frame_to_bytes(frame)
@@ -2258,6 +2925,37 @@ def api_capture_frame_unified():
     }
     if out.get("armed") and not session.get("server_armed_since"):
         session["server_armed_since"] = _t.time()
+    
+    # TỰ ĐỘNG CHỤP MÀN HÌNH cho TẤT CẢ các trường hợp có dấu hiệu gian lận
+    should_capture_frame = (
+        out.get("cheating_detected") or 
+        out.get("should_block") or 
+        out.get("should_warn") or 
+        (int(out.get("suspicious_count") or 0) > 0)
+    )
+    
+    if should_capture_frame:
+        try:
+            username = session.get("username") or str(session.get("user", {}).get("id", "unknown"))
+            cheating_reason = out.get("cheating_reason") or "cheating_detected"
+            
+            # Sử dụng img_bytes đã có sẵn
+            if img_bytes:
+                import numpy as np
+                nparr = np.frombuffer(img_bytes, np.uint8)
+                frame_bgr = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+                if frame_bgr is not None and frame_bgr.size > 0:
+                    screenshot_path = save_cheat_frame(frame_bgr, username, cheating_reason)
+                    out["screenshot_path"] = screenshot_path
+                    out["screenshot_saved"] = True
+                    if os.getenv("AI_DEBUG", "0").lower() in ("1", "true", "yes", "on"):
+                        current_app.logger.info(
+                            f"[AUTO-CAPTURE] Saved cheat screenshot: {screenshot_path} | "
+                            f"Reason: {cheating_reason} | User: {username}"
+                        )
+        except Exception as capture_err:
+            if os.getenv("AI_DEBUG", "0").lower() in ("1", "true", "yes", "on"):
+                current_app.logger.warning(f"[AUTO-CAPTURE] Error in capture-frame: {capture_err}")
 
     return jsonify({"ok": True, "result": out})
 
