@@ -828,87 +828,95 @@ class CourseModel:
                 })
             return out
 
-    def get_user_exam_details(self, user_id: int, course_id: int = None):
+    def get_user_exam_details(self, user_id: int, course_id: int | None = None) -> list[dict]:
       """
-      Trả về danh sách các lần làm bài (attempts) của 1 user cho 1 khóa (nếu truyền course_id).
-      Bao gồm:
-      - comprehensive_exams: attempt_id thật
-      - student_submissions: nhóm theo attempt_id; nếu không có thì nhóm theo DATE(submitted_at)
+      Trả về danh sách các lần làm bài của 1 user (lọc theo course nếu truyền vào).
+      Hợp nhất:
+      - comprehensive_exams (luồng mới)
+      - student_submissions + questions (legacy)
+       Không để cột mơ hồ: mọi course_id/user_id đều prefix alias.
       """
       with self._connect() as conn:
-        params = [user_id]
-        where_course = ""
-        if course_id:
-            where_course = "AND ce.course_id = ?"
-            params.append(course_id)
+        cur = conn.cursor()
 
-        # Nguồn comprehensive_exams
+        # --- 1) comprehensive_exams ---
+        params_ce = [user_id]
+        where_ce = "ce.user_id = ?"
+        if course_id:
+            where_ce += " AND ce.course_id = ?"
+            params_ce.append(course_id)
+
         sql_ce = f"""
-        SELECT ce.attempt_id, ce.course_id, ce.user_id,
-               ce.started_at, ce.ended_at,
-               ce.score, ce.status,
-               ce.completed_questions, ce.correct_answers, ce.total_questions,
-               c.title AS course_title, u.username,
-               'comprehensive' AS source
-          FROM comprehensive_exams ce
-          LEFT JOIN courses c ON ce.course_id = c.id
-          LEFT JOIN users   u ON ce.user_id   = u.id
-         WHERE ce.user_id = ? {where_course}
-           AND ce.status IN ('completed','terminated')
-        """
-
-        # Nguồn student_submissions
-        params_ss = [user_id]
-        where_course_ss = ""
-        if course_id:
-            where_course_ss = "AND COALESCE(s.course_id, q.course_id) = ?"
-            params_ss.append(course_id)
-
-        sql_ss = f"""
         SELECT
-           COALESCE(s.attempt_id,
-                    'legacy-' || DATE(s.submitted_at) || '-' || s.student_id || '-' || COALESCE(s.course_id, q.course_id)
-           ) AS attempt_id,
-           COALESCE(s.course_id, q.course_id) AS course_id,
-           s.student_id AS user_id,
-           MIN(s.submitted_at) AS started_at,
-           MAX(s.submitted_at) AS ended_at,
-           ROUND(SUM(s.score) * 100.0 / COUNT(1), 2) AS score,
-           'completed' AS status,
-           SUM(s.score) AS completed_questions,    -- dùng làm 'đã chấm' (tương đương correct)
-           SUM(s.score) AS correct_answers,
-           COUNT(1)     AS total_questions,
-           c.title AS course_title,
-           u.username,
-           'legacy' AS source
-          FROM student_submissions s
-          LEFT JOIN questions q ON q.id = s.question_id
-          LEFT JOIN courses   c ON c.id = COALESCE(s.course_id, q.course_id)
-          LEFT JOIN users     u ON u.id = s.student_id
-         WHERE s.student_id = ? {where_course_ss}
-         GROUP BY attempt_id, course_id, user_id
+            ce.attempt_id                     AS attempt_id,
+            ce.user_id                        AS user_id,
+            ce.course_id                      AS course_id,
+            c.title                           AS course_title,
+            ce.started_at                     AS started_at,
+            ce.ended_at                       AS ended_at,
+            ce.score                          AS score,
+            ce.status                         AS status,
+            (
+                SELECT COUNT(1)
+                FROM comprehensive_exam_questions q
+                WHERE q.attempt_id = ce.attempt_id
+                  AND q.selected_index IS NOT NULL
+            )                                  AS completed
+        FROM comprehensive_exams AS ce
+        LEFT JOIN courses AS c ON c.id = ce.course_id
+        WHERE {where_ce}
         """
 
-        sql = f"""
-        {sql_ce}
-        UNION ALL
-        {sql_ss}
-        ORDER BY ended_at DESC
+        # --- 2) legacy: student_submissions (+ questions để lấy course_id chuẩn) ---
+        params_legacy = [user_id]
+        where_legacy = "s.student_id = ?"
+        if course_id:
+            where_legacy += " AND COALESCE(s.course_id, q.course_id) = ?"
+            params_legacy.append(course_id)
+
+        sql_legacy = f"""
+        SELECT
+            -- gom theo attempt_id; nếu thiếu attempt_id thì gom theo ngày + user + course
+            COALESCE(
+                s.attempt_id,
+                'legacy-' || DATE(s.submitted_at) || '-' || s.student_id || '-' || COALESCE(s.course_id, q.course_id)
+            )                                   AS attempt_id,
+            s.student_id                         AS user_id,
+            COALESCE(s.course_id, q.course_id)   AS course_id,
+            c.title                              AS course_title,
+            MIN(s.submitted_at)                  AS started_at,
+            MAX(s.submitted_at)                  AS ended_at,
+            ROUND(SUM(s.score) * 100.0 / COUNT(1), 2) AS score,
+            'completed'                          AS status,
+            COUNT(1)                             AS completed
+        FROM student_submissions AS s
+        LEFT JOIN questions AS q ON q.id = s.question_id
+        LEFT JOIN courses   AS c ON c.id = COALESCE(s.course_id, q.course_id)
+        WHERE {where_legacy}
+        GROUP BY attempt_id, s.student_id, COALESCE(s.course_id, q.course_id)
         """
-        rows = conn.execute(sql, params + params_ss).fetchall()
-        try:
-            return [dict(r) for r in rows]
-        except Exception:
-            out = []
-            for r in rows:
-                out.append({
-                    "attempt_id": r[0], "course_id": r[1], "user_id": r[2],
-                    "started_at": r[3], "ended_at": r[4],
-                    "score": r[5], "status": r[6],
-                    "completed_questions": r[7], "correct_answers": r[8], "total_questions": r[9],
-                    "course_title": r[10], "username": r[11], "source": r[12]
-                })
-            return out
+
+        # --- UNION và sắp xếp ngoài cùng theo alias ---
+        sql = f"""
+        SELECT * FROM (
+            {sql_ce}
+            UNION ALL
+            {sql_legacy}
+        ) AS all_attempts
+        ORDER BY all_attempts.ended_at DESC, all_attempts.started_at DESC
+        """
+
+        rows = cur.execute(sql, params_ce + params_legacy).fetchall()
+
+        # Chuẩn hoá list[dict]
+        out = []
+        for r in rows:
+            try:
+                out.append(dict(r))
+            except Exception:
+                cols = [c[0] for c in cur.description]
+                out.append({k: v for k, v in zip(cols, r)})
+        return out
 
     
     def update_exam_score(self, attempt_id: str, new_score: float):
@@ -1215,23 +1223,65 @@ class CourseModel:
             u.id                          AS user_id,
             u.username,
             {email_expr},
-            c.id                          AS course_id,
+            all_users.course_id           AS course_id,
             c.title                       AS course_title,
             COALESCE(a.attempt_count, 0)  AS attempt_count,
             COALESCE(a.highest_score, 0)  AS highest_score,
             COALESCE(a.average_score, 0)  AS average_score,
             COALESCE(e.cheat_events, 0)   AS cheat_events,
             COALESCE(f.focus_percent, 0)  AS focus_percent,
-            ''                             AS behavior_analysis,
+            (SELECT 
+                CASE 
+                    WHEN COUNT(*) = 0 THEN '—'
+                    ELSE GROUP_CONCAT(
+                        CASE 
+                            WHEN pe.meta_json LIKE '%"cheat_type"%' 
+                                 AND pe.meta_json NOT LIKE '%"cheat_type":"unknown"%'
+                                 AND pe.meta_json NOT LIKE '%"cheat_type":"normal"%'
+                            THEN SUBSTR(pe.meta_json, 
+                                INSTR(pe.meta_json, '"cheat_type":"') + 14,
+                                INSTR(SUBSTR(pe.meta_json, INSTR(pe.meta_json, '"cheat_type":"') + 14), '"') - 1
+                            )
+                            WHEN pe.event_type IN ('suspicious_objects', 'block', 'warn') 
+                                 AND pe.meta_json LIKE '%"cheating_reason"%'
+                            THEN SUBSTR(pe.meta_json,
+                                INSTR(pe.meta_json, '"cheating_reason":"') + 19,
+                                CASE 
+                                    WHEN INSTR(SUBSTR(pe.meta_json, INSTR(pe.meta_json, '"cheating_reason":"') + 19), '",') > 0
+                                    THEN INSTR(SUBSTR(pe.meta_json, INSTR(pe.meta_json, '"cheating_reason":"') + 19), '",') - 1
+                                    ELSE 50
+                                END
+                            )
+                            ELSE pe.event_type
+                        END,
+                        ', '
+                    )
+                END
+             FROM proctor_events pe
+             WHERE pe.user_id = u.id 
+               AND (pe.course_id = all_users.course_id OR (pe.course_id IS NULL AND all_users.course_id = 0))
+               AND (pe.event_type IN ('cheat', 'suspicious_objects', 'block', 'warn', 'terminated', 'multiple_faces_detected')
+                    OR pe.meta_json LIKE '%"cheating_detected":true%'
+                    OR pe.meta_json LIKE '%"should_block":true%'
+                    OR pe.meta_json LIKE '%"should_warn":true%')
+             ORDER BY pe.created_at DESC
+             LIMIT 5
+            ) AS behavior_analysis,
             COALESCE(a.last_seen_attempt, e.last_seen_event, f.last_seen_frame) AS last_seen
-        FROM exam_attempts ea
-        JOIN users   u ON u.id = ea.user_id
-        JOIN courses c ON c.id = ea.course_id
-        LEFT JOIN attempts a ON a.user_id = ea.user_id AND a.course_id = ea.course_id
-        LEFT JOIN events   e ON e.user_id = ea.user_id AND e.course_id = ea.course_id
-        LEFT JOIN frames   f ON f.user_id = ea.user_id AND f.course_id = ea.course_id
-        WHERE 1=1 {where_course.format(tbl='ea')}
-        GROUP BY u.id, c.id
+        FROM (
+            SELECT DISTINCT user_id, course_id FROM exam_attempts
+            UNION
+            SELECT DISTINCT user_id, COALESCE(course_id, 0) AS course_id FROM proctor_events WHERE user_id IS NOT NULL
+            UNION
+            SELECT DISTINCT user_id, course_id FROM proctor_frames WHERE user_id IS NOT NULL AND course_id IS NOT NULL
+        ) all_users
+        JOIN users   u ON u.id = all_users.user_id
+        LEFT JOIN courses c ON c.id = all_users.course_id
+        LEFT JOIN attempts a ON a.user_id = all_users.user_id AND a.course_id = all_users.course_id
+        LEFT JOIN events e ON e.user_id = all_users.user_id AND e.course_id = all_users.course_id
+        LEFT JOIN frames f ON f.user_id = all_users.user_id AND f.course_id = all_users.course_id
+        WHERE 1=1 {where_course.format(tbl='all_users')}
+        GROUP BY u.id, all_users.course_id, c.id, c.title
         ORDER BY COALESCE(e.cheat_events,0) DESC, COALESCE(a.highest_score,0) DESC
         """
 
@@ -1250,6 +1300,46 @@ class CourseModel:
       for r in rows:
         if not include_teachers and role_map.get(r["user_id"]) == "teacher":
             continue
+        
+        # Xử lý behavior_analysis: nếu NULL hoặc rỗng thì tạo từ dữ liệu thực tế
+        behavior_analysis = r["behavior_analysis"] or ""
+        if not behavior_analysis or behavior_analysis == "—":
+            # Fallback: lấy từ các sự kiện gian lận gần nhất
+            try:
+                with self._connect() as conn2:
+                    behavior_events = conn2.execute("""
+                        SELECT event_type, meta_json
+                        FROM proctor_events
+                        WHERE user_id = ? AND course_id = ?
+                        ORDER BY created_at DESC
+                        LIMIT 5
+                    """, (r["user_id"], r["course_id"])).fetchall()
+                    
+                    behaviors = []
+                    for be in behavior_events:
+                        meta = {}
+                        try:
+                            if be["meta_json"]:
+                                meta = json.loads(be["meta_json"])
+                        except:
+                            pass
+                        
+                        cheat_type = meta.get("cheat_type", "")
+                        cheating_reason = meta.get("cheating_reason", "")
+                        event_type = be["event_type"]
+                        
+                        if cheat_type and cheat_type not in ("unknown", "normal"):
+                            behaviors.append(cheat_type)
+                        elif cheating_reason:
+                            behaviors.append(cheating_reason[:30])  # Giới hạn độ dài
+                        elif event_type:
+                            behaviors.append(event_type)
+                    
+                    if behaviors:
+                        behavior_analysis = ", ".join(behaviors[:3])  # Tối đa 3 hành vi
+            except Exception:
+                pass
+        
         items.append({
             "user_id": r["user_id"],
             "username": r["username"],
@@ -1261,7 +1351,7 @@ class CourseModel:
             "average_score": float(r["average_score"] or 0),
             "cheat_events": int(r["cheat_events"] or 0),
             "focus_percent": int(r["focus_percent"] or 0),
-            "behavior_analysis": r["behavior_analysis"],
+            "behavior_analysis": behavior_analysis or "—",
             "last_seen": r["last_seen"],
         })
       return items
@@ -1358,6 +1448,232 @@ class CourseModel:
             )
             conn.commit()
 
+    def get_cheating_incidents(self, course_id=None, user_id=None, limit=100):
+        """
+        Lấy danh sách chi tiết các sự kiện gian lận với đầy đủ thông tin
+        """
+        where_clauses = []
+        params = []
+        
+        if course_id:
+            where_clauses.append("pe.course_id = ?")
+            params.append(int(course_id))
+        if user_id:
+            where_clauses.append("pe.user_id = ?")
+            params.append(int(user_id))
+        
+        where_sql = "WHERE " + " AND ".join(where_clauses) if where_clauses else ""
+        
+        with self._connect() as conn:
+            sql = f"""
+            SELECT 
+                pe.id,
+                pe.attempt_id,
+                pe.user_id,
+                pe.course_id,
+                pe.event_type,
+                pe.confidence,
+                pe.meta_json,
+                pe.created_at,
+                u.username,
+                c.title AS course_title
+            FROM proctor_events pe
+            LEFT JOIN users u ON u.id = pe.user_id
+            LEFT JOIN courses c ON c.id = pe.course_id
+            {where_sql}
+            ORDER BY pe.created_at DESC
+            LIMIT ?
+            """
+            params.append(limit)
+            
+            cur = conn.execute(sql, params)
+            rows = cur.fetchall()
+            
+            incidents = []
+            for r in rows:
+                meta = {}
+                try:
+                    if r["meta_json"]:
+                        meta = json.loads(r["meta_json"])
+                except Exception:
+                    meta = {}
+                
+                # Extract thông tin từ meta
+                cheating_reason = meta.get("cheating_reason") or meta.get("reason") or r["event_type"]
+                cheat_type = meta.get("cheat_type", "unknown")
+                detected_date = meta.get("detected_date") or (r["created_at"][:10] if r["created_at"] else "")
+                detected_time = meta.get("detected_time") or (r["created_at"][11:19] if r["created_at"] and len(r["created_at"]) > 19 else "")
+                screenshot_path = meta.get("screenshot_path")
+                
+                # Convert screenshot path thành URL có thể truy cập được
+                screenshot_url = None
+                if screenshot_path:
+                    # Chuyển đổi đường dẫn Windows thành URL
+                    # Ví dụ: cheat_screenshots\user_20241215_143025\file.jpg -> /cheat_screenshots/user_20241215_143025/file.jpg
+                    # Đảm bảo path không bắt đầu bằng / để tránh double slash
+                    clean_path = screenshot_path.replace("\\", "/").lstrip("/")
+                    
+                    # Tạo URL để truy cập qua route /cheat_screenshots/<path:filename>
+                    # Lấy phần sau "cheat_screenshots/"
+                    if "cheat_screenshots" in clean_path:
+                        # Tách phần sau "cheat_screenshots/"
+                        parts = clean_path.split("cheat_screenshots/", 1)
+                        if len(parts) > 1:
+                            screenshot_url = "/cheat_screenshots/" + parts[1]
+                        else:
+                            screenshot_url = "/cheat_screenshots/" + clean_path
+                    else:
+                        screenshot_url = "/cheat_screenshots/" + clean_path
+                    
+                    # Kiểm tra file có tồn tại không (optional, chỉ để debug)
+                    import os
+                    if not os.path.exists(screenshot_path):
+                        # Thử với relative path
+                        if os.path.exists(clean_path):
+                            screenshot_path = clean_path
+                
+                incidents.append({
+                    "id": r["id"],
+                    "attempt_id": r["attempt_id"],
+                    "user_id": r["user_id"],
+                    "username": r["username"],
+                    "course_id": r["course_id"],
+                    "course_title": r["course_title"],
+                    "event_type": r["event_type"],
+                    "cheating_reason": cheating_reason,
+                    "cheat_type": cheat_type,
+                    "confidence": float(r["confidence"] or 0.0),
+                    "detected_date": detected_date,
+                    "detected_time": detected_time,
+                    "detected_at": r["created_at"],
+                    "screenshot_path": screenshot_path,
+                    "screenshot_url": screenshot_url,  # URL để hiển thị trong browser
+                    "suspicious_count": meta.get("suspicious_count", 0),
+                    "face_count": meta.get("face_count", 0),
+                    "attention_score": meta.get("attention_score", 0.0),
+                    "should_block": meta.get("should_block", False),
+                    "should_warn": meta.get("should_warn", False),
+                    "suspicious_objects": meta.get("suspicious_objects", []),
+                })
+            
+            return incidents
+
+    def get_cheating_statistics(self, course_id=None, user_id=None):
+        """
+        Lấy thống kê tổng quan về các loại hành vi gian lận
+        Returns: {
+            "total_incidents": int,
+            "total_students": int,
+            "total_courses": int,
+            "by_cheat_type": {cheat_type: count},
+            "by_cheat_type_percent": {cheat_type: percent}
+        }
+        """
+        where_clauses = []
+        params = []
+        
+        if course_id:
+            where_clauses.append("pe.course_id = ?")
+            params.append(int(course_id))
+        if user_id:
+            where_clauses.append("pe.user_id = ?")
+            params.append(int(user_id))
+        
+        where_sql = "WHERE " + " AND ".join(where_clauses) if where_clauses else ""
+        
+        with self._connect() as conn:
+            # Tổng số sự kiện
+            sql_total = f"""
+            SELECT COUNT(*) as total
+            FROM proctor_events pe
+            {where_sql}
+            """
+            cur = conn.execute(sql_total, params)
+            row = cur.fetchone()
+            total_incidents = row[0] if row else 0
+            
+            # Số học viên khác nhau
+            sql_students = f"""
+            SELECT COUNT(DISTINCT pe.user_id) as total
+            FROM proctor_events pe
+            {where_sql}
+            """
+            cur = conn.execute(sql_students, params)
+            row = cur.fetchone()
+            total_students = row[0] if row else 0
+            
+            # Số khóa học khác nhau
+            course_where = "pe.course_id > 0"
+            if where_clauses:
+                course_where = " AND ".join(where_clauses + ["pe.course_id > 0"])
+            else:
+                course_where = "pe.course_id > 0"
+            
+            sql_courses = f"""
+            SELECT COUNT(DISTINCT pe.course_id) as total
+            FROM proctor_events pe
+            WHERE {course_where}
+            """
+            cur = conn.execute(sql_courses, params)
+            row = cur.fetchone()
+            total_courses = row[0] if row else 0
+            
+            # Thống kê theo cheat_type
+            sql_by_type = f"""
+            SELECT pe.meta_json, pe.event_type
+            FROM proctor_events pe
+            {where_sql}
+            """
+            cur = conn.execute(sql_by_type, params)
+            rows = cur.fetchall()
+            
+            by_type = {}
+            for row in rows:
+                meta = {}
+                cheat_type = "unknown"
+                
+                try:
+                    if row[0]:  # meta_json
+                        meta = json.loads(row[0])
+                        cheat_type = meta.get("cheat_type", "unknown")
+                except Exception:
+                    pass
+                
+                # Nếu không có cheat_type trong meta, thử dùng event_type
+                if cheat_type in ["normal", None, "unknown"]:
+                    event_type = row[1] if len(row) > 1 else None
+                    if event_type and event_type not in ["normal", "unknown"]:
+                        # Map event_type sang cheat_type
+                        if "phone" in event_type.lower():
+                            cheat_type = "phone"
+                        elif "book" in event_type.lower():
+                            cheat_type = "book"
+                        elif "looking" in event_type.lower() or "away" in event_type.lower():
+                            cheat_type = "looking_away"
+                        elif "down" in event_type.lower():
+                            cheat_type = "looking_down"
+                        elif "face" in event_type.lower() and "no" in event_type.lower():
+                            cheat_type = "no_face"
+                        else:
+                            cheat_type = "cheating_generic"
+                    else:
+                        cheat_type = "unknown"
+                
+                by_type[cheat_type] = by_type.get(cheat_type, 0) + 1
+            
+            # Tính phần trăm
+            by_type_percent = {}
+            if total_incidents > 0:
+                for cheat_type, count in by_type.items():
+                    by_type_percent[cheat_type] = round((count / total_incidents) * 100, 1)
+            
+            return {
+                "total_incidents": total_incidents,
+                "total_students": total_students,
+                "total_courses": total_courses,
+                "by_cheat_type": by_type,
+                "by_cheat_type_percent": by_type_percent
+            }
 
     def terminate_comprehensive_attempt(self, attempt_id: str):
       """Đóng bài thi tổng hợp: set score=0, status='terminated', ended_at=NOW (idempotent)."""
@@ -1490,6 +1806,33 @@ class CourseModel:
              WHERE attempt_id = ? AND selected_index IS NULL
         """, (attempt_id,)).fetchone()[0]
       return int(n or 0)
+  
+  
+    def list_courses_catalog(self, limit: int = 200) -> list[dict]:
+      """
+      Trả về danh mục khóa học cho AI/đề xuất.
+      Cột không có trong DB sẽ trả rỗng để an toàn.
+      """
+      with self._connect() as conn:
+        rows = conn.execute("""
+            SELECT
+                id,
+                title,
+                COALESCE(level, '')           AS level,
+                COALESCE(category, '')        AS category,
+                COALESCE(tags, '')            AS tags,
+                COALESCE(thumbnail_url, '')   AS thumbnail
+            FROM courses
+            WHERE (is_active IS NULL OR is_active = 1)
+            ORDER BY id DESC
+            LIMIT ?
+        """, (limit,)).fetchall()
+        try:
+            return [dict(r) for r in rows]
+        except Exception:
+            cols = ["id","title","level","category","tags","thumbnail"]
+            return [ {k:v for k,v in zip(cols, r)} for r in rows ]
+
 
 
 

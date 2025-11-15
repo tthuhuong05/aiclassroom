@@ -12,6 +12,40 @@
     .list-group-item { border:0; border-bottom:1px solid #f0f0f0; }
     .list-group-item:last-child { border-bottom:0; }
     .badge { border-radius:12px; }
+
+     /* --- Kế hoạch & gợi ý khóa học --- */
+    .study-section-badge {
+      font-size: .75rem;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .study-timeline {
+      border-left: 2px solid #e0e3eb;
+      padding-left: 1rem;
+    }
+    .study-timeline-item {
+      position: relative;
+      margin-bottom: .75rem;
+    }
+    .study-timeline-item::before {
+      content: '';
+      position: absolute;
+      left: -1.15rem;
+      top: .25rem;
+      width: .7rem;
+      height: .7rem;
+      border-radius: 999px;
+      background: #0d6efd;
+      box-shadow: 0 0 0 4px rgba(13,110,253,.15);
+    }
+    .study-course-card {
+      transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+    }
+    .study-course-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 .25rem .75rem rgba(15,23,42,.08);
+      border-color: rgba(13,110,253,.35);
+    }
   </style>
 </head>
 <body>
@@ -178,29 +212,98 @@
     </div>
   </div>
 
-  {% set rec = results.recommendations %}
-  {% if rec is string %}
-    <p class="mb-0">{{ rec }}</p>
-  {% elif rec is mapping %}
-    {% if rec.text %}<p>{{ rec.text }}</p>{% endif %}
-    {% if rec.courses and rec.courses|length > 0 %}
-      <ul class="mb-0">
-        {% for c in rec.courses %}
-          <li>
-            {% if c.id %}
-              <a href="/course/{{ c.id }}"><strong>{{ c.title }}</strong></a>
-            {% else %}
-              <strong>{{ c.title }}</strong>
-            {% endif %}
-            {% if c.reason %}<span class="text-muted"> — {{ c.reason }}</span>{% endif %}
-          </li>
-        {% endfor %}
-      </ul>
-    {% endif %}
-  {% else %}
-    <p class="mb-0">{{ rec or "Chưa có đề xuất." }}</p>
-  {% endif %}
+   {% set rec = results.recommendations %}
 
+  <!-- Kế hoạch học tập & gợi ý khóa học -->
+  <div class="card shadow-sm mb-5">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          <div class="study-section-badge text-muted mb-1">
+            <i class="bi bi-rocket-takeoff me-1 text-primary"></i>KẾ HOẠCH TIẾN BỘ
+          </div>
+          <h5 class="mb-0">Lộ trình học tập & gợi ý khóa học</h5>
+        </div>
+        <span class="badge rounded-pill bg-primary-subtle text-primary">
+          <i class="bi bi-clock-history me-1"></i>Trong 4–6 tuần tới
+        </span>
+      </div>
+
+      <div class="row g-4">
+        <!-- Cột trái: Lộ trình / kế hoạch -->
+        <div class="col-lg-7">
+          <h6 class="text-uppercase text-muted small mb-2">Lộ trình học tập đề xuất</h6>
+          <div class="bg-light rounded-3 p-3 p-md-4 h-100">
+            {% if rec is mapping %}
+              {% set plan_txt = rec.text %}
+            {% elif rec is string %}
+              {% set plan_txt = rec %}
+            {% else %}
+              {% set plan_txt = "" %}
+            {% endif %}
+
+            {% if plan_txt %}
+              {% set lines = plan_txt.split('\n') %}
+              <div class="study-timeline">
+                {% for line in lines %}
+                  {% if line|trim %}
+                    <div class="study-timeline-item">
+                      <div class="small">
+                        {{ line|trim|replace('- ', '')|replace('**', '') }}
+                      </div>
+                    </div>
+                  {% endif %}
+                {% endfor %}
+              </div>
+            {% else %}
+              <p class="mb-0 text-muted">Chưa có lộ trình chi tiết cho bài kiểm tra này.</p>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Cột phải: Gợi ý khóa học -->
+        <div class="col-lg-5">
+          <h6 class="text-uppercase text-muted small mb-2">Khóa học phù hợp với bạn</h6>
+
+          {% if rec is mapping and rec.courses and rec.courses|length > 0 %}
+            <div class="d-flex flex-column gap-2">
+              {% for c in rec.courses %}
+                <div class="border rounded-3 p-3 study-course-card">
+                  <div class="d-flex align-items-start">
+                    <div class="flex-shrink-0 me-3">
+                      <span class="rounded-circle border d-inline-flex align-items-center justify-content-center"
+                            style="width:32px;height:32px;">
+                        <i class="bi bi-mortarboard"></i>
+                      </span>
+                    </div>
+                    <div class="flex-grow-1">
+                      {% if c.id %}
+                        <a href="/course/{{ c.id }}" class="fw-semibold text-decoration-none d-block mb-1">
+                          {{ c.title }}
+                        </a>
+                      {% else %}
+                        <div class="fw-semibold mb-1">{{ c.title }}</div>
+                      {% endif %}
+                      {% if c.reason %}
+                        <div class="small text-muted">{{ c.reason }}</div>
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="border rounded-3 p-3 h-100 d-flex align-items-center">
+              <p class="mb-0 text-muted">
+                Hiện tại hệ thống chưa có gợi ý khóa học cụ thể. 
+                Bạn có thể quay lại trang <a href="/course/{{ results.course_id }}">khóa học</a> để chọn lộ trình phù hợp.
+              </p>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 </body>
 </html>

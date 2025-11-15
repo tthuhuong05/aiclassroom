@@ -156,6 +156,487 @@
     border-radius: var(--radius);
   }
 
+ /* AI chat panel: nổi ở 1 góc video, thiết kế mới hiện đại */
+.ai-chat-panel {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  width: 380px;
+  max-width: min(400px, 90%);
+  height: 500px;
+  background: linear-gradient(145deg, rgba(15, 23, 42, 0.98), rgba(30, 41, 59, 0.95));
+  color: #e5e7eb;
+  border-radius: 24px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4), 
+              0 0 0 1px rgba(255, 255, 255, 0.1),
+              inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  display: flex;
+  flex-direction: column;
+  transform: translateY(150%) scale(0.9);
+  opacity: 0;
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  z-index: 20;
+  overflow: hidden;
+  backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.ai-chat-panel.open {
+  transform: translateY(0) scale(1);
+  opacity: 1;
+  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.5), 
+              0 0 0 1px rgba(255, 255, 255, 0.15),
+              inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+/* Trạng thái phóng to: chiếm gần hết khung video */
+.ai-chat-panel.expanded {
+  width: calc(100% - 24px);
+  height: calc(100% - 24px);
+  bottom: 12px;
+  right: 12px;
+  border-radius: 18px;
+}
+
+/* Mobile: phóng to thì full video */
+@media (max-width: 768px) {
+  .ai-chat-panel.expanded {
+    width: 100%;
+    height: 100%;
+    bottom: 0;
+    right: 0;
+    border-radius: 0;
+  }
+}
+
+/* Header mới - Thiết kế đẹp hơn */
+.ai-chat-header {
+  padding: 1rem 1.25rem;
+  background: linear-gradient(135deg, 
+    rgba(59, 130, 246, 0.25), 
+    rgba(37, 99, 235, 0.15),
+    rgba(30, 64, 175, 0.1));
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.ai-chat-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, 
+    transparent, 
+    rgba(96, 165, 250, 0.5), 
+    transparent);
+}
+
+.ai-chat-header-main {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.ai-chat-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3b82f6, #2563eb, #1d4ed8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  color: #ffffff;
+  box-shadow: 0 4px 20px rgba(59, 130, 246, 0.5),
+              0 0 0 2px rgba(255, 255, 255, 0.1),
+              inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  position: relative;
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 4px 20px rgba(59, 130, 246, 0.5),
+                0 0 0 2px rgba(255, 255, 255, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  }
+  50% {
+    box-shadow: 0 4px 30px rgba(59, 130, 246, 0.8),
+                0 0 0 2px rgba(255, 255, 255, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  }
+}
+
+.ai-chat-avatar::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  opacity: 0.3;
+  z-index: -1;
+  animation: rotate 3s linear infinite;
+}
+
+@keyframes rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.ai-chat-title {
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: #ffffff;
+  letter-spacing: -0.01em;
+  margin-bottom: 2px;
+}
+
+.ai-chat-subtitle {
+  font-size: 0.8rem;
+  opacity: 0.75;
+  color: #cbd5e1;
+  font-weight: 400;
+}
+
+.ai-chat-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.ai-chat-expand-btn,
+.ai-chat-header-actions .btn-close {
+  border-radius: 10px;
+  border: 0;
+  background: rgba(255, 255, 255, 0.1);
+  color: #e5e7eb;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+}
+
+.ai-chat-expand-btn:hover,
+.ai-chat-header-actions .btn-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.1);
+  color: #ffffff;
+}
+
+.ai-chat-expand-btn:active,
+.ai-chat-header-actions .btn-close:active {
+  transform: scale(0.95);
+}
+
+/* Body */
+.ai-chat-body {
+  flex: 1;
+  padding: 1rem 1.25rem;
+  overflow-y: auto;
+  background: linear-gradient(180deg, 
+    rgba(15, 23, 42, 0.3),
+    rgba(15, 23, 42, 0.95),
+    rgba(15, 23, 42, 1));
+  position: relative;
+}
+
+.ai-chat-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.ai-chat-body::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.5);
+  border-radius: 10px;
+}
+
+.ai-chat-body::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.4);
+  border-radius: 10px;
+}
+
+.ai-chat-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.6);
+}
+
+/* Welcome + gợi ý */
+.ai-chat-welcome {
+  margin-bottom: 1rem;
+  padding: 1rem 1.1rem;
+  border-radius: 16px;
+  background: linear-gradient(135deg, 
+    rgba(59, 130, 246, 0.15),
+    rgba(37, 99, 235, 0.1));
+  border: 1px solid rgba(96, 165, 250, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2),
+              inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+}
+
+.ai-chat-welcome-text {
+  font-size: 0.9rem;
+  line-height: 1.6;
+  margin-bottom: 0.75rem;
+  color: #e2e8f0;
+  font-weight: 400;
+}
+
+.ai-chat-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.ai-chat-suggestion {
+  border: 0;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  padding: 0.5rem 0.9rem;
+  background: rgba(255, 255, 255, 0.08);
+  color: #e5e7eb;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  font-weight: 500;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  backdrop-filter: blur(10px);
+}
+
+.ai-chat-suggestion:hover {
+  background: rgba(59, 130, 246, 0.25);
+  border-color: rgba(96, 165, 250, 0.5);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  color: #ffffff;
+}
+
+.ai-chat-suggestion:active {
+  transform: translateY(0);
+}
+
+/* Footer */
+.ai-chat-footer {
+  padding: 1rem 1.25rem;
+  border-top: 1px solid rgba(148, 163, 184, 0.2);
+  background: linear-gradient(180deg, 
+    rgba(15, 23, 42, 0.95), 
+    rgba(15, 23, 42, 1));
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  position: relative;
+}
+
+.ai-chat-footer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, 
+    transparent, 
+    rgba(96, 165, 250, 0.3), 
+    transparent);
+}
+
+.ai-chat-footer input {
+  flex: 1;
+  border-radius: 14px;
+  border: 1.5px solid rgba(148, 163, 184, 0.3);
+  padding: 0.65rem 1rem;
+  font-size: 0.9rem;
+  background: rgba(15, 23, 42, 0.8);
+  color: #e5e7eb;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(10px);
+}
+
+.ai-chat-footer input::placeholder {
+  color: rgba(148, 163, 184, 0.7);
+}
+
+.ai-chat-footer input:focus {
+  outline: none;
+  border-color: rgba(59, 130, 246, 0.8);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2),
+              0 4px 12px rgba(59, 130, 246, 0.15);
+  background: rgba(15, 23, 42, 0.95);
+}
+
+.ai-chat-footer button {
+  border-radius: 12px;
+  padding: 0.65rem 1.1rem;
+  font-size: 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  border: none;
+  color: #ffffff;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+  min-width: 48px;
+}
+
+.ai-chat-footer button:hover {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.5);
+}
+
+.ai-chat-footer button:active {
+  transform: translateY(0);
+}
+
+.ai-chat-footer button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Bubbles */
+.ai-chat-message {
+  margin-bottom: 0.55rem;
+  font-size: 0.9rem;
+  display: flex;
+}
+
+.ai-chat-message.user {
+  justify-content: flex-end;
+}
+
+.ai-chat-message.assistant {
+  justify-content: flex-start;
+}
+
+.ai-chat-message.system {
+  justify-content: center;
+}
+
+.ai-chat-message.user span {
+  display: inline-block;
+  max-width: 82%;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: #ffffff;
+  padding: 0.6rem 1rem;
+  border-radius: 18px 18px 4px 18px;
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.4),
+              0 0 0 1px rgba(255, 255, 255, 0.1);
+  font-weight: 400;
+  line-height: 1.5;
+  word-wrap: break-word;
+}
+
+.ai-chat-message.assistant span {
+  display: inline-block;
+  max-width: 86%;
+  background: rgba(30, 41, 59, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  padding: 0.7rem 1rem;
+  border-radius: 18px 18px 18px 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3),
+              inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  color: #e2e8f0;
+  font-weight: 400;
+  line-height: 1.6;
+  word-wrap: break-word;
+  backdrop-filter: blur(10px);
+}
+
+.ai-chat-message.system span {
+  display: inline-block;
+  max-width: 90%;
+  background: rgba(15,23,42,0.85);
+  color: #cbd5f5;
+  border-radius: 999px;
+  padding: 0.25rem 0.7rem;
+  font-size: 0.78rem;
+  border: 1px dashed rgba(148,163,184,0.7);
+}
+
+/* Trạng thái disabled */
+.ai-chat-footer input:disabled {
+  background: rgba(15,23,42,0.5);
+  border-style: dashed;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Typing indicator */
+.ai-chat-typing {
+  margin-bottom: 0.55rem;
+}
+
+.typing-dots {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.typing-dots span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(148, 163, 184, 0.6);
+  animation: typing-bounce 1.4s infinite ease-in-out;
+}
+
+.typing-dots span:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.typing-dots span:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+@keyframes typing-bounce {
+  0%, 80%, 100% {
+    transform: scale(0.8);
+    opacity: 0.5;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Message animations */
+.ai-chat-message {
+  animation: messageSlideIn 0.3s ease-out;
+}
+
+@keyframes messageSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Giữ cho chatbot tương tác được trên video */
+.ai-chat-panel,
+.ai-chat-panel * {
+  pointer-events: auto;
+}
+
+
   /* Tabs */
   .tabs {
     border-bottom: 2px solid var(--border-color);
@@ -411,10 +892,73 @@
                    {% if course.caption_url %}src="{{ course.caption_url }}"{% endif %}>
                   Trình duyệt của bạn không hỗ trợ video.
                 </video>
+              <div id="aiChatPanel" class="ai-chat-panel">
+  <div class="ai-chat-header">
+    <div class="ai-chat-header-main">
+      <div class="ai-chat-avatar">
+        <i class="bi bi-robot"></i>
+      </div>
+      <div>
+        <div class="ai-chat-title">Trợ giảng AI</div>
+        <div class="ai-chat-subtitle">Chỉ trả lời nội dung trong video bài học</div>
+      </div>
+    </div>
+    <div class="ai-chat-header-actions">
+      <button type="button" class="ai-chat-expand-btn" id="aiChatExpand" aria-label="Phóng to/thu nhỏ">
+        <i class="bi bi-arrows-fullscreen"></i>
+      </button>
+      <button type="button" class="btn-close" aria-label="Đóng" id="aiChatClose"></button>
+    </div>
+  </div>
+
+  <div class="ai-chat-body" id="aiChatMessages">
+    <div class="ai-chat-welcome">
+      <div class="ai-chat-welcome-text">
+        👋 <strong>Xin chào!</strong> Tôi là trợ giảng AI của bạn. 
+        Tôi có thể giúp bạn hiểu rõ hơn về <strong>nội dung video đang học</strong>.
+        Hãy đặt câu hỏi bất kỳ!
+      </div>
+      <div class="ai-chat-suggestions">
+        <button type="button" class="ai-chat-suggestion"
+                data-q="Dựa vào nội dung video đang xem, hãy tóm tắt giúp tôi những điểm chính và quan trọng nhất trong đoạn video vừa xem.">
+          📝 Tóm tắt đoạn vừa xem
+        </button>
+        <button type="button" class="ai-chat-suggestion"
+                data-q="Dựa vào nội dung video đang xem, hãy giải thích chi tiết và dễ hiểu các khái niệm, thuật ngữ quan trọng vừa được nhắc đến trong video.">
+          💡 Giải thích khái niệm
+        </button>
+        <button type="button" class="ai-chat-suggestion"
+                data-q="Dựa vào nội dung video đang xem, hãy cho tôi một hoặc nhiều ví dụ cụ thể, dễ hiểu để minh họa cho các khái niệm hoặc nội dung vừa được trình bày trong video.">
+          ✨ Cho ví dụ dễ hiểu
+        </button>
+      </div>
+    </div>
+    <!-- Các tin nhắn AI/User sẽ được JS append thêm vào dưới đây -->
+    <div id="aiChatTyping" class="ai-chat-typing" style="display: none;">
+      <div class="ai-chat-message assistant">
+        <span>
+          <span class="typing-dots">
+            <span></span><span></span><span></span>
+          </span>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <div class="ai-chat-footer">
+    <input type="text" id="aiChatInput" placeholder="Nhập câu hỏi về nội dung video..." />
+    <button class="btn btn-primary btn-sm" id="aiChatSend" title="Gửi câu hỏi">
+      <i class="bi bi-send-fill"></i>
+    </button>
+  </div>
+</div>
               </div>
               <div class="controls-row">
                 <button class="btn btn-sm btn-primary" id="capAuto" type="button">
                   <i class="bi bi-magic me-1"></i> Tạo phụ đề tự động
+                </button>
+                <button class="btn btn-sm btn-outline-secondary ms-2" id="aiChatToggle" type="button">
+                  <i class="bi bi-chat-dots me-1"></i> Hỏi trợ giảng AI
                 </button>
                 <div class="text-muted small ms-auto">
                   Hệ thống sẽ tạm dừng tại <span class="badge bg-info text-dark">giây thứ 50</span> để kiểm tra nhanh nội dung đã học.
@@ -522,11 +1066,355 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   // Helpers
-  const player = document.getElementById('player');
+    const player = document.getElementById('player');
   const source = document.getElementById('playerSource');
   const trackEl = document.getElementById('trackSubs');
   const dlCaption = document.getElementById('dlCaption');
   const btnGen    = document.getElementById('capAuto');
+
+  // === AI chat trợ giảng dựa trên video ===
+  const aiChatPanel    = document.getElementById('aiChatPanel');
+  const aiChatToggle   = document.getElementById('aiChatToggle');
+  const aiChatClose    = document.getElementById('aiChatClose');
+  const aiChatMessages = document.getElementById('aiChatMessages');
+  const aiChatInput    = document.getElementById('aiChatInput');
+  const aiChatSend     = document.getElementById('aiChatSend');
+  const aiChatExpand   = document.getElementById('aiChatExpand');
+
+  let aiChatBlocked = false;
+  let aiChatWasPlaying = false;
+  let aiLastSystemBubble = null;
+  let aiChatExpanded = false;
+  let aiChatHistory = [];
+  const aiCourseId = {{ course.id }};
+
+
+  function appendAiMessage(role, text) {
+    if (!aiChatMessages || !text) return null;
+    const wrap = document.createElement('div');
+    wrap.className = 'ai-chat-message ' + role;
+    const span = document.createElement('span');
+    span.textContent = text;
+    wrap.appendChild(span);
+    aiChatMessages.appendChild(wrap);
+    aiChatMessages.scrollTop = aiChatMessages.scrollHeight;
+    return wrap;
+  }
+
+  function appendUserMessage(text) {
+    return appendAiMessage('user', text);
+  }
+
+  function appendAssistantMessage(text) {
+    return appendAiMessage('assistant', text);
+  }
+
+  function appendSystemMessage(text, isLoading) {
+    const el = appendAiMessage('system', text);
+    if (isLoading) {
+      aiLastSystemBubble = el;
+    }
+    return el;
+  }
+
+  function clearSystemLoading() {
+    if (aiLastSystemBubble && aiLastSystemBubble.parentNode) {
+      aiLastSystemBubble.parentNode.removeChild(aiLastSystemBubble);
+    }
+    aiLastSystemBubble = null;
+  }
+
+   function toggleAiChatSize() {
+  if (!aiChatPanel) return;
+  aiChatExpanded = !aiChatExpanded;
+  aiChatPanel.classList.toggle('expanded', aiChatExpanded);
+
+  if (aiChatExpand) {
+    const icon = aiChatExpand.querySelector('i');
+    if (icon) {
+      icon.classList.toggle('bi-arrows-fullscreen', !aiChatExpanded);
+      icon.classList.toggle('bi-arrows-angle-contract', aiChatExpanded);
+    }
+  }
+}
+
+  function disableAiChatInput() {
+    if (aiChatInput) aiChatInput.disabled = true;
+    if (aiChatSend) aiChatSend.disabled = true;
+  }
+
+  function enableAiChatInput() {
+    if (aiChatInput) aiChatInput.disabled = false;
+    if (aiChatSend) aiChatSend.disabled = false;
+  }
+
+  function openAiChat() {
+    if (!aiChatPanel) return;
+    if (!aiChatPanel.classList.contains('open')) {
+      // Ghi lại trạng thái video trước khi mở chat
+      aiChatWasPlaying = !!(player && !player.paused && !player.ended);
+      if (player) {
+        try { player.pause(); } catch (e) {}
+      }
+      aiChatPanel.classList.add('open');
+    }
+  }
+
+  function closeAiChat() {
+  if (!aiChatPanel) return;
+  if (aiChatPanel.classList.contains('open')) {
+    aiChatPanel.classList.remove('open');
+    aiChatPanel.classList.remove('expanded');
+    aiChatExpanded = false;
+
+    // Đổi icon về trạng thái phóng to
+    if (aiChatExpand) {
+      const icon = aiChatExpand.querySelector('i');
+      if (icon) {
+        icon.classList.add('bi-arrows-fullscreen');
+        icon.classList.remove('bi-arrows-angle-contract');
+      }
+    }
+
+    // Resume video nếu trước khi mở chat đang chạy
+    if (player && aiChatWasPlaying) {
+      const p = player.play();
+      if (p && typeof p.then === 'function') {
+        p.catch(err => console.debug('Video resume interrupted', err));
+      }
+    }
+  }
+}
+
+
+  async function sendAiChatMessage(questionText = null) {
+  if (!aiChatInput || aiChatBlocked) return;
+  const text = questionText || (aiChatInput.value || '').trim();
+  if (!text) return;
+
+  // Nếu không phải từ suggestion, clear input
+  if (!questionText) {
+    aiChatInput.value = '';
+  }
+
+  appendUserMessage(text);
+
+  // Lưu vào history trước khi gửi
+  aiChatHistory.push({ role: 'user', content: text });
+
+  // Hiển thị typing indicator
+  const typingIndicator = document.getElementById('aiChatTyping');
+  if (typingIndicator) {
+    typingIndicator.style.display = 'block';
+  }
+  disableAiChatInput();
+
+  try {
+    // Lấy thời gian hiện tại của video
+    const currentTime = player ? player.currentTime : 0;
+    
+    // Kiểm tra xem câu hỏi có liên quan đến tóm tắt không
+    const textLower = text.toLowerCase();
+    const summarizeKeywords = ["tóm tắt", "tom tat", "tóm tắt đoạn", "tom tat doan", "tổng hợp", "tong hop"];
+    const isSummarizeQuestion = summarizeKeywords.some(kw => textLower.includes(kw));
+    
+    // Chỉ lấy transcript context nếu là câu hỏi tóm tắt
+    let transcriptText = '';
+    if (isSummarizeQuestion) {
+      transcriptText = getCurrentTranscriptContext(currentTime);
+    }
+
+    const resp = await fetch('/api/ai/video-chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        course_id: aiCourseId,
+        question: text,
+        history: aiChatHistory,
+        video_time: currentTime,
+        transcript_context: transcriptText
+      })
+    });
+    const data = await resp.json();
+    
+    // Ẩn typing indicator
+    if (typingIndicator) {
+      typingIndicator.style.display = 'none';
+    }
+    enableAiChatInput();
+
+    if (!data.ok) {
+      appendSystemMessage('Trợ giảng AI đang gặp sự cố, vui lòng thử lại sau.', false);
+      return;
+    }
+
+    if (data.blocked) {
+      aiChatBlocked = true;
+      appendSystemMessage(
+        'Câu hỏi của bạn không liên quan đến nội dung video bài học. ' +
+        'Cuộc hội thoại đã được kết thúc. Đóng khung chat và mở lại để bắt đầu cuộc hội thoại mới.',
+        false
+      );
+      disableAiChatInput();
+      return;
+    }
+
+    const answer = data.answer || '(Không có nội dung trả lời)';
+    appendAssistantMessage(answer);
+    aiChatHistory.push({ role: 'assistant', content: answer });
+  } catch (err) {
+    console.error('AI chat error', err);
+    if (typingIndicator) {
+      typingIndicator.style.display = 'none';
+    }
+    enableAiChatInput();
+    appendSystemMessage('Lỗi mạng hoặc server. Vui lòng thử lại.', false);
+  }
+}
+
+  // Hàm lấy transcript context xung quanh thời điểm hiện tại
+  function getCurrentTranscriptContext(currentTime) {
+    const track = getSubtitleTextTrack();
+    if (!track || !track.cues) {
+      console.log('[TRANSCRIPT] No track or cues available');
+      return '';
+    }
+
+    // Tăng context window lên 60 giây để có đủ nội dung
+    const contextWindow = 60; // 60 giây trước và sau
+    const startTime = Math.max(0, currentTime - contextWindow);
+    const endTime = currentTime + contextWindow;
+
+    const relevantCues = Array.from(track.cues).filter(cue => {
+      // Lấy tất cả cues trong khoảng thời gian
+      return (cue.startTime >= startTime && cue.startTime <= endTime) ||
+             (cue.endTime >= startTime && cue.endTime <= endTime) ||
+             (cue.startTime <= startTime && cue.endTime >= endTime);
+    });
+
+    console.log(`[TRANSCRIPT] Found ${relevantCues.length} cues around time ${currentTime.toFixed(1)}s (window: ${startTime.toFixed(1)}s - ${endTime.toFixed(1)}s)`);
+
+    if (relevantCues.length === 0) {
+      // Nếu không có cues trong context, lấy tất cả cues từ đầu đến thời điểm hiện tại
+      const allCuesUpToNow = Array.from(track.cues).filter(cue => cue.startTime <= currentTime);
+      console.log(`[TRANSCRIPT] No cues in context window, using all cues up to now: ${allCuesUpToNow.length}`);
+      
+      if (allCuesUpToNow.length === 0) {
+        // Nếu vẫn không có, lấy tất cả cues
+        const allCues = Array.from(track.cues);
+        console.log(`[TRANSCRIPT] No cues up to now, using all cues: ${allCues.length}`);
+        if (allCues.length === 0) return '';
+        
+        const transcriptText = allCues
+          .slice(0, Math.min(50, allCues.length)) // Lấy 50 cues đầu tiên
+          .map(cue => cue.text)
+          .join(' ')
+          .replace(/<[^>]+>/g, '')
+          .trim();
+        return transcriptText;
+      }
+      
+      const transcriptText = allCuesUpToNow
+        .slice(-30) // Lấy 30 cues gần nhất
+        .map(cue => cue.text)
+        .join(' ')
+        .replace(/<[^>]+>/g, '')
+        .trim();
+      return transcriptText;
+    }
+
+    // Lấy text từ các cues và kết hợp lại
+    const transcriptText = relevantCues
+      .map(cue => cue.text)
+      .join(' ')
+      .replace(/<[^>]+>/g, '') // Loại bỏ HTML tags
+      .replace(/\s+/g, ' ') // Chuẩn hóa khoảng trắng
+      .trim();
+
+    console.log(`[TRANSCRIPT] Context text length: ${transcriptText.length} chars`);
+    return transcriptText;
+  }
+  // Gửi nhanh câu hỏi khi click vào gợi ý
+  function setupSuggestionButtons() {
+    const suggestionButtons = document.querySelectorAll('.ai-chat-suggestion');
+    if (suggestionButtons.length) {
+      suggestionButtons.forEach(btn => {
+        // Remove existing listeners để tránh duplicate
+        const newBtn = btn.cloneNode(true);
+        btn.parentNode.replaceChild(newBtn, btn);
+        
+        newBtn.addEventListener('click', () => {
+          // Đảm bảo chat panel đã mở
+          if (!aiChatPanel || !aiChatPanel.classList.contains('open')) {
+            openAiChat();
+          }
+
+          if (aiChatBlocked) {
+            appendSystemMessage('Vui lòng đóng và mở lại chat để bắt đầu cuộc hội thoại mới.', false);
+            return;
+          }
+
+          const q = (newBtn.dataset.q || newBtn.textContent || '').trim();
+          if (!q) return;
+
+          // Gửi câu hỏi trực tiếp, không cần set vào input
+          sendAiChatMessage(q);
+        });
+      });
+    }
+  }
+
+  // Setup suggestion buttons khi DOM ready
+  setupSuggestionButtons();
+
+  // Setup lại khi mở chat panel (đảm bảo buttons luôn hoạt động)
+  if (aiChatToggle && aiChatPanel) {
+    const originalOpenAiChat = openAiChat;
+    openAiChat = function() {
+      originalOpenAiChat();
+      // Setup lại suggestion buttons sau khi panel mở
+      setTimeout(setupSuggestionButtons, 100);
+    };
+  }
+
+    if (aiChatToggle && aiChatPanel) {
+    aiChatToggle.addEventListener('click', () => {
+      openAiChat();
+
+      // Mỗi lần mở lại chat sau khi bị block, reset hội thoại
+      if (aiChatBlocked) {
+        aiChatBlocked = false;
+        enableAiChatInput();
+        if (aiChatMessages) aiChatMessages.innerHTML = '';
+        aiChatHistory = [];
+      }
+    });
+  }
+
+  if (aiChatExpand) {
+    aiChatExpand.addEventListener('click', toggleAiChatSize);
+  }
+
+  if (aiChatClose) {
+    aiChatClose.addEventListener('click', () => {
+      closeAiChat();
+      // Nếu đang ở trạng thái bị block, đóng lại coi như kết thúc hội thoại đó
+      // Lần mở sau sẽ là hội thoại mới (reset ở openAiChat phía trên)
+    });
+  }
+
+  if (aiChatSend) {
+    aiChatSend.addEventListener('click', sendAiChatMessage);
+  }
+
+  if (aiChatInput) {
+    aiChatInput.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendAiChatMessage();
+      }
+    });
+  }
 
   function ensureSubsShowing() {
     if (!player || !player.textTracks) return;

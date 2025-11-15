@@ -217,7 +217,7 @@ class KIEAIService:
             Trả về danh sách prompts, mỗi prompt trên một dòng:
             """
             
-            model = genai.GenerativeModel("gemini-2.5-flash")
+            model = genai.GenerativeModel("gemini-1.5-flash")
             response = model.generate_content(prompt)
             
             if response.text:
