@@ -47,7 +47,7 @@
       <div class="flex justify-between items-center h-16">
         <a href="{{ url_for('home') }}" class="flex items-center space-x-2 group">
           <img src="{{ url_for('static', filename='logo1.jpeg') }}" alt="Logo" class="w-9 h-9 rounded-full ring-2 ring-blue-500 group-hover:ring-blue-600 transition-all">
-          <span class="font-bold text-xl text-gray-800 dark:text-white">Học Tập</span>
+          <span class="font-bold text-xl text-gray-800 dark:text-white">EduVerse</span>
         </a>
 
         <div class="hidden md:flex items-center space-x-1">
@@ -93,17 +93,89 @@
   <section class="hero-bg py-24 md:py-32 relative overflow-hidden">
     <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
-      <h1 class="text-4xl md:text-6xl font-extrabold text-white mb-4 animate-fade-in">
-        Chào mừng, <span class="text-yellow-400">{{ username or 'Bạn' }}</span>!
+      <div class="inline-flex items-center px-4 py-2 bg-white/10 rounded-full text-sm text-white/90 mb-6 backdrop-blur-md">
+        <i class="bi bi-stars mr-2 text-yellow-300"></i> Phiên bản mới EduVerse 3.0
+      </div>
+      <h1 class="text-4xl md:text-6xl font-extrabold text-white mb-6 animate-fade-in leading-tight">
+        Nền tảng học tập toàn diện<br>
+        <span class="text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-pink-300 to-blue-300">AI Adaptive · Anti-cheat · Social Learning</span>
       </h1>
-      <p class="text-xl md:text-2xl text-gray-100 mb-8 max-w-3xl mx-auto font-medium">
-        Khám phá hành trình học tập cá nhân hóa với công nghệ AI hiện đại
+      <p class="text-xl md:text-2xl text-gray-100 mb-10 max-w-4xl mx-auto font-medium">
+        Chào mừng {{ username or 'bạn' }}! Khám phá hành trình học thông minh với hệ thống phát hiện gian lận theo thời gian thực,
+        lộ trình adaptive learning cá nhân hóa và cộng đồng học nhóm năng động.
       </p>
-      <a href="#courses" class="inline-flex items-center px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-full hover:from-blue-700 hover:to-indigo-700 transform hover:scale-105 transition-all duration-300 shadow-xl">
-        <i class="bi bi-arrow-down-circle-fill mr-2"></i> Xem Khóa Học
-      </a>
+      <div class="flex flex-wrap justify-center gap-4">
+        <a href="#features" class="inline-flex items-center px-8 py-4 bg-white text-blue-700 font-semibold rounded-full hover:bg-blue-50 transform hover:-translate-y-1 transition-all shadow-xl">
+          <i class="bi bi-lightning-charge-fill mr-2"></i> Xem tính năng mới
+        </a>
+        <a href="#courses" class="inline-flex items-center px-8 py-4 border-2 border-white/70 text-white font-semibold rounded-full hover:bg-white/10 transform hover:-translate-y-1 transition-all">
+          <i class="bi bi-arrow-down-circle-fill mr-2"></i> Bắt đầu học ngay
+        </a>
+      </div>
     </div>
     <div class="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-gray-50 dark:from-gray-900 to-transparent"></div>
+  </section>
+
+  <!-- Feature Highlights -->
+  <section id="features" class="py-16 md:py-20 bg-gradient-to-b from-white to-blue-50 dark:from-gray-900 dark:to-gray-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-12">
+        <p class="text-sm font-semibold uppercase tracking-widest text-blue-600 dark:text-blue-300 mb-2">Tính năng mới</p>
+        <h2 class="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">Trải nghiệm học tập thế hệ mới</h2>
+        <p class="text-lg text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
+          EduVerse 3.0 giới thiệu bộ công cụ thông minh giúp giảng viên yên tâm giám sát, học viên luôn được cá nhân hóa và kết nối cộng đồng dễ dàng.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-white dark:bg-gray-800 rounded-3xl p-8 shadow-lg border border-blue-100 dark:border-blue-900/40">
+          <div class="w-14 h-14 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center text-2xl mb-5">
+            <i class="bi bi-shield-lock-fill"></i>
+          </div>
+          <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">AI Anti-Cheat Proctoring</h3>
+          <p class="text-gray-600 dark:text-gray-400 leading-relaxed">
+            Hệ thống phát hiện gian lận thời gian thực: nhận diện khuôn mặt, theo dõi bất thường, cảnh báo tự động để đảm bảo
+            kỳ thi online minh bạch và an toàn tuyệt đối.
+          </p>
+          <ul class="mt-4 space-y-2 text-sm text-gray-600 dark:text-gray-400">
+            <li><i class="bi bi-check-circle-fill text-blue-500 mr-2"></i>Nhận diện nhiều khuôn mặt</li>
+            <li><i class="bi bi-check-circle-fill text-blue-500 mr-2"></i>Cảnh báo khi rời màn hình</li>
+            <li><i class="bi bi-check-circle-fill text-blue-500 mr-2"></i>Báo cáo gian lận chi tiết</li>
+          </ul>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800 rounded-3xl p-8 shadow-lg border border-violet-100 dark:border-violet-900/40">
+          <div class="w-14 h-14 rounded-2xl bg-violet-100 text-violet-600 flex items-center justify-center text-2xl mb-5">
+            <i class="bi bi-magic"></i>
+          </div>
+          <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">Adaptive Learning Path</h3>
+          <p class="text-gray-600 dark:text-gray-400 leading-relaxed">
+            AI phân tích tiến độ, điểm mạnh yếu của từng học viên để đề xuất khóa học, quiz, tài nguyên phù hợp – tạo hành trình học cá nhân hóa thật sự.
+          </p>
+          <ul class="mt-4 space-y-2 text-sm text-gray-600 dark:text-gray-400">
+            <li><i class="bi bi-check-circle-fill text-violet-500 mr-2"></i>Gợi ý nội dung theo năng lực</li>
+            <li><i class="bi bi-check-circle-fill text-violet-500 mr-2"></i>Quiz động theo kết quả gần nhất</li>
+            <li><i class="bi bi-check-circle-fill text-violet-500 mr-2"></i>Dashboard tiến độ cá nhân</li>
+          </ul>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800 rounded-3xl p-8 shadow-lg border border-pink-100 dark:border-pink-900/40">
+          <div class="w-14 h-14 rounded-2xl bg-pink-100 text-pink-600 flex items-center justify-center text-2xl mb-5">
+            <i class="bi bi-people-fill"></i>
+          </div>
+          <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">Social Learning Hub</h3>
+          <p class="text-gray-600 dark:text-gray-400 leading-relaxed">
+            Cộng đồng học tập sôi động, tạo phòng học nhóm, livestream, chia sẻ tài nguyên và mentor hỗ trợ –
+            giúp việc học không còn cô đơn.
+          </p>
+          <ul class="mt-4 space-y-2 text-sm text-gray-600 dark:text-gray-400">
+            <li><i class="bi bi-check-circle-fill text-pink-500 mr-2"></i>Phòng học nhóm realtime</li>
+            <li><i class="bi bi-check-circle-fill text-pink-500 mr-2"></i>Bảng tin chia sẻ tài nguyên</li>
+            <li><i class="bi bi-check-circle-fill text-pink-500 mr-2"></i>Mentor ghép cặp tức thì</li>
+          </ul>
+        </div>
+      </div>
+    </div>
   </section>
 
   <!-- Courses Section -->
@@ -188,7 +260,7 @@
   <!-- Footer -->
   <footer class="bg-gradient-to-t from-gray-900 to-gray-800 text-gray-300 py-12 mt-20">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-      <p class="text-sm">&copy; 2025 <span class="text-blue-400 font-semibold">Học Tập</span>. Tất cả quyền được bảo lưu.</p>
+      <p class="text-sm">&copy; 2025 <span class="text-blue-400 font-semibold">EduVerse</span>. Tất cả quyền được bảo lưu.</p>
       <p class="text-xs mt-2">Thiết kế với ❤️ cho người học Việt Nam</p>
     </div>
   </footer>

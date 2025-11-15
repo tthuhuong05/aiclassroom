@@ -1,0 +1,658 @@
+{% extends 'base.html' %}
+{% block title %}Lifelong learning 🔥 - EduVerse{% endblock %}
+
+{% block hero_section %}
+<!-- Hide default hero section for study rooms -->
+{% endblock %}
+
+{% block content %}
+<!-- DEBUG: Study Rooms List Template Loaded -->
+
+<style>
+  .study-rooms-page {
+    background: var(--bg, #f8fafc);
+    min-height: 100vh;
+    padding: 2rem 0;
+  }
+  .room-card {
+    background: var(--card, #fff);
+    border-radius: 18px;
+    padding: 20px;
+    box-shadow: 0 1px 2px rgba(60, 64, 67, 0.14);
+    transition: all 0.2s ease;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid rgba(218, 220, 224, 0.8);
+  }
+  .room-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px rgba(60, 64, 67, 0.18);
+  }
+  .room-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 14px;
+  }
+  .room-title {
+    display: grid;
+    gap: 4px;
+  }
+  .room-lang-level {
+    font-weight: 600;
+    font-size: 16px;
+    color: var(--text, #202124);
+  }
+  .room-topic-text {
+    color: var(--text-light, #5f6368);
+    font-size: 14px;
+    margin-top: 4px;
+  }
+  .room-level {
+    display: inline-block;
+    background: #1a73e8;
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-top: 0.5rem;
+  }
+  .room-topic {
+    color: var(--text-light, #64748b);
+    font-size: 0.9rem;
+    margin: 0.75rem 0;
+    font-style: italic;
+  }
+  .room-members {
+    display: flex;
+    gap: 20px;
+    padding: 8px 0 6px;
+  }
+  .member-avatar {
+    width: 88px;
+    height: 88px;
+    border-radius: 50%;
+    border: 2px dashed rgba(26, 115, 232, 0.2);
+    background: linear-gradient(135deg, rgba(26, 115, 232, 0.12), rgba(66, 133, 244, 0.12));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-light, #5f6368);
+    font-weight: 600;
+    font-size: 0.875rem;
+    overflow: hidden;
+    position: relative;
+  }
+  .member-avatar:not(.empty) {
+    border: 2px solid rgba(26, 115, 232, 0.3);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+  }
+  .member-avatar.has-avatar {
+    background-size: cover !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+    color: transparent;
+  }
+  .member-avatar.empty {
+    border: 2px dashed rgba(26, 115, 232, 0.2);
+    background: linear-gradient(135deg, rgba(26, 115, 232, 0.12), rgba(66, 133, 244, 0.12));
+    color: var(--text-light, #5f6368);
+  }
+  .filter-bar {
+    background: var(--card, #fff);
+    padding: 1rem;
+    border-radius: 12px;
+    margin-bottom: 2rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  }
+  .filter-tag {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    border: 2px solid #3b82f6;
+    border-radius: 20px;
+    background: transparent;
+    color: #3b82f6;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+    margin: 0.25rem;
+    text-decoration: none;
+  }
+  .filter-tag:hover, .filter-tag.active {
+    background: #3b82f6;
+    color: white;
+  }
+  .search-bar {
+    position: relative;
+    margin-bottom: 1rem;
+  }
+  .search-bar input {
+    width: 100%;
+    padding: 0.75rem 1rem 0.75rem 2.5rem;
+    border: 1.5px solid var(--border, #e2e8f0);
+    border-radius: 8px;
+  }
+  .search-bar i {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-light, #94a3b8);
+  }
+  .status-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+  .status-full {
+    background: #fee2e2;
+    color: #dc2626;
+  }
+  .status-available {
+    background: #dbeafe;
+    color: #2563eb;
+  }
+</style>
+
+<div class="study-rooms-page" style="min-height: 100vh; background: #f8fafc; padding: 2rem 0;">
+  <div class="container" style="max-width: 1200px; margin: 0 auto; padding: 0 1rem;">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4" style="margin-top: 2rem; background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+      <h2 class="fw-bold mb-0" style="font-size: 1.75rem; color: #1e293b;">
+        <i class="bi bi-people-fill me-2" style="color: #3b82f6;"></i>
+        Lifelong learning 🔥 - EduVerse
+      </h2>
+      <a href="{{ url_for('create_study_room') }}" class="btn btn-primary btn-lg" style="font-size: 1rem; padding: 0.75rem 1.5rem; font-weight: 600; border-radius: 8px; background: #3b82f6; border: none; box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);">
+        <i class="bi bi-plus-circle me-2"></i>
+        + Tạo Phòng Học Mới
+      </a>
+    </div>
+
+    <!-- Search and Filter -->
+    <div class="filter-bar" style="background: white; padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+      <div class="search-bar" style="position: relative; margin-bottom: 1rem;">
+        <i class="bi bi-search" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
+        <input type="text" id="searchInput" placeholder="Tìm kiếm theo ngôn ngữ, trình độ, chủ đề, tên người dùng..." style="width: 100%; padding: 0.75rem 1rem 0.75rem 2.5rem; border: 1.5px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem;">
+      </div>
+      
+      <div class="filter-tags">
+        <a href="{{ url_for('list_study_rooms') }}" class="filter-tag {% if not request.args.get('language') %}active{% endif %}">
+          Tất cả
+        </a>
+        {% if all_rooms %}
+          {% set language_counts = {} %}
+          {% for room in all_rooms %}
+            {% if room.language %}
+              {% if room.language not in language_counts %}
+                {% set _ = language_counts.update({room.language: 0}) %}
+              {% endif %}
+              {% set _ = language_counts.update({room.language: language_counts[room.language] + 1}) %}
+            {% endif %}
+          {% endfor %}
+          {% for lang, count in language_counts.items()|sort %}
+            <a href="{{ url_for('list_study_rooms', language=lang) }}" 
+               class="filter-tag {% if request.args.get('language') == lang %}active{% endif %}">
+              {{ lang }} ({{ count }})
+            </a>
+          {% endfor %}
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Room Grid -->
+    <div class="row g-4" id="roomGrid" style="margin-top: 1rem;">
+      {% if all_rooms and all_rooms|length > 0 %}
+      {% for room in all_rooms %}
+        <div class="col-12 col-md-6 col-lg-4 room-card-wrapper" 
+             data-room-id="{{ room.id }}"
+             data-name="{{ room.name|lower }}" 
+             data-language="{{ (room.language or '')|lower }}"
+             data-level="{{ (room.level or '')|lower }}"
+             data-topic="{{ (room.topic or '')|lower }}">
+          <div class="room-card">
+            <div class="room-header">
+              <div class="room-title">
+                <div class="room-lang-level">
+                  {% if room.language %}{{ room.language }}{% endif %}
+                  {% if room.level %} {{ room.level }}{% endif %}
+                </div>
+                <div class="room-topic-text">
+                  {{ room.topic or room.name or 'Study & Talk' }}
+                </div>
+              </div>
+              {% if current_user_id and room.created_by == current_user_id %}
+              <button type="button"
+                      class="gear room-gear"
+                      title="Cài đặt phòng"
+                      aria-label="Cài đặt phòng"
+                      data-room-id="{{ room.id }}"
+                      data-room-name="{{ room.name|e }}"
+                      data-room-topic="{{ room.topic|default('', true)|e }}"
+                      data-room-language="{{ room.language|default('', true)|e }}"
+                      data-room-level="{{ room.level|default('', true)|e }}"
+                      data-room-description="{{ room.description|default('', true)|e }}"
+                      data-room-max="{{ room.max_members or 10 }}"
+                      data-room-public="{{ 1 if room.is_public else 0 }}"
+                      style="width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; color: #1a73e8; border: 1px solid rgba(26, 115, 232, 0.2); background: rgba(26, 115, 232, 0.08); cursor: pointer; transition: background-color 0.2s ease, border-color 0.2s ease;">
+                <i class="bi bi-gear-fill"></i>
+              </button>
+              {% endif %}
+            </div>
+
+            <!-- Member Avatars -->
+            <div class="room-members">
+              {% set room_members = room.members or [] %}
+              {% set members_count = room.member_count or room_members|length %}
+              {% set max_display = 2 %}
+              {% set display_count = [members_count, max_display]|min %}
+              
+              {% for i in range(display_count) %}
+                {% if i < room_members|length %}
+                  {% set member = room_members[i] %}
+                  {% set member_avatar = member.avatar_path or '' %}
+                  <div class="member-avatar{% if member_avatar %} has-avatar{% endif %}" {% if member_avatar %}style="background-image: url('/static/{{ member_avatar }}');"{% endif %}>
+                    {% if not member_avatar %}
+                      {% if member.username %}
+                        {{ member.username[0]|upper }}
+                      {% else %}
+                        {{ i + 1 }}
+                      {% endif %}
+                    {% endif %}
+                  </div>
+                {% else %}
+                  <div class="member-avatar">
+                    {{ i + 1 }}
+                  </div>
+                {% endif %}
+              {% endfor %}
+              
+              {% for i in range([room.max_members - members_count, max_display - members_count]|min) %}
+                {% if i < max_display - members_count %}
+                  <div class="member-avatar empty"></div>
+                {% endif %}
+              {% endfor %}
+            </div>
+
+            <!-- Meta and Actions -->
+            <div class="meta" style="color: var(--text-light, #5f6368); font-size: 13px; margin-bottom: 8px;">
+              {% set owner_text = ' • Owner: ' + room.creator_username if room.creator_username else '' %}
+              {{ members_count }}/{{ room.max_members or 10 }} người{{ owner_text }}
+            </div>
+            {% set join_url = (room.slug and room.invite_key) 
+                               and url_for('study_room_fullscreen', slug=room.slug, key=room.invite_key)
+                               or url_for('study_room_detail', room_id=room.id) %}
+            <div class="actions">
+              {% if room.is_member %}
+                <a href="{{ join_url }}" data-room-id="{{ room.id }}" data-room-url="{{ join_url }}" class="primary join-btn js-join-room" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-size: 15px; line-height: 1.2; border-radius: 999px; padding: 10px 18px; background: #1a73e8; color: #ffffff; text-decoration: none; font-weight: 500; margin-top: 8px; width: 100%;">
+                  Click to join!
+                </a>
+              {% elif members_count >= (room.max_members or 10) %}
+                <button class="btn btn-secondary" disabled style="width: 100%; margin-top: 8px; border-radius: 999px; padding: 10px 18px;">
+                  <i class="bi bi-x-circle me-2"></i>Phòng đã đầy
+                </button>
+              {% else %}
+                <a href="{{ join_url }}" data-room-id="{{ room.id }}" data-room-url="{{ join_url }}" class="primary join-btn js-join-room" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-size: 15px; line-height: 1.2; border-radius: 999px; padding: 10px 18px; background: #1a73e8; color: #ffffff; text-decoration: none; font-weight: 500; margin-top: 8px; width: 100%;">
+                  Click to join!
+                </a>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+      {% else %}
+        <div class="col-12">
+          <div class="text-center py-5" style="padding: 4rem 2rem !important;">
+            <div style="font-size: 4rem; color: #cbd5e1; margin-bottom: 1.5rem;">
+              <i class="bi bi-inbox"></i>
+            </div>
+            <h4 class="mb-3" style="color: #64748b;">Chưa có phòng học nào</h4>
+            <p class="text-muted mb-4" style="font-size: 1.1rem;">Hãy tạo phòng học đầu tiên để bắt đầu học tập cùng bạn bè!</p>
+            <a href="{{ url_for('create_study_room') }}" class="btn btn-primary btn-lg" style="font-size: 1.1rem; padding: 1rem 2rem; font-weight: 600;">
+              <i class="bi bi-plus-circle me-2"></i>Tạo Phòng Học Ngay
+            </a>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Edit room modal -->
+<div class="modal fade" id="editRoomModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form id="editRoomForm">
+        <div class="modal-header">
+          <div>
+            <div class="text-warning small fw-semibold">Abusing the topic will get you banned. <a href="#" class="text-decoration-underline">More Detail</a></div>
+            <h5 class="modal-title mt-1">Chỉnh sửa phòng học</h5>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div id="editRoomFeedback" class="alert d-none mb-3" role="alert"></div>
+          <input type="hidden" id="editRoomId">
+          <div class="mb-3">
+            <label class="form-label d-flex justify-content-between align-items-center">
+              <span>Custom Topic</span>
+              <a href="#" id="generateTopicLink" class="small text-primary text-decoration-none">Generate with AI</a>
+            </label>
+            <input type="text" class="form-control" id="editTopic" placeholder="Nhập chủ đề phòng">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Mô tả</label>
+            <textarea class="form-control" id="editDescription" rows="2" placeholder="Mô tả ngắn gọn về phòng"></textarea>
+          </div>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Maximum People</label>
+              <select class="form-select" id="editMaxMembers">
+                {% for size in range(1, 16) %}
+                  <option value="{{ size }}">{{ size }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Quyền riêng tư</label>
+              <select class="form-select" id="editIsPublic">
+                <option value="1">Công khai</option>
+                <option value="0">Riêng tư</option>
+              </select>
+            </div>
+          </div>
+          <div class="row g-3 mt-1">
+            <div class="col-md-6">
+              <label class="form-label">Language</label>
+              <select class="form-select" id="editLanguage">
+                <option value="">Any</option>
+                <option value="Vietnamese">Vietnamese</option>
+                <option value="English">English</option>
+                <option value="Chinese">Chinese</option>
+                <option value="Japanese">Japanese</option>
+                <option value="Korean">Korean</option>
+                <option value="Spanish">Spanish</option>
+                <option value="French">French</option>
+                <option value="German">German</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Level</label>
+              <select class="form-select" id="editLevel">
+                <option value="">Any level</option>
+                <option value="Beginner">Beginner</option>
+                <option value="Intermediate">Intermediate</option>
+                <option value="Advanced">Advanced</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" id="deleteRoomBtn" class="btn btn-outline-danger me-auto" style="display: none;">Delete</button>
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" id="editRoomSubmit" class="btn btn-primary">Update Group</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+// Search functionality
+document.getElementById('searchInput')?.addEventListener('input', function(e) {
+  const searchTerm = e.target.value.toLowerCase();
+  const cards = document.querySelectorAll('.room-card-wrapper');
+  
+  cards.forEach(card => {
+    const name = card.dataset.name || '';
+    const language = card.dataset.language || '';
+    const level = card.dataset.level || '';
+    const topic = card.dataset.topic || '';
+    
+    const match = name.includes(searchTerm) || 
+                  language.includes(searchTerm) || 
+                  level.includes(searchTerm) || 
+                  topic.includes(searchTerm);
+    
+    card.style.display = match ? '' : 'none';
+  });
+});
+
+const joinButtons = document.querySelectorAll('.js-join-room');
+joinButtons.forEach(btn => {
+  btn.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const roomUrl = btn.dataset.roomUrl || btn.getAttribute('href');
+    if (!roomUrl) return;
+    try {
+      sessionStorage.setItem('request_room_fullscreen', '1');
+    } catch (err) {
+      console.warn('Cannot persist fullscreen flag', err);
+    }
+    const opened = window.open(roomUrl, '_blank', 'noopener,noreferrer');
+    if (!opened) {
+      // Nếu popup bị chặn, hiển thị thông báo thay vì điều hướng tab hiện tại
+      alert('Vui lòng cho phép mở tab mới để vào phòng học. Hoặc bấm chuột phải vào nút và chọn "Mở liên kết trong tab mới".');
+    }
+  });
+});
+
+// Join room
+async function joinRoom(roomId) {
+  if (!confirm('Bạn có chắc muốn tham gia phòng học này?')) return;
+  
+  try {
+    const response = await fetch(`/api/study-rooms/${roomId}/join`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    });
+    
+    const result = await response.json();
+    
+    if (result.ok) {
+      alert('Tham gia phòng học thành công!');
+      try {
+        sessionStorage.setItem('request_room_fullscreen', '1');
+      } catch (err) {
+        console.warn('Cannot persist fullscreen flag', err);
+      }
+      window.location.href = `/study-rooms/${roomId}`;
+    } else {
+      alert('Lỗi: ' + (result.error || 'Không thể tham gia phòng học'));
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Có lỗi xảy ra');
+  }
+}
+
+// Room settings modal logic
+const editRoomModalEl = document.getElementById('editRoomModal');
+const editRoomForm = document.getElementById('editRoomForm');
+const editRoomFeedback = document.getElementById('editRoomFeedback');
+const editTopicInput = document.getElementById('editTopic');
+const editDescriptionInput = document.getElementById('editDescription');
+const editMaxMembersSelect = document.getElementById('editMaxMembers');
+const editIsPublicSelect = document.getElementById('editIsPublic');
+const editLanguageSelect = document.getElementById('editLanguage');
+const editLevelSelect = document.getElementById('editLevel');
+const editRoomSubmit = document.getElementById('editRoomSubmit');
+const generateTopicLink = document.getElementById('generateTopicLink');
+let editRoomModalInstance = null;
+let editingRoomId = null;
+
+function ensureEditModal() {
+  if (editRoomModalInstance || !window.bootstrap || !bootstrap.Modal) return;
+  editRoomModalInstance = new bootstrap.Modal(editRoomModalEl);
+}
+
+const aiTopicSamples = [
+  'IELTS Speaking Marathon',
+  'JLPT N3 Listening Squad',
+  'Business English Negotiations',
+  'Travel Spanish Crash Course',
+  'K-drama Discussion Night',
+  'Daily News Debate Club'
+];
+
+generateTopicLink?.addEventListener('click', (e) => {
+  e.preventDefault();
+  const pick = aiTopicSamples[Math.floor(Math.random() * aiTopicSamples.length)];
+  editTopicInput.value = pick;
+});
+
+const deleteRoomBtn = document.getElementById('deleteRoomBtn');
+
+document.querySelectorAll('.room-gear').forEach(btn => {
+  btn.addEventListener('click', () => {
+    editingRoomId = btn.dataset.roomId;
+    document.getElementById('editRoomId').value = editingRoomId;
+    editTopicInput.value = btn.dataset.roomTopic || '';
+    editDescriptionInput.value = btn.dataset.roomDescription || '';
+    editMaxMembersSelect.value = btn.dataset.roomMax || '10';
+    editIsPublicSelect.value = btn.dataset.roomPublic === '0' ? '0' : '1';
+    editLanguageSelect.value = btn.dataset.roomLanguage || '';
+    editLevelSelect.value = btn.dataset.roomLevel || '';
+    editRoomFeedback.classList.add('d-none');
+    // Hiển thị nút xóa vì chỉ owner mới thấy nút gear
+    if (deleteRoomBtn) {
+      deleteRoomBtn.style.display = 'block';
+    }
+    ensureEditModal();
+    if (editRoomModalInstance) {
+      editRoomModalInstance.show();
+    } else {
+      editRoomModalEl.classList.add('show');
+      editRoomModalEl.style.display = 'block';
+    }
+  });
+});
+
+// Xử lý xóa phòng
+deleteRoomBtn?.addEventListener('click', async () => {
+  if (!editingRoomId) return;
+  if (!confirm('Bạn có chắc chắn muốn xóa phòng học này? Hành động này không thể hoàn tác.')) {
+    return;
+  }
+  try {
+    const response = await fetch(`/api/study-rooms/${editingRoomId}/delete`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    const data = await response.json();
+    if (response.ok) {
+      // Xóa card khỏi UI
+      const cardWrapper = document.querySelector(`.room-card-wrapper[data-room-id="${editingRoomId}"]`);
+      if (cardWrapper) {
+        cardWrapper.remove();
+      }
+      // Đóng modal
+      if (editRoomModalInstance) {
+        editRoomModalInstance.hide();
+      } else {
+        editRoomModalEl.classList.remove('show');
+        editRoomModalEl.style.display = 'none';
+      }
+      // Hiển thị thông báo thành công
+      alert('Đã xóa phòng học thành công');
+    } else {
+      alert(data.error || 'Không thể xóa phòng học');
+    }
+  } catch (error) {
+    console.error('Error deleting room:', error);
+    alert('Có lỗi xảy ra khi xóa phòng học');
+  }
+});
+
+editRoomForm?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (!editingRoomId) return;
+  const payload = {
+    topic: editTopicInput.value.trim(),
+    description: editDescriptionInput.value.trim(),
+    max_members: parseInt(editMaxMembersSelect.value, 10),
+    is_public: editIsPublicSelect.value === '1',
+    language: editLanguageSelect.value,
+    level: editLevelSelect.value
+  };
+  Object.keys(payload).forEach((key) => {
+    const value = payload[key];
+    if (value === '' || value === null || Number.isNaN(value)) {
+      delete payload[key];
+    }
+  });
+  editRoomSubmit.disabled = true;
+  editRoomSubmit.textContent = 'Đang lưu...';
+  editRoomFeedback.classList.add('d-none');
+  editRoomFeedback.textContent = '';
+  editRoomFeedback.classList.remove('alert-danger', 'alert-success');
+  try {
+    const response = await fetch(`/api/study-rooms/${editingRoomId}/update`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+    const result = await response.json();
+    if (!response.ok || !result.ok) {
+      throw new Error(result.error || 'Không thể cập nhật phòng');
+    }
+    editRoomFeedback.textContent = 'Đã cập nhật phòng học!';
+    editRoomFeedback.classList.remove('d-none');
+    editRoomFeedback.classList.add('alert-success');
+    updateRoomCardUI(editingRoomId, result.room);
+    setTimeout(() => {
+      if (editRoomModalInstance) {
+        editRoomModalInstance.hide();
+      } else {
+        editRoomModalEl.classList.remove('show');
+        editRoomModalEl.style.display = 'none';
+      }
+    }, 600);
+  } catch (err) {
+    editRoomFeedback.textContent = err.message;
+    editRoomFeedback.classList.remove('d-none');
+    editRoomFeedback.classList.add('alert-danger');
+  } finally {
+    editRoomSubmit.disabled = false;
+    editRoomSubmit.textContent = 'Update Group';
+  }
+});
+
+function updateRoomCardUI(roomId, roomData) {
+  const wrapper = document.querySelector(`.room-card-wrapper[data-room-id="${roomId}"]`);
+  if (!wrapper) return;
+  wrapper.dataset.language = (roomData.language || '').toLowerCase();
+  wrapper.dataset.level = (roomData.level || '').toLowerCase();
+  wrapper.dataset.topic = (roomData.topic || '').toLowerCase();
+  const langLevelEl = wrapper.querySelector('.room-lang-level');
+  if (langLevelEl) {
+    langLevelEl.textContent = [roomData.language, roomData.level].filter(Boolean).join(' ') || 'Any';
+  }
+  const topicEl = wrapper.querySelector('.room-topic-text');
+  if (topicEl) {
+    topicEl.textContent = roomData.topic || roomData.name || 'Study & Talk';
+  }
+  const gearBtn = wrapper.querySelector('.room-gear');
+  if (gearBtn) {
+    gearBtn.dataset.roomTopic = roomData.topic || '';
+    gearBtn.dataset.roomLanguage = roomData.language || '';
+    gearBtn.dataset.roomLevel = roomData.level || '';
+    gearBtn.dataset.roomDescription = roomData.description || '';
+    gearBtn.dataset.roomMax = roomData.max_members || '10';
+    gearBtn.dataset.roomPublic = roomData.is_public ? '1' : '0';
+  }
+}
+</script>
+
+{% endblock %}

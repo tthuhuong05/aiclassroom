@@ -1,4 +1,7 @@
 Flask==2.3.3
+flask-socketio==5.3.6
+python-socketio==5.10.0
+eventlet==0.33.3
 google-generativeai==0.3.2
 requests==2.31.0
 moviepy==1.0.3

@@ -1,0 +1,349 @@
+{% extends 'base.html' %}
+{% block title %}Tạo Phòng Học Mới{% endblock %}
+
+{% block hero_section %}
+<!-- Hide default hero section for create room -->
+{% endblock %}
+
+{% block content %}
+
+<style>
+  .create-room-container {
+    max-width: 800px;
+    margin: 2rem auto;
+  }
+  .form-card {
+    background: var(--card, #fff);
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    padding: 2rem;
+  }
+  .form-label {
+    font-weight: 600;
+    color: var(--text, #333);
+    margin-bottom: 0.5rem;
+  }
+  .form-control, .form-select {
+    border-radius: 8px;
+    border: 1.5px solid var(--border, #e2e8f0);
+    padding: 0.75rem 1rem;
+    transition: all 0.3s;
+  }
+  .form-control:focus, .form-select:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+  .warning-text {
+    color: #f59e0b;
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+  }
+  .ai-generate-btn {
+    color: #3b82f6;
+    text-decoration: none;
+    font-size: 0.875rem;
+    cursor: pointer;
+  }
+  .ai-generate-btn:hover {
+    text-decoration: underline;
+  }
+</style>
+
+<div class="container create-room-container">
+  <div class="form-card">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h3 class="mb-0">
+        <i class="bi bi-plus-circle me-2"></i>
+        Tạo Phòng Học Mới
+      </h3>
+      <button type="button" class="btn-close" onclick="window.history.back()" aria-label="Close"></button>
+    </div>
+
+    <div class="warning-text">
+      <i class="bi bi-exclamation-triangle me-1"></i>
+      Lạm dụng chủ đề sẽ bị cấm. <a href="#" class="text-decoration-none">(Chi tiết)</a>
+    </div>
+
+    <!-- Thông báo thành công với link -->
+    <div id="successMessage" class="alert alert-success d-none" role="alert" style="margin-top: 1rem;">
+      <i class="bi bi-check-circle me-2"></i>
+      <strong>Bạn đã tạo phòng học thành công!</strong>
+      <div class="mt-2">
+        <span>Đường link truy cập: </span>
+        <a id="roomLink" href="#" target="_blank" class="text-decoration-underline fw-bold"></a>
+      </div>
+    </div>
+
+    <form id="createRoomForm">
+      <div class="row g-3">
+        <!-- Custom Topic -->
+        <div class="col-12 col-md-6">
+          <label for="topic" class="form-label">
+            Chủ đề tùy chỉnh
+            <a href="#" class="ai-generate-btn ms-2" onclick="generateTopic(); return false;">
+              [Tạo với AI]
+            </a>
+          </label>
+          <input type="text" class="form-control" id="topic" name="topic" 
+                 placeholder="Nhập chủ đề phòng học...">
+        </div>
+
+        <!-- Maximum People -->
+        <div class="col-12 col-md-6">
+          <label for="max_members" class="form-label">Số người tối đa</label>
+          <select class="form-select" id="max_members" name="max_members" required>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+            <option value="6">6</option>
+            <option value="8">8</option>
+            <option value="10" selected>10</option>
+            <option value="20">20</option>
+            <option value="50">50</option>
+            <option value="999">Không giới hạn</option>
+          </select>
+        </div>
+
+        <!-- Language -->
+        <div class="col-12 col-md-6">
+          <label for="language" class="form-label">Ngôn ngữ</label>
+          <select class="form-select" id="language" name="language">
+            <option value="">-- Chọn ngôn ngữ --</option>
+            <option value="Vietnamese">Tiếng Việt</option>
+            <option value="English">English</option>
+            <option value="Chinese">中文</option>
+            <option value="Japanese">日本語</option>
+            <option value="Korean">한국어</option>
+            <option value="French">Français</option>
+            <option value="Spanish">Español</option>
+            <option value="German">Deutsch</option>
+            <option value="Portuguese">Português</option>
+            <option value="Italian">Italiano</option>
+            <option value="Russian">Русский</option>
+            <option value="Arabic">العربية</option>
+            <option value="Hindi">हिन्दी</option>
+            <option value="Thai">ไทย</option>
+            <option value="Indonesian">Bahasa Indonesia</option>
+          </select>
+        </div>
+
+        <!-- Level -->
+        <div class="col-12 col-md-6">
+          <label for="level" class="form-label">Trình độ</label>
+          <select class="form-select" id="level" name="level">
+            <option value="">-- Chọn trình độ --</option>
+            <option value="Beginner">Sơ cấp</option>
+            <option value="Intermediate" selected>Trung cấp</option>
+            <option value="Advanced">Nâng cao</option>
+            <option value="Any Level">Mọi trình độ</option>
+          </select>
+        </div>
+
+        <!-- Room Name -->
+        <div class="col-12">
+          <label for="name" class="form-label">Tên phòng học <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" id="name" name="name" required
+                 placeholder="VD: Nhóm học JavaScript cơ bản">
+        </div>
+
+        <!-- Description -->
+        <div class="col-12">
+          <label for="description" class="form-label">Mô tả</label>
+          <textarea class="form-control" id="description" name="description" rows="3"
+                    placeholder="Mô tả về phòng học của bạn..."></textarea>
+        </div>
+
+        <!-- Course (Optional) -->
+        <div class="col-12">
+          <label for="course_id" class="form-label">Liên kết với khóa học (tùy chọn)</label>
+          <select class="form-select" id="course_id" name="course_id">
+            <option value="">-- Không liên kết --</option>
+            {% for course in courses %}
+              <option value="{{ course.id }}">{{ course.title }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Public/Private -->
+        <div class="col-12">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="is_public" name="is_public" checked>
+            <label class="form-check-label" for="is_public">
+              Phòng học công khai (mọi người có thể tìm thấy và tham gia)
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="d-flex gap-2 mt-4">
+        <button type="submit" class="btn btn-primary flex-fill">
+          <i class="bi bi-check-circle me-2"></i>
+          Tạo Phòng Học
+        </button>
+        <a href="{{ url_for('list_study_rooms') }}" class="btn btn-outline-secondary">
+          Hủy
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function generateTopic() {
+  const language = document.getElementById('language').value;
+  const level = document.getElementById('level').value;
+  
+  if (!language) {
+    alert('Vui lòng chọn ngôn ngữ trước');
+    return;
+  }
+  
+  // Tạo topic mặc định dựa trên language và level
+  let topic = language;
+  if (level && level !== 'Any Level') {
+    topic += ' ' + level;
+  }
+  
+  document.getElementById('topic').value = topic;
+  
+  // Nếu chưa có tên phòng, tự động điền
+  if (!document.getElementById('name').value) {
+    document.getElementById('name').value = topic + ' Study Room';
+  }
+}
+
+document.getElementById('createRoomForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  
+  const formData = new FormData(this);
+  const maxMembers = formData.get('max_members');
+  
+  const data = {
+    name: formData.get('name'),
+    description: formData.get('description'),
+    course_id: formData.get('course_id') || null,
+    max_members: maxMembers === '999' ? 999 : parseInt(maxMembers),
+    is_public: formData.get('is_public') === 'on',
+    language: formData.get('language') || null,
+    level: formData.get('level') || null,
+    topic: formData.get('topic') || null
+  };
+
+  // Validate
+  if (!data.name || !data.name.trim()) {
+    alert('Vui lòng nhập tên phòng học');
+    return;
+  }
+
+  // Show loading
+  const submitBtn = this.querySelector('button[type="submit"]');
+  const originalText = submitBtn.innerHTML;
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Đang tạo...';
+
+  try {
+    console.log('Sending data:', data);
+    
+    const response = await fetch('{{ url_for("create_study_room") }}', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data)
+    });
+
+    console.log('Response status:', response.status);
+    
+    let result;
+    try {
+      result = await response.json();
+    } catch (e) {
+      console.error('Failed to parse JSON:', e);
+      const text = await response.text();
+      console.error('Response text:', text);
+      throw new Error('Server trả về dữ liệu không hợp lệ');
+    }
+    
+    console.log('Response data:', result);
+    
+    if (result.ok) {
+      // Tạo URL để mở phòng trong tab mới
+      let roomUrl;
+      let fullUrl;
+      if (result.slug && result.invite_key) {
+        // Sử dụng URL fullscreen nếu có slug và invite_key
+        roomUrl = `/rooms/${result.slug}?key=${result.invite_key}`;
+        fullUrl = window.location.origin + roomUrl;
+      } else {
+        // Fallback về URL thường
+        roomUrl = `/study-rooms/${result.room_id}`;
+        fullUrl = window.location.origin + roomUrl;
+      }
+      
+      // Hiển thị thông báo với link trong tab form đăng ký
+      const successMessage = document.getElementById('successMessage');
+      const roomLink = document.getElementById('roomLink');
+      if (successMessage && roomLink) {
+        roomLink.href = fullUrl;
+        roomLink.textContent = fullUrl;
+        successMessage.classList.remove('d-none');
+        // Scroll đến thông báo
+        successMessage.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+      
+      // Mở phòng trong tab mới (chỉ mở 1 lần)
+      try {
+        sessionStorage.setItem('request_room_fullscreen', '1');
+      } catch (err) {
+        console.warn('Cannot persist fullscreen flag', err);
+      }
+      
+      // Kiểm tra xem đã có tab mở chưa để tránh mở nhiều tab
+      const roomWindowKey = 'room_window_' + result.room_id;
+      let roomWindow = sessionStorage.getItem(roomWindowKey);
+      
+      // Đóng tab cũ nếu có (nếu user tạo lại phòng cùng ID)
+      if (roomWindow) {
+        try {
+          // Không thể đóng tab từ code, nhưng có thể clear flag
+          sessionStorage.removeItem(roomWindowKey);
+        } catch (e) {
+          console.warn('Cannot clear old window reference', e);
+        }
+      }
+      
+      const opened = window.open(roomUrl, '_blank', 'noopener,noreferrer');
+      if (!opened) {
+        // Nếu popup bị chặn, hiển thị thông báo
+        alert('Tạo phòng học thành công! Vui lòng cho phép mở tab mới để vào phòng học. Hoặc click vào link ở trên để truy cập.');
+      } else {
+        // Lưu reference để tránh mở nhiều tab
+        try {
+          sessionStorage.setItem(roomWindowKey, 'opened');
+        } catch (e) {
+          console.warn('Cannot save window reference', e);
+        }
+      }
+      
+      // Reset form để có thể tạo phòng tiếp nếu muốn
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalText;
+      document.getElementById('createRoomForm').reset();
+    } else {
+      const errorMsg = result.error || 'Không thể tạo phòng học';
+      console.error('Error from server:', errorMsg);
+      alert('Lỗi: ' + errorMsg);
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalText;
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Có lỗi xảy ra khi tạo phòng học: ' + error.message);
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = originalText;
+  }
+});
+</script>
+
+{% endblock %}

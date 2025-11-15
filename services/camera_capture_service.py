@@ -1,5 +1,6 @@
 # services/camera_capture_service.py
-import os, base64, time
+import os, base64, time, shutil, re, unicodedata
+from datetime import datetime
 from pathlib import Path
 import numpy as np
 import cv2
@@ -9,6 +10,21 @@ ROOT = Path(__file__).resolve().parents[1]
 # ✨ Dùng pipeline YOLO-face + COCO + attention đã có sẵn
 from services.face_recognition_service import get_face_recognition_service
 FR = get_face_recognition_service()
+
+
+def _slugify(text: Optional[str], fallback: str) -> str:
+    fallback = str(fallback or "item").lower()
+    value = (text or "").strip()
+    if not value:
+        value = fallback
+    value = unicodedata.normalize("NFKD", value)
+    value = value.encode("ascii", "ignore").decode("ascii")
+    value = value.lower()
+    value = re.sub(r"[^a-z0-9]+", "-", value)
+    value = re.sub(r"-{2,}", "-", value).strip("-")
+    if not value:
+        value = fallback
+    return value[:80]
 
 class CameraCaptureService:
     def __init__(self):
@@ -89,15 +105,91 @@ class CameraCaptureService:
             # ✨ Pipeline YOLO-face + COCO + attention
             ai = FR.detect_faces_and_objects(bgr)
 
+            rel_path = filepath.replace("\\", "/")
+            web_url = f"/{rel_path.lstrip('/')}"
+            captured_at = datetime.utcnow().isoformat()
+
             return {
                 "success": True,
                 "filepath": filepath,
+                "relative_filepath": rel_path,
+                "web_url": web_url,
+                "captured_at": captured_at,
                 "frame_number": frame_number,
                 "latency_ms": int((time.time() - t0) * 1000),
                 "ai": ai,
             }
         except Exception as e:
             return {"success": False, "error": str(e)}
+
+    def promote_evidence(
+        self,
+        source_path: str,
+        *,
+        user_slug: str,
+        course_slug: str,
+        attempt_id: str,
+        frame_no: int,
+        event_type: str,
+        reason: Optional[str] = None,
+        captured_at: Optional[str] = None,
+    ) -> Optional[Dict[str, str]]:
+        """
+        Sao chép ảnh nguồn vào thư mục evidence theo người dùng & khóa học.
+        """
+        if not source_path:
+            return None
+
+        abs_source = source_path
+        if not os.path.isfile(abs_source):
+            abs_source = os.path.abspath(source_path)
+            if not os.path.isfile(abs_source):
+                return None
+
+        timestamp = captured_at
+        if not timestamp:
+            timestamp = datetime.utcnow().isoformat()
+        try:
+            ts_obj = datetime.fromisoformat(timestamp)
+        except Exception:
+            ts_obj = datetime.utcnow()
+        ts_label = ts_obj.strftime("%Y%m%d-%H%M%S")
+
+        reason_slug = _slugify(reason, "reason") if reason else ""
+        event_slug = _slugify(event_type, "event")
+        user_slug = _slugify(user_slug, "user")
+        course_slug = _slugify(course_slug, "course")
+
+        base_name = f"{ts_label}_{course_slug}_{attempt_id}_frame{int(frame_no):04d}_{event_slug}"
+        if reason_slug:
+            base_name = f"{base_name}_{reason_slug}"
+
+        ext = os.path.splitext(abs_source)[1] or ".jpg"
+        dest_dir = os.path.join(self.upload_dir, "evidence", user_slug)
+        os.makedirs(dest_dir, exist_ok=True)
+
+        dest_path = os.path.join(dest_dir, f"{base_name}{ext}")
+        counter = 1
+        while os.path.exists(dest_path):
+            dest_path = os.path.join(dest_dir, f"{base_name}_{counter}{ext}")
+            counter += 1
+
+        shutil.copy2(abs_source, dest_path)
+
+        rel_path = dest_path.replace("\\", "/")
+        if not rel_path.startswith("static/"):
+            try:
+                rel_path = os.path.relpath(dest_path, start=os.getcwd()).replace("\\", "/")
+            except Exception:
+                rel_path = dest_path.replace("\\", "/")
+        web_url = f"/{rel_path.lstrip('/')}"
+
+        return {
+            "absolute_path": dest_path,
+            "relative_path": rel_path,
+            "web_url": web_url,
+            "captured_at": ts_obj.isoformat(),
+        }
 
 # Singleton
 _camera_singleton = CameraCaptureService()

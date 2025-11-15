@@ -1,0 +1,200 @@
+{% extends 'base.html' %}
+{% block title %}{{ room.name }} - Phòng Học{% endblock %}
+{% block content %}
+
+<div class="container py-4">
+  <div class="row">
+    <div class="col-12 col-lg-8">
+      <div class="card shadow mb-4">
+        <div class="card-header bg-primary text-white">
+          <div class="d-flex justify-content-between align-items-center">
+            <h4 class="mb-0">{{ room.name }}</h4>
+            {% if is_admin %}
+              <span class="badge bg-warning text-dark">Quản trị viên</span>
+            {% endif %}
+          </div>
+        </div>
+        <div class="card-body">
+          {% if room.description %}
+            <p class="card-text">{{ room.description }}</p>
+          {% endif %}
+
+          <div class="row mt-3">
+            <div class="col-6 col-md-3 mb-2">
+              <small class="text-muted d-block">Khóa học</small>
+              <strong>{{ room.course_title or 'Không liên kết' }}</strong>
+            </div>
+            <div class="col-6 col-md-3 mb-2">
+              <small class="text-muted d-block">Thành viên</small>
+              <strong>{{ room.member_count or 0 }}/{{ room.max_members or 10 }}</strong>
+            </div>
+            <div class="col-6 col-md-3 mb-2">
+              <small class="text-muted d-block">Tạo bởi</small>
+              <strong>{{ room.creator_username }}</strong>
+            </div>
+            <div class="col-6 col-md-3 mb-2">
+              <small class="text-muted d-block">Trạng thái</small>
+              <strong>
+                {% if room.is_public %}
+                  <span class="badge bg-success">Công khai</span>
+                {% else %}
+                  <span class="badge bg-secondary">Riêng tư</span>
+                {% endif %}
+              </strong>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Danh sách thành viên -->
+      <div class="card shadow">
+        <div class="card-header">
+          <h5 class="mb-0">
+            <i class="bi bi-people me-2"></i>
+            Thành Viên ({{ members|length }})
+          </h5>
+        </div>
+        <div class="card-body">
+          {% if members %}
+            <div class="list-group">
+              {% for member in members %}
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                  <div>
+                    <strong>{{ member.username }}</strong>
+                    {% if member.role == 'admin' %}
+                      <span class="badge bg-danger ms-2">Admin</span>
+                    {% endif %}
+                    <br>
+                    <small class="text-muted">
+                      Tham gia: {{ member.joined_at[:10] if member.joined_at else '' }}
+                    </small>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <p class="text-muted">Chưa có thành viên nào.</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-lg-4">
+      <div class="card shadow sticky-top" style="top: 20px;">
+        <div class="card-body">
+          <h5 class="card-title">Thao Tác</h5>
+          
+          {% if is_member %}
+            {% if not is_admin %}
+              <button class="btn btn-outline-danger w-100 mb-2" onclick="leaveRoom()">
+                <i class="bi bi-box-arrow-right me-2"></i>
+                Rời Khỏi Phòng
+              </button>
+            {% endif %}
+          {% else %}
+            <button class="btn btn-primary w-100 mb-2" onclick="joinRoom()">
+              <i class="bi bi-person-plus me-2"></i>
+              Tham Gia Phòng
+            </button>
+          {% endif %}
+
+          {% if is_admin %}
+            <hr>
+            <button class="btn btn-danger w-100" onclick="deleteRoom()">
+              <i class="bi bi-trash me-2"></i>
+              Xóa Phòng Học
+            </button>
+          {% endif %}
+
+          <hr>
+          <a href="{{ url_for('list_study_rooms') }}" class="btn btn-outline-secondary w-100">
+            <i class="bi bi-arrow-left me-2"></i>
+            Quay Lại
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const roomId = {{ room.id }};
+
+async function joinRoom() {
+  if (!confirm('Bạn có chắc muốn tham gia phòng học này?')) return;
+  
+  try {
+    const response = await fetch(`/api/study-rooms/${roomId}/join`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    });
+    
+    const result = await response.json();
+    
+    if (result.ok) {
+      alert('Tham gia phòng học thành công!');
+      location.reload();
+    } else {
+      alert('Lỗi: ' + (result.error || 'Không thể tham gia phòng học'));
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Có lỗi xảy ra');
+  }
+}
+
+async function leaveRoom() {
+  if (!confirm('Bạn có chắc muốn rời khỏi phòng học này?')) return;
+  
+  try {
+    const response = await fetch(`/api/study-rooms/${roomId}/leave`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    });
+    
+    const result = await response.json();
+    
+    if (result.ok) {
+      alert('Đã rời khỏi phòng học');
+      window.location.href = '/study-rooms';
+    } else {
+      alert('Lỗi: ' + (result.error || 'Không thể rời khỏi phòng học'));
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Có lỗi xảy ra');
+  }
+}
+
+async function deleteRoom() {
+  if (!confirm('Bạn có chắc muốn xóa phòng học này? Hành động này không thể hoàn tác!')) return;
+  
+  try {
+    const response = await fetch(`/api/study-rooms/${roomId}/delete`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    });
+    
+    const result = await response.json();
+    
+    if (result.ok) {
+      alert('Đã xóa phòng học');
+      window.location.href = '/study-rooms';
+    } else {
+      alert('Lỗi: ' + (result.error || 'Không có quyền xóa phòng học'));
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Có lỗi xảy ra');
+  }
+}
+</script>
+
+{% endblock %}
+

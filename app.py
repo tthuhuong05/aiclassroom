@@ -18,6 +18,7 @@ import re
 import os
 import mimetypes
 import time
+import threading
 # Load biến môi trường từ file .env
 try:
     from load_env import load_env_file
@@ -42,6 +43,7 @@ from controller.user_controller import UserController
 from controller.course_controller import CourseController
 from controller.assignment_controller import AssignmentController
 from controller.progress_controller import ProgressController
+from controller.study_room_controller import StudyRoomController
 from services.face_recognition_service import get_face_recognition_service
 
 
@@ -66,6 +68,7 @@ user_controller = UserController()
 course_controller = CourseController()
 assignment_controller = AssignmentController()
 progress_controller = ProgressController()
+study_room_controller = StudyRoomController()
 face_recognition_service = get_face_recognition_service()
 
 # Uploads
@@ -2262,6 +2265,97 @@ def api_capture_frame_unified():
     return jsonify({"ok": True, "result": out})
 
 
+# ---- Study Rooms (Social Feature) ----
+@app.route("/study-rooms")
+@login_required
+def list_study_rooms():
+    """Danh sách phòng học"""
+    return study_room_controller.list_rooms()
+
+@app.route("/study-rooms/create", methods=["GET", "POST"])
+@login_required
+def create_study_room():
+    """Tạo phòng học mới"""
+    if request.method == "POST":
+        return study_room_controller.create_room()
+    return study_room_controller.create_room_form()
+
+@app.route("/study-rooms/<int:room_id>")
+@login_required
+def study_room_detail(room_id):
+    """Chi tiết phòng học"""
+    return study_room_controller.room_detail(room_id)
+
+@app.route("/rooms/<slug>")
+@login_required
+def study_room_fullscreen(slug):
+    """Đường dẫn fullscreen theo slug + key"""
+    return study_room_controller.room_detail_by_slug(slug)
+
+@app.post("/api/study-rooms/<int:room_id>/join")
+@login_required
+def api_join_study_room(room_id):
+    """API tham gia phòng học"""
+    return study_room_controller.join_room(room_id)
+
+@app.post("/api/study-rooms/<int:room_id>/leave")
+@login_required
+def api_leave_study_room(room_id):
+    """API rời khỏi phòng học"""
+    return study_room_controller.leave_room(room_id)
+
+@app.delete("/api/study-rooms/<int:room_id>/delete")
+@login_required
+def api_delete_study_room(room_id):
+    """API xóa phòng học"""
+    return study_room_controller.delete_room(room_id)
+
+@app.post("/api/study-rooms/<int:room_id>/update")
+@login_required
+def api_update_study_room(room_id):
+    """API cập nhật thông tin phòng học"""
+    return study_room_controller.update_room(room_id)
+
+@app.get("/api/study-rooms")
+@login_required
+def api_list_study_rooms():
+    """API lấy danh sách phòng học"""
+    user_id = session.get("user", {}).get("id")
+    if not user_id:
+        return jsonify({"ok": False, "error": "Chưa đăng nhập"}), 401
+    
+    all_rooms = study_room_controller.model.get_all_rooms(user_id=user_id, is_public_only=True)
+    return jsonify({"ok": True, "rooms": all_rooms})
+
+
+# Initialize Socket.IO for real-time features
+try:
+    from services.socketio_service import init_socketio
+    socketio = init_socketio(app)
+except Exception as e:
+    print(f"[WARN] Socket.IO initialization failed: {e}")
+    socketio = None
+
+def cleanup_empty_rooms_periodically():
+    """Background task để tự động xóa các phòng không có ai trong 1 phút"""
+    while True:
+        try:
+            with app.app_context():
+                from model.study_room_model import StudyRoomModel
+                model = StudyRoomModel()
+                deleted_count = model.cleanup_empty_rooms(minutes=1)
+                if deleted_count > 0:
+                    print(f"[CLEANUP] Đã xóa {deleted_count} phòng học trống")
+        except Exception as e:
+            print(f"[CLEANUP ERROR] {e}")
+        time.sleep(30)  # Chạy mỗi 30 giây
+
+# Khởi động background task
+cleanup_thread = threading.Thread(target=cleanup_empty_rooms_periodically, daemon=True)
+cleanup_thread.start()
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    if socketio:
+        socketio.run(app, debug=True, host='0.0.0.0', port=5000)
+    else:
+        app.run(debug=True)

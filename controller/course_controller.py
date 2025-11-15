@@ -7,6 +7,7 @@ import unicodedata
 import re, random, hmac, hashlib
 from collections.abc import Mapping
 from model.course_model import CourseModel
+from model.user_model import UserModel
 from typing import Optional, Tuple, List
 from ai_gemini import mcq_from_snippet, keywords_from_snippet, grade_free_text
 from services.camera_capture_service import get_camera_capture_service
@@ -229,6 +230,17 @@ def _norm_text(s: str) -> str:
     for ch in s:
         out.append(ch if ch.isalnum() or ch.isspace() or ch in "+#" else " ")
     return " ".join("".join(out).split())
+
+def _slugify_label(value: str, fallback: str) -> str:
+    base = _norm_text(value)
+    if not base:
+        base = _norm_text(fallback)
+    base = base.replace("#", " ").strip()
+    base = re.sub(r"[^a-z0-9]+", "-", base)
+    base = re.sub(r"-{2,}", "-", base).strip("-")
+    if not base:
+        base = fallback.lower()
+    return base[:60]
 
 def _get_attr_any(obj, name):
     cand = {name, name.lower(), name.replace("-", "_"), name.replace(" ", "_"),
@@ -670,6 +682,7 @@ class CourseController:
     def __init__(self):
         ensure_ffmpeg_in_path()
         self.course_model = CourseModel()
+        self.user_model = UserModel()
 
     def home(self):
         courses = self.course_model.get_all_courses()
@@ -677,6 +690,21 @@ class CourseController:
 
     def list_courses(self):
         all_courses = self.course_model.get_all_courses()
+
+        # Chuẩn hóa dữ liệu về dict để dùng chung các helper (.get, FIELD_ALIASES, ...)
+        normalized_courses = []
+        for course in all_courses or []:
+            if isinstance(course, Mapping):
+                try:
+                    normalized_courses.append(dict(course))
+                    continue
+                except Exception:
+                    pass
+            try:
+                normalized_courses.append(dict(course))
+            except Exception:
+                normalized_courses.append(course)
+        all_courses = normalized_courses
 
         q = (request.args.get("q") or "").strip()
         category = (request.args.get("category") or "").strip()
@@ -2757,6 +2785,10 @@ Trả về JSON:
         attention_score = float(ai.get("attention_score", 0.0))
         cheating_detected = bool(ai.get("cheating_detected", False))
         cheating_reason = ai.get("cheating_reason")
+        capture_path = capture.get("filepath")
+        capture_rel = capture.get("relative_filepath")
+        capture_web = capture.get("web_url")
+        capture_time = capture.get("captured_at")
 
         # --- NEW: so khớp với avatar nếu có ---
         # FE nên gửi avatar ở key 'avatar_image_base64'
@@ -2792,21 +2824,58 @@ Trả về JSON:
             except Exception:
                 verified = (face_count >= 1) if not strict else False
 
-        # Ghi log proctor như cũ
+        objects_json = json.dumps(ai.get("suspicious_objects") or [])
+
+        # Ghi log proctor với metadata ảnh
         user_id, course_id = self.get_attempt_context(attempt_id)
+        evidence_info = None
         if user_id and course_id:
+            labels = self._build_proctor_labels(user_id, course_id)
+            snapshot_for_db = capture_rel
+            if cheating_detected and capture_path:
+                evidence_info = svc.promote_evidence(
+                    capture_path,
+                    user_slug=labels["user_slug"],
+                    course_slug=labels["course_slug"],
+                    attempt_id=attempt_id,
+                    frame_no=frame_no,
+                    event_type="cheating_detected",
+                    reason=cheating_reason if isinstance(cheating_reason, str) else str(cheating_reason),
+                    captured_at=capture_time,
+                )
+                if evidence_info:
+                    snapshot_for_db = evidence_info.get("relative_path") or snapshot_for_db
+
             self.course_model.log_proctor_frame(
-                attempt_id=attempt_id, user_id=user_id, course_id=course_id,
-                frame_no=frame_no, face_count=face_count,
+                attempt_id=attempt_id,
+                user_id=user_id,
+                course_id=course_id,
+                frame_no=frame_no,
+                face_count=face_count,
                 attention_score=attention_score,
-                objects_json=json.dumps(ai.get("suspicious_objects") or []),
-                snapshot_url=None
+                objects_json=objects_json,
+                snapshot_url=snapshot_for_db,
             )
+
             if cheating_detected:
+                meta_payload = {
+                    "reason": cheating_reason,
+                    "captured_at": capture_time,
+                    "frame_no": frame_no,
+                    "username": labels.get("username"),
+                    "course_title": labels.get("course_title"),
+                    "capture_url": capture_web,
+                }
+                if evidence_info:
+                    meta_payload["evidence_url"] = evidence_info.get("web_url")
+                    meta_payload["evidence_path"] = evidence_info.get("relative_path")
                 self.course_model.log_proctor_event(
-                    attempt_id=attempt_id, user_id=user_id, course_id=course_id,
-                    event_type="cheating_detected", confidence=1.0,
-                    meta_json=cheating_reason
+                    attempt_id=attempt_id,
+                    user_id=user_id,
+                    course_id=course_id,
+                    event_type="cheating_detected",
+                    confidence=1.0,
+                    meta_json=json.dumps(meta_payload, ensure_ascii=False),
                 )
 
         return jsonify(ok=True,
@@ -2891,11 +2960,17 @@ Trả về JSON:
         cheating_detected = False
         cheating_reason = None
         
+        svc = None
+        capture_result = None
+        capture_path = None
+        capture_rel = None
+        capture_web = None
+        capture_time = None
+
         if image_base64:
             try:
                 if debug_mode:
                     print(f"[CAPTURE-FRAME] Calling camera_capture_service.capture_frame_from_base64()...")
-                from services.camera_capture_service import get_camera_capture_service
                 svc = get_camera_capture_service()
                 capture_result = svc.capture_frame_from_base64(image_base64, attempt_id, frame_no)
 
@@ -2910,6 +2985,10 @@ Trả về JSON:
                     suspicious_objects = ai_result.get("suspicious_objects", [])
                     cheating_detected = bool(ai_result.get("cheating_detected", False))
                     cheating_reason = ai_result.get("cheating_reason")
+                    capture_path = capture_result.get("filepath")
+                    capture_rel = capture_result.get("relative_filepath")
+                    capture_web = capture_result.get("web_url")
+                    capture_time = capture_result.get("captured_at")
                     
                     if debug_mode:
                         print(f"[CAPTURE-FRAME] AI Results:")
@@ -2957,20 +3036,57 @@ Trả về JSON:
         # Convert suspicious_objects to JSON string for DB
         objects_json = json.dumps(suspicious_objects) if suspicious_objects else ""
 
-        # Ghi frame vào DB
+        labels = self._build_proctor_labels(user_id, course_id)
+        snapshot_for_db = capture_rel
+        evidence_info = None
+        if (suspicious_objects or cheating_detected) and capture_path and svc:
+            event_type = "cheating_detected" if cheating_detected else "suspicious_objects"
+            evidence_info = svc.promote_evidence(
+                capture_path,
+                user_slug=labels["user_slug"],
+                course_slug=labels["course_slug"],
+                attempt_id=attempt_id,
+                frame_no=frame_no,
+                event_type=event_type,
+                reason=cheating_reason if cheating_detected else json.dumps(suspicious_objects, ensure_ascii=False),
+                captured_at=capture_time,
+            )
+            if evidence_info:
+                snapshot_for_db = evidence_info.get("relative_path") or snapshot_for_db
+
         self.course_model.log_proctor_frame(
-            attempt_id=attempt_id, user_id=user_id, course_id=course_id,
-            frame_no=frame_no, face_count=face_count,
-            attention_score=att_score, objects_json=objects_json, snapshot_url=None
+            attempt_id=attempt_id,
+            user_id=user_id,
+            course_id=course_id,
+            frame_no=frame_no,
+            face_count=face_count,
+            attention_score=att_score,
+            objects_json=objects_json,
+            snapshot_url=snapshot_for_db,
         )
 
-        # Ghi event nếu có đối tượng khả nghi hoặc gian lận
         if suspicious_objects or cheating_detected:
+            event_type = "suspicious_objects" if suspicious_objects and not cheating_detected else "cheating_detected"
+            meta_payload = {
+                "objects": suspicious_objects,
+                "reason": cheating_reason,
+                "captured_at": capture_time,
+                "frame_no": frame_no,
+                "username": labels.get("username"),
+                "course_title": labels.get("course_title"),
+                "capture_url": capture_web,
+            }
+            if evidence_info:
+                meta_payload["evidence_url"] = evidence_info.get("web_url")
+                meta_payload["evidence_path"] = evidence_info.get("relative_path")
+
             self.course_model.log_proctor_event(
-                attempt_id=attempt_id, user_id=user_id, course_id=course_id,
-                event_type="suspicious_objects" if suspicious_objects else "cheating_detected",
+                attempt_id=attempt_id,
+                user_id=user_id,
+                course_id=course_id,
+                event_type=event_type,
                 confidence=1.0,
-                meta_json=objects_json if suspicious_objects else cheating_reason
+                meta_json=json.dumps(meta_payload, ensure_ascii=False),
             )
 
         # Return result với AI data
@@ -3158,6 +3274,37 @@ Trả về JSON:
         pass
 
       return user_id, course_id
+
+    def _build_proctor_labels(self, user_id, course_id):
+      username = None
+      course_title = None
+      if user_id:
+        try:
+          user = self.user_model.get_user_by_id(int(user_id))
+          if user:
+            username = user.get("username") or user.get("email")
+        except Exception:
+          username = None
+      if course_id:
+        try:
+          course = self.course_model.get_course_by_id(int(course_id))
+          if course:
+            try:
+              course_dict = dict(course)
+            except Exception:
+              course_dict = course
+            course_title = course_dict.get("title") or course_dict.get("name")
+        except Exception:
+          course_title = None
+
+      user_slug = _slugify_label(username or f"user-{user_id or 'unknown'}", f"user-{user_id or 'unknown'}")
+      course_slug = _slugify_label(course_title or f"course-{course_id or 'unknown'}", f"course-{course_id or 'unknown'}")
+      return {
+        "username": username,
+        "course_title": course_title,
+        "user_slug": user_slug,
+        "course_slug": course_slug,
+      }
 
     def ai_dashboard(self):
       """

@@ -325,7 +325,7 @@
     <div class="container">
       <a class="navbar-brand d-flex align-items-center gap-2" href="{{ url_for('home') }}">
         <img src="{{ url_for('static', filename='logo1.jpeg') }}" alt="Logo" width="40" height="40" class="rounded-circle" onerror="this.src='https://api.dicebear.com/7.x/shapes/svg?seed=HT'">
-        <span class="fw-bold">Học Tập</span>
+        <span class="fw-bold">EduVerse</span>
       </a>
 
       <div class="d-flex align-items-center gap-3">
@@ -341,6 +341,9 @@
         <ul class="navbar-nav mx-auto align-items-center gap-3">
           <li class="nav-item"><a class="nav-link {% if request.endpoint == 'home' %}active{% endif %}" href="{{ url_for('home') }}">Trang chủ</a></li>
           <li class="nav-item"><a class="nav-link {% if request.endpoint == 'course' %}active{% endif %}" href="{{ url_for('course') }}">Khóa học</a></li>
+          <li class="nav-item">
+            <a class="nav-link {% if request.endpoint == 'list_study_rooms' or request.endpoint == 'create_study_room' or request.endpoint == 'study_room_detail' %}active{% endif %}" href="{{ url_for('list_study_rooms') }}"><i class="bi bi-people-fill me-1"></i>Social</a>
+          </li>
           <li class="nav-item">
             <a class="nav-link" href="/history"><i class="bi bi-clock-history me-1"></i>Lịch sử</a>
           </li>
@@ -429,6 +432,8 @@
     </div>
   </div>
 
+  <!-- Content Block -->
+  {% block content %}
   <!-- Courses Section -->
   <section id="courses" class="py-5">
     <div class="container">
@@ -446,7 +451,7 @@
                 <div class="text-warning">
                   <i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-half"></i>
                 </div>
-                <span class="text-muted small">(1,234)</span>
+                <span class="text-muted small">(3,634)</span>
               </div>
               <div class="mt-auto d-flex justify-content-between align-items-center">
                 <a href="{{ url_for('course_detail', course_id=course.id) }}" class="btn btn-outline-primary btn-sm rounded-pill">
@@ -481,13 +486,14 @@
       {% endif %}
     </div>
   </section>
+  {% endblock %}
 
   <!-- Footer -->
   <footer>
     <div class="container">
       <div class="row g-5">
         <div class="col-md-3">
-          <h5 class="fw-bold text-white">Học Tập</h5>
+          <h5 class="fw-bold text-white"></h5>
           <p class="small text-muted">Nền tảng học tập AI hàng đầu Việt Nam.</p>
         </div>
         <div class="col-md-3">
@@ -516,7 +522,7 @@
         </div>
       </div>
       <hr class="my-4">
-      <p class="text-center small text-muted">© 2025 <strong>Học Tập</strong>. Tất cả quyền được bảo lưu.</p>
+      <p class="text-center small text-muted">© 2025 <strong></strong>. Tất cả quyền được bảo lưu.</p>
     </div>
   </footer>
 

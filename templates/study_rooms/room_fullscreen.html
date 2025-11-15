@@ -1,0 +1,1881 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ room.name }} - Phòng Học</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+  <style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    overflow: hidden;
+    background: #030712;
+  }
+
+  :root {
+    --night: #050c1f;
+    --night-soft: #0f172a;
+    --night-card: #131c31;
+    --night-border: rgba(255,255,255,0.08);
+    --night-text: #f8fafc;
+    --accent-blue: #60a5fa;
+    --accent-red: #f87171;
+  }
+
+  .social-room {
+    background: radial-gradient(circle at top, #0b1b3a, #030712 70%);
+    min-height: 100vh;
+    color: var(--night-text);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+
+  .room-toolbar {
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    z-index: 30;
+    background: rgba(5,12,31,0.85);
+    backdrop-filter: blur(18px);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 12px;
+    border: 1px solid var(--night-border);
+  }
+
+  .toolbar-info {
+    display: none;
+  }
+
+  .toolbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .toolbar-btn {
+    width: 46px;
+    height: 46px;
+    border-radius: 12px;
+    border: 1px solid transparent;
+    background: var(--night-card);
+    color: var(--night-text);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .toolbar-btn.active {
+    background: #1f3b75;
+    border-color: rgba(255,255,255,0.15);
+    color: var(--accent-blue);
+  }
+
+  .toolbar-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+  }
+
+  .toolbar-btn.danger {
+    background: #1f0c0c;
+    color: var(--accent-red);
+    border-color: rgba(248,113,113,0.4);
+  }
+
+  .room-layout {
+    display: flex;
+    gap: 1.5rem;
+    padding: 1.5rem;
+    padding-bottom: 100px;
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .bottom-controls {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(5,12,31,0.95);
+    backdrop-filter: blur(18px);
+    border-top: 1px solid var(--night-border);
+    padding: 0.75rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    z-index: 20;
+  }
+
+  .user-preview {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .preview-video-wrapper {
+    position: relative;
+    width: 100px;
+    height: 75px;
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--night-card);
+    border: 2px solid var(--night-border);
+  }
+
+  .preview-video-wrapper video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .preview-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .preview-info .name {
+    font-weight: 600;
+    font-size: 0.85rem;
+  }
+
+  .preview-info .role {
+    font-size: 0.7rem;
+    color: rgba(248,250,252,0.6);
+    text-transform: uppercase;
+  }
+
+  .preview-controls {
+    position: absolute;
+    bottom: 4px;
+    left: 4px;
+    display: flex;
+    gap: 4px;
+  }
+
+  .preview-controls .icon {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    background: rgba(0,0,0,0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+  }
+
+  .bottom-chat-input {
+    flex: 1;
+    max-width: 500px;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .bottom-chat-input .input-icons {
+    display: flex;
+    gap: 0.5rem;
+    margin-right: 0.5rem;
+  }
+
+  .bottom-chat-input .input-icons button {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    color: var(--night-text);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    transition: background 0.2s;
+  }
+
+  .bottom-chat-input .input-icons button:hover {
+    background: rgba(255,255,255,0.1);
+  }
+
+  .bottom-chat-input input {
+    flex: 1;
+    border-radius: 20px;
+    border: 1px solid var(--night-border);
+    background: rgba(255,255,255,0.05);
+    color: var(--night-text);
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+  }
+
+  .bottom-chat-input input::placeholder {
+    color: rgba(248,250,252,0.5);
+    font-size: 0.85rem;
+  }
+
+  .bottom-chat-input .send-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    background: linear-gradient(135deg, #60a5fa, #2563eb);
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+  }
+
+  .video-stage {
+    flex: 0 0 70%;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    transition: flex 0.3s ease;
+  }
+
+  .video-stage.expanded {
+    flex: 0 0 100%;
+  }
+
+  .main-stage {
+    flex: 1;
+    background: var(--night-card);
+    border: 1px solid var(--night-border);
+    border-radius: 24px;
+    padding: 1.25rem;
+    min-height: 420px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1rem;
+  }
+
+  .video-wrapper {
+    position: relative;
+    border-radius: 18px;
+    overflow: hidden;
+    background: #020817;
+    border: 1px solid rgba(255,255,255,0.05);
+  }
+
+  .video-wrapper video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    background: #000;
+  }
+
+  .video-wrapper .video-overlay {
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .name-tag {
+    background: rgba(0,0,0,0.65);
+    padding: 0.4rem 0.85rem;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+
+  .status-badge {
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    padding: 0.3rem 0.7rem;
+    border-radius: 999px;
+    background: rgba(34,197,94,0.2);
+    color: #4ade80;
+    font-weight: 600;
+  }
+
+  .video-wrapper.video-off video {
+    filter: grayscale(1);
+    opacity: 0.25;
+  }
+
+  .video-wrapper.screen-share {
+    grid-column: 1 / -1;
+    min-height: 400px;
+  }
+
+  .video-wrapper.screen-share video {
+    object-fit: contain;
+  }
+
+  .thumbnail-strip {
+    display: none;
+  }
+
+  .side-panel {
+    width: 420px;
+    background: var(--night-card);
+    border-radius: 24px;
+    border: 1px solid var(--night-border);
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    flex-shrink: 0;
+  }
+
+  .side-panel.hidden {
+    transform: translateX(calc(100% + 1.5rem));
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .panel-toggle {
+    position: fixed;
+    right: 0.5rem;
+    top: 1rem;
+    transform: none;
+    width: 36px;
+    height: 36px;
+    background: var(--night-card);
+    border: 1px solid var(--night-border);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 10;
+    transition: all 0.3s ease;
+    color: var(--night-text);
+    font-size: 1rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  }
+
+  .panel-toggle:hover {
+    background: rgba(96, 165, 250, 0.15);
+    border-color: var(--accent-blue);
+    box-shadow: -4px 0 16px rgba(96, 165, 250, 0.3);
+  }
+
+  .panel-toggle.hidden {
+    right: 0.5rem;
+    border-radius: 8px;
+  }
+
+  .panel-toggle i {
+    transition: transform 0.3s ease;
+  }
+
+  .panel-toggle.hidden i {
+    transform: rotate(180deg);
+  }
+
+  .panel-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--night-border);
+  }
+
+  .panel-btn {
+    flex: 1;
+    padding: 1rem;
+    background: transparent;
+    border: none;
+    color: rgba(248,250,252,0.6);
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    transition: all 0.2s ease;
+  }
+
+  .panel-btn.active {
+    color: var(--night-text);
+    background: rgba(255,255,255,0.04);
+  }
+
+  .panel-section {
+    display: none;
+    flex-direction: column;
+    height: 100%;
+  }
+
+  .panel-section.active {
+    display: flex;
+  }
+
+  .chat-messages {
+    flex: 1;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    overflow-y: auto;
+  }
+
+  .reply-preview {
+    display: none;
+    margin: 0 1.25rem 0.75rem;
+    padding: 0.75rem 1rem;
+    border-radius: 12px;
+    background: rgba(37, 99, 235, 0.12);
+    border: 1px solid rgba(37, 99, 235, 0.3);
+    color: var(--night-text);
+    font-size: 0.85rem;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .reply-preview.show {
+    display: flex;
+  }
+
+  .reply-preview button {
+    border: none;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    font-size: 1rem;
+  }
+
+  .chat-message {
+    background: rgba(13, 21, 43, 0.95);
+    border-radius: 16px;
+    padding: 0.85rem 1rem;
+    font-size: 0.92rem;
+    border: 1px solid rgba(255,255,255,0.1);
+    color: var(--night-text);
+    line-height: 1.5;
+    box-shadow: inset 0 1px rgba(255,255,255,0.05);
+  }
+
+  .chat-message .header-line {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.35rem;
+  }
+
+  .chat-message .user-info {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+  }
+
+  .chat-message .avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 2px solid rgba(255,255,255,0.1);
+  }
+
+  .chat-message .avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .chat-message .sender {
+    font-weight: 600;
+    color: var(--accent-blue);
+  }
+
+  .role-badge {
+    background: linear-gradient(135deg, #a855f7, #6366f1);
+    border-radius: 999px;
+    font-size: 0.7rem;
+    padding: 0.15rem 0.6rem;
+    color: white;
+    font-weight: 600;
+    margin-left: 0.35rem;
+  }
+
+  .chat-message .time {
+    font-size: 0.75rem;
+    color: rgba(248,250,252,0.5);
+  }
+
+  .chat-message .edited-flag {
+    font-size: 0.7rem;
+    color: rgba(248,250,252,0.5);
+    margin-left: 0.35rem;
+  }
+
+  .reply-quote {
+    margin: 0.35rem 0 0.6rem;
+    padding: 0.5rem 0.75rem;
+    border-left: 3px solid var(--accent-blue);
+    background: rgba(255,255,255,0.02);
+    border-radius: 10px;
+    font-size: 0.82rem;
+    color: rgba(248,250,252,0.8);
+  }
+
+  .chat-message.deleted {
+    opacity: 0.6;
+    font-style: italic;
+  }
+
+  .chat-message.deleted .chat-actions {
+    display: none;
+  }
+
+  .chat-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.75rem;
+    margin-top: 0.35rem;
+    color: rgba(248,250,252,0.65);
+  }
+
+  .chat-actions button {
+    border: none;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    padding: 0;
+    font: inherit;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .chat-message.system {
+    text-align: center;
+    color: rgba(248,250,252,0.6);
+    border: none;
+    background: transparent;
+    font-style: italic;
+  }
+
+  .room-info-card,
+  .participants-card {
+    background: rgba(255,255,255,0.02);
+    border-radius: 20px;
+    padding: 1.5rem;
+    margin: 1.25rem;
+    border: 1px solid var(--night-border);
+  }
+
+  .info-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.9rem;
+    padding: 0.45rem 0;
+    color: rgba(248,250,252,0.7);
+  }
+
+  .participants-list {
+    list-style: none;
+    padding: 0;
+    margin: 1rem 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+  }
+
+  .participant-item {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.7rem 0.85rem;
+    background: rgba(255,255,255,0.03);
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.04);
+    position: relative;
+  }
+  
+  .participant-actions {
+    margin-left: auto;
+    position: relative;
+  }
+  
+  .participant-menu-btn {
+    background: transparent;
+    border: none;
+    color: rgba(248,250,252,0.6);
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    transition: all 0.2s;
+  }
+  
+  .participant-menu-btn:hover {
+    background: rgba(255,255,255,0.1);
+    color: rgba(248,250,252,0.9);
+  }
+  
+  .participant-menu-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 0.5rem;
+    background: rgba(15,23,42,0.98);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    padding: 0.5rem 0;
+    min-width: 150px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    z-index: 1000;
+    display: none;
+  }
+  
+  .participant-menu-dropdown.show {
+    display: block;
+  }
+  
+  .participant-menu-item {
+    padding: 0.6rem 1rem;
+    color: rgba(248,250,252,0.9);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    transition: background 0.2s;
+  }
+  
+  .participant-menu-item:hover {
+    background: rgba(255,255,255,0.1);
+  }
+  
+  .participant-menu-item.kick {
+    color: #ef4444;
+  }
+  
+  .participant-menu-item.kick:hover {
+    background: rgba(239,68,68,0.1);
+  }
+  
+  .participant-menu-item.muted {
+    color: #f59e0b;
+  }
+
+  .participant-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #60a5fa, #2563eb);
+    display: grid;
+    place-items: center;
+    font-weight: 700;
+    overflow: hidden;
+    position: relative;
+    flex-shrink: 0;
+  }
+  .participant-avatar.has-avatar {
+    background-size: cover !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+    color: transparent;
+  }
+
+  .translate-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .translate-modal.show {
+    display: flex;
+  }
+
+  .translate-modal-content {
+    background: var(--night-card);
+    border: 1px solid var(--night-border);
+    border-radius: 16px;
+    padding: 1.5rem;
+    min-width: 320px;
+    max-width: 90%;
+  }
+
+  .translate-modal-content h3 {
+    margin: 0 0 1rem 0;
+    color: var(--night-text);
+    font-size: 1.1rem;
+  }
+
+  .translate-modal-content select {
+    width: 100%;
+    padding: 0.75rem;
+    border-radius: 8px;
+    border: 1px solid var(--night-border);
+    background: var(--night-card);
+    color: var(--night-text);
+    font-size: 0.95rem;
+    margin-bottom: 1rem;
+    cursor: pointer;
+  }
+
+  .translate-modal-content select option {
+    background: var(--night-card);
+    color: var(--night-text);
+    padding: 0.5rem;
+  }
+
+  .translate-modal-content select:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+  }
+
+  .translate-modal-actions {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end;
+  }
+
+  .translate-modal-actions button {
+    padding: 0.6rem 1.25rem;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s;
+  }
+
+  .translate-modal-actions .btn-cancel {
+    background: rgba(255,255,255,0.1);
+    color: var(--night-text);
+  }
+
+  .translate-modal-actions .btn-translate {
+    background: linear-gradient(135deg, #60a5fa, #2563eb);
+    color: #fff;
+  }
+
+  @media (max-width: 1100px) {
+    .room-layout {
+      flex-direction: column;
+    }
+
+    .video-stage {
+      flex: 0 0 auto;
+    }
+
+    .video-stage.expanded {
+      flex: 0 0 auto;
+    }
+
+    .side-panel {
+      width: 100%;
+    }
+
+    .side-panel.hidden {
+      transform: translateY(100%);
+    }
+
+    .panel-toggle {
+      right: 1.5rem;
+      bottom: 1.5rem;
+      top: auto;
+      transform: none;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+    }
+
+    .panel-toggle.hidden {
+      right: 1.5rem;
+      bottom: 1.5rem;
+      border-radius: 50%;
+    }
+
+    .room-toolbar {
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .toolbar-actions {
+      width: 100%;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+  }
+  </style>
+</head>
+<body>
+
+<div class="social-room">
+  <header class="room-toolbar">
+    <div class="toolbar-info">
+      <button class="toolbar-btn" id="copyInvite" title="Sao chép lời mời">
+        <i class="bi bi-link-45deg"></i>
+      </button>
+    </div>
+    <div class="toolbar-actions">
+      <button id="toggleMic" class="toolbar-btn active" title="Bật/Tắt mic">
+        <i class="bi bi-mic-fill"></i>
+      </button>
+      <button id="toggleCam" class="toolbar-btn active" title="Bật/Tắt camera">
+        <i class="bi bi-camera-video-fill"></i>
+      </button>
+      <button id="toggleScreenShare" class="toolbar-btn" title="Chia sẻ màn hình">
+        <i class="bi bi-display"></i>
+      </button>
+      <button id="leaveRoom" class="toolbar-btn danger" title="Rời phòng">
+        <i class="bi bi-telephone-x-fill"></i>
+      </button>
+    </div>
+  </header>
+
+  <div class="room-layout">
+    <section class="video-stage">
+      <div class="main-stage" id="videoGrid">
+        <div class="video-wrapper dominant" data-user="local">
+          <video id="localVideo" autoplay muted playsinline></video>
+          <div class="video-overlay">
+            <span class="name-tag" id="localLabel">{{ user.username or 'Bạn' }}</span>
+            <span class="status-badge">LIVE</span>
+          </div>
+        </div>
+      </div>
+      <div class="thumbnail-strip" id="thumbnailStrip"></div>
+    </section>
+
+    <aside class="side-panel">
+      <div class="panel-tabs">
+        <button class="panel-btn active" data-target="chatPanel">
+          <i class="bi bi-chat-dots"></i><span>Chat</span>
+        </button>
+        <button class="panel-btn" data-target="infoPanel">
+          <i class="bi bi-people"></i><span>Phòng</span>
+        </button>
+      </div>
+
+      <div class="panel-section active" id="chatPanel">
+        <div class="chat-messages" id="chatMessages">
+          <div class="chat-message system">
+            <span>Chào mừng đến phòng học! Bắt đầu trò chuyện để kết nối với mọi người.</span>
+          </div>
+        </div>
+        <div class="reply-preview" id="replyPreview">
+          <div>
+            <div style="font-size: 0.7rem; text-transform: uppercase; color: var(--accent-blue);">Trả lời</div>
+            <div id="replyPreviewContent"></div>
+          </div>
+          <button type="button" id="cancelReply" title="Hủy trả lời">
+            <i class="bi bi-x-circle"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="panel-section" id="infoPanel">
+        <div class="room-info-card">
+          <h3>Thông tin phòng</h3>
+          <div class="info-row">
+            <span>Chủ đề</span>
+            <strong id="roomTopicInfo">{{ room.topic or room.description or 'Không có' }}</strong>
+          </div>
+          <div class="info-row">
+            <span>Ngôn ngữ</span>
+            <strong>{{ room.language or 'Không xác định' }}</strong>
+          </div>
+          <div class="info-row">
+            <span>Trình độ</span>
+            <strong>{{ room.level or 'Mọi trình độ' }}</strong>
+          </div>
+          <div class="info-row">
+            <span>Thành viên</span>
+            <strong id="memberCount">{{ room.member_count or 0 }}/{{ room.max_members or 10 }}</strong>
+          </div>
+        </div>
+
+        <div class="participants-card">
+          <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.75rem; text-transform: uppercase; color: var(--accent-blue); margin-bottom: 1rem;">
+            <span>Thành viên</span>
+            <span id="participantCount">{{ members|length }}</span>
+          </div>
+          <ul class="participants-list" id="participantsList">
+            {% for member in members %}
+              <li class="participant-item" data-user-id="{{ member.user_id }}">
+                <div class="participant-avatar{% if member.avatar_path %} has-avatar{% endif %}" {% if member.avatar_path %}style="background-image: url('/static/{{ member.avatar_path }}');"{% endif %}>
+                  {% if not member.avatar_path %}
+                    {{ member.username[0]|upper if member.username else '?' }}
+                  {% endif %}
+                </div>
+                <div style="flex: 1;">
+                  <div style="font-weight: 600;">{{ member.username }}</div>
+                  {% if member.role == 'admin' %}
+                    <small style="color: rgba(248,250,252,0.6);">Quản trị viên</small>
+                  {% endif %}
+                </div>
+                {% if is_admin and member.user_id != current_user_id %}
+                <div class="participant-actions">
+                  <button class="participant-menu-btn" onclick="toggleParticipantMenu(this)" title="Tùy chọn">
+                    <i class="bi bi-three-dots-vertical"></i>
+                  </button>
+                  <div class="participant-menu-dropdown">
+                    <div class="participant-menu-item mute" onclick="muteParticipant({{ member.user_id }}, '{{ member.username|e }}')">
+                      <i class="bi bi-mic-mute"></i>
+                      <span>Tắt tiếng</span>
+                    </div>
+                    <div class="participant-menu-item kick" onclick="kickParticipant({{ member.user_id }}, '{{ member.username|e }}')">
+                      <i class="bi bi-person-x"></i>
+                      <span>Kick khỏi phòng</span>
+                    </div>
+                  </div>
+                </div>
+                {% endif %}
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    </aside>
+    <button class="panel-toggle" id="panelToggle" title="Ẩn/Hiện khung chat">
+      <i class="bi bi-chevron-right"></i>
+    </button>
+  </div>
+
+  <!-- Bottom Controls Bar -->
+  <div class="bottom-controls">
+    <div class="user-preview">
+      <div class="preview-video-wrapper">
+        <video id="previewVideo" autoplay muted playsinline></video>
+        <div class="preview-controls">
+          <div class="icon" id="previewMicIcon">
+            <i class="bi bi-mic-fill"></i>
+          </div>
+          <div class="icon" id="previewCamIcon">
+            <i class="bi bi-camera-video-fill"></i>
+          </div>
+        </div>
+      </div>
+      <div class="preview-info">
+        <div class="name">{{ user.username or 'Bạn' }}</div>
+        <div class="role">{{ 'Owner' if is_admin else 'Member' }}</div>
+      </div>
+    </div>
+    <div class="bottom-chat-input">
+      <input type="text" id="bottomMessageInput" placeholder="Type a message... Type @ to mention someone." autocomplete="off">
+      <button type="button" class="send-btn" id="bottomSendBtn" title="Gửi">
+        <i class="bi bi-send-fill"></i>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Translate Modal -->
+<div class="translate-modal" id="translateModal">
+  <div class="translate-modal-content">
+    <h3>Chọn ngôn ngữ dịch</h3>
+    <select id="translateLanguageSelect">
+      <option value="en">English (Tiếng Anh)</option>
+      <option value="vi">Vietnamese (Tiếng Việt)</option>
+      <option value="ja">Japanese (Tiếng Nhật)</option>
+      <option value="ko">Korean (Tiếng Hàn)</option>
+      <option value="zh">Chinese (Tiếng Trung)</option>
+      <option value="fr">French (Tiếng Pháp)</option>
+      <option value="de">German (Tiếng Đức)</option>
+      <option value="es">Spanish (Tiếng Tây Ban Nha)</option>
+      <option value="pt">Portuguese (Tiếng Bồ Đào Nha)</option>
+      <option value="ru">Russian (Tiếng Nga)</option>
+      <option value="ar">Arabic (Tiếng Ả Rập)</option>
+      <option value="th">Thai (Tiếng Thái)</option>
+      <option value="id">Indonesian (Tiếng Indonesia)</option>
+      <option value="hi">Hindi (Tiếng Hindi)</option>
+      <option value="it">Italian (Tiếng Ý)</option>
+    </select>
+    <div class="translate-modal-actions">
+      <button class="btn-cancel" id="translateCancel">Hủy</button>
+      <button class="btn-translate" id="translateConfirm">Dịch</button>
+    </div>
+  </div>
+</div>
+
+<!-- Socket.IO -->
+<script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+<script>
+const roomId = {{ room.id }};
+const userId = {{ session.get("user", {}).get("id") if session.get("user") else 'null' }};
+const username = "{{ session.get('user', {}).get('username') or user.username or 'Guest' }}";
+const userAvatarPath = "{{ session.get('user', {}).get('avatar_path') or user.avatar_path or '' }}";
+const userAvatar = userAvatarPath ? `/static/${userAvatarPath}` : '';
+let socket;
+let localStream;
+let screenStream = null;
+let isScreenSharing = false;
+let micOn = true;
+let camOn = true;
+let peerConnections = new Map();
+let remoteVideos = new Map();
+const chatMessages = document.getElementById('chatMessages');
+const replyPreview = document.getElementById('replyPreview');
+const replyPreviewContent = document.getElementById('replyPreviewContent');
+const cancelReplyBtn = document.getElementById('cancelReply');
+const forceFullscreen = true;
+const userRole = "{{ 'admin' if is_admin else 'member' }}";
+const renderedMessageIds = new Set();
+const messagesIndex = new Map();
+let replyTarget = null;
+const mutedUsers = new Set(); // Track muted users
+const panelButtons = document.querySelectorAll('.panel-btn');
+const panelSections = document.querySelectorAll('.panel-section');
+
+document.addEventListener('DOMContentLoaded', () => {
+  initFullscreenBehavior();
+});
+
+panelButtons.forEach((btn) => {
+  btn.addEventListener('click', () => {
+    panelButtons.forEach((b) => b.classList.remove('active'));
+    panelSections.forEach((sec) => sec.classList.remove('active'));
+    btn.classList.add('active');
+    const target = document.getElementById(btn.dataset.target);
+    if (target) target.classList.add('active');
+  });
+});
+
+// Panel toggle functionality
+const panelToggle = document.getElementById('panelToggle');
+const sidePanel = document.querySelector('.side-panel');
+const videoStage = document.querySelector('.video-stage');
+let panelHidden = false;
+
+panelToggle?.addEventListener('click', () => {
+  panelHidden = !panelHidden;
+  if (panelHidden) {
+    sidePanel?.classList.add('hidden');
+    panelToggle.classList.add('hidden');
+    videoStage?.classList.add('expanded');
+  } else {
+    sidePanel?.classList.remove('hidden');
+    panelToggle.classList.remove('hidden');
+    videoStage?.classList.remove('expanded');
+  }
+});
+
+cancelReplyBtn?.addEventListener('click', clearReplyTarget);
+
+chatMessages.addEventListener('click', (event) => {
+  const actionBtn = event.target.closest('[data-action]');
+  if (!actionBtn) return;
+  const messageEl = actionBtn.closest('.chat-message');
+  if (!messageEl) return;
+  const messageId = messageEl.dataset.id;
+  const messageData = messagesIndex.get(messageId);
+  if (!messageData) return;
+  switch (actionBtn.dataset.action) {
+    case 'edit':
+      editMessage(messageData);
+      break;
+    case 'delete':
+      deleteMessage(messageData);
+      break;
+    case 'translate':
+      translateMessage(messageData);
+      break;
+    case 'reply':
+      setReplyTarget(messageData);
+      break;
+  }
+});
+
+// Participant menu functions
+function toggleParticipantMenu(btn) {
+  const dropdown = btn.nextElementSibling;
+  const isShowing = dropdown.classList.contains('show');
+  
+  // Đóng tất cả các menu khác
+  document.querySelectorAll('.participant-menu-dropdown.show').forEach(menu => {
+    if (menu !== dropdown) {
+      menu.classList.remove('show');
+    }
+  });
+  
+  // Toggle menu hiện tại
+  dropdown.classList.toggle('show', !isShowing);
+}
+
+// Đóng menu khi click bên ngoài
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.participant-actions')) {
+    document.querySelectorAll('.participant-menu-dropdown.show').forEach(menu => {
+      menu.classList.remove('show');
+    });
+  }
+});
+
+// Mute/Unmute participant
+function muteParticipant(targetUserId, username, isMuted) {
+  const action = isMuted ? 'bật lại tiếng' : 'tắt tiếng';
+  if (!confirm(`Bạn có chắc muốn ${action} ${username}?`)) {
+    return;
+  }
+  
+  if (socket) {
+    if (isMuted) {
+      socket.emit('room:unmute-user', {
+        room_id: roomId,
+        target_user_id: targetUserId,
+        username: username
+      });
+    } else {
+      socket.emit('room:mute-user', {
+        room_id: roomId,
+        target_user_id: targetUserId,
+        username: username
+      });
+    }
+  }
+  
+  // Đóng menu
+  document.querySelectorAll('.participant-menu-dropdown.show').forEach(menu => {
+    menu.classList.remove('show');
+  });
+}
+
+// Kick participant
+function kickParticipant(targetUserId, username) {
+  if (!confirm(`Bạn có chắc muốn kick ${username} khỏi phòng?`)) {
+    return;
+  }
+  
+  if (socket) {
+    socket.emit('room:kick-user', {
+      room_id: roomId,
+      target_user_id: targetUserId,
+      username: username
+    });
+  }
+  
+  // Đóng menu
+  document.querySelectorAll('.participant-menu-dropdown.show').forEach(menu => {
+    menu.classList.remove('show');
+  });
+}
+
+// Initialize Socket.IO
+socket = io({
+  withCredentials: true
+});
+
+socket.on('connect', () => {
+  console.log('Connected to server');
+  socket.emit('room:join', { 
+    room_id: roomId,
+    user_id: userId,
+    username
+  });
+});
+
+socket.on('room:error', (data) => {
+  alert(data.message || 'Lỗi khi tham gia phòng');
+  window.location.href = '/study-rooms';
+});
+
+socket.on('room:info', (info) => {
+  if (info.topic) {
+    const topicEl = document.getElementById('roomTopicInfo');
+    if (topicEl) topicEl.textContent = info.topic;
+  }
+  const countEl = document.getElementById('memberCount');
+  if (countEl) countEl.textContent = `${info.member_count || 0}/${info.max_members || 10}`;
+});
+
+socket.on('room:participants', (data) => {
+  const participants = data.participants || [];
+  const list = document.getElementById('participantsList');
+  const count = document.getElementById('participantCount');
+  
+  if (count) count.textContent = participants.length;
+  
+  if (list) {
+    const isAdmin = userRole === 'admin';
+    list.innerHTML = participants.map(p => {
+      const avatarPath = p.avatar_path || p.avatar || '';
+      const avatarUrl = avatarPath ? (avatarPath.startsWith('/static/') ? avatarPath : `/static/${avatarPath}`) : '';
+      const hasAvatar = !!avatarUrl;
+      const avatarStyle = hasAvatar ? `style="background-image: url('${avatarUrl}');"` : '';
+      const avatarClass = hasAvatar ? 'participant-avatar has-avatar' : 'participant-avatar';
+      const avatarText = hasAvatar ? '' : (p.username || '?')[0].toUpperCase();
+      const showMenu = isAdmin && p.user_id != userId;
+      const isMuted = mutedUsers.has(p.user_id);
+      const muteText = isMuted ? 'Bật lại tiếng' : 'Tắt tiếng';
+      const muteIcon = isMuted ? 'bi-mic' : 'bi-mic-mute';
+      
+      return `
+      <li class="participant-item" data-user-id="${p.user_id}">
+        <div class="${avatarClass}" ${avatarStyle}>${avatarText}</div>
+        <div style="flex: 1;">
+          <div style="font-weight: 600;">${escapeHtml(p.username || 'Guest')}${isMuted ? ' <span style="color: #f59e0b; font-size: 0.8em;">(Đã tắt tiếng)</span>' : ''}</div>
+          ${p.role === 'admin' ? '<small style="color: rgba(248,250,252,0.6);">Quản trị viên</small>' : ''}
+        </div>
+        ${showMenu ? `
+        <div class="participant-actions">
+          <button class="participant-menu-btn" onclick="toggleParticipantMenu(this)" title="Tùy chọn">
+            <i class="bi bi-three-dots-vertical"></i>
+          </button>
+          <div class="participant-menu-dropdown">
+            <div class="participant-menu-item mute" onclick="muteParticipant(${p.user_id}, '${escapeHtml(p.username || 'Guest')}', ${isMuted})">
+              <i class="bi ${muteIcon}"></i>
+              <span>${muteText}</span>
+            </div>
+            <div class="participant-menu-item kick" onclick="kickParticipant(${p.user_id}, '${escapeHtml(p.username || 'Guest')}')">
+              <i class="bi bi-person-x"></i>
+              <span>Kick khỏi phòng</span>
+            </div>
+          </div>
+        </div>
+        ` : ''}
+      </li>
+    `;
+    }).join('');
+  }
+});
+
+socket.on('room:user-joined', (data) => {
+  console.log('User joined:', data);
+});
+
+socket.on('room:user-left', (data) => {
+  console.log('User left:', data);
+  const videoWrapper = document.querySelector(`[data-user-id="${data.user_id}"]`);
+  if (videoWrapper) {
+    videoWrapper.remove();
+  }
+  const pc = peerConnections.get(data.user_id);
+  if (pc) {
+    pc.close();
+    peerConnections.delete(data.user_id);
+  }
+});
+
+// Handle user kicked
+socket.on('room:user-kicked', (data) => {
+  alert(data.message || 'Bạn đã bị kick khỏi phòng');
+  window.location.href = '/study-rooms';
+});
+
+socket.on('room:user-kicked-notification', (data) => {
+  console.log('User kicked:', data);
+  // Xóa user khỏi danh sách participants
+  const participantItem = document.querySelector(`.participant-item[data-user-id="${data.target_user_id}"]`);
+  if (participantItem) {
+    participantItem.remove();
+    // Cập nhật số lượng
+    const count = document.getElementById('participantCount');
+    if (count) {
+      const currentCount = parseInt(count.textContent) || 0;
+      count.textContent = Math.max(0, currentCount - 1);
+    }
+  }
+  // Xóa video của user bị kick
+  const videoWrapper = document.querySelector(`[data-user-id="${data.target_user_id}"]`);
+  if (videoWrapper) {
+    videoWrapper.remove();
+  }
+  const pc = peerConnections.get(data.target_user_id);
+  if (pc) {
+    pc.close();
+    peerConnections.delete(data.target_user_id);
+  }
+});
+
+// Handle user muted
+socket.on('room:user-muted', (data) => {
+  alert(data.message || 'Bạn đã bị tắt tiếng');
+  // Tắt mic của user bị mute
+  if (localStream) {
+    const audioTracks = localStream.getAudioTracks();
+    audioTracks.forEach(track => {
+      track.enabled = false;
+    });
+    micOn = false;
+    // Cập nhật UI
+    const micBtn = document.getElementById('toggleMic');
+    if (micBtn) {
+      micBtn.classList.remove('active');
+      const icon = micBtn.querySelector('i');
+      if (icon) icon.className = 'bi bi-mic-mute-fill';
+    }
+  }
+  // Thêm vào danh sách muted
+  mutedUsers.add(userId);
+});
+
+socket.on('room:user-unmuted', (data) => {
+  alert(data.message || 'Bạn đã được bật lại tiếng');
+  // Bật lại mic của user
+  if (localStream) {
+    const audioTracks = localStream.getAudioTracks();
+    audioTracks.forEach(track => {
+      track.enabled = true;
+    });
+    micOn = true;
+    // Cập nhật UI
+    const micBtn = document.getElementById('toggleMic');
+    if (micBtn) {
+      micBtn.classList.add('active');
+      const icon = micBtn.querySelector('i');
+      if (icon) icon.className = 'bi bi-mic-fill';
+    }
+  }
+  // Xóa khỏi danh sách muted
+  mutedUsers.delete(userId);
+});
+
+socket.on('room:user-muted-notification', (data) => {
+  console.log('User muted:', data);
+  // Thêm vào danh sách muted
+  mutedUsers.add(data.target_user_id);
+  // Cập nhật UI trực tiếp
+  updateParticipantMuteStatus(data.target_user_id, true);
+});
+
+socket.on('room:user-unmuted-notification', (data) => {
+  console.log('User unmuted:', data);
+  // Xóa khỏi danh sách muted
+  mutedUsers.delete(data.target_user_id);
+  // Cập nhật UI trực tiếp
+  updateParticipantMuteStatus(data.target_user_id, false);
+});
+
+// Function để cập nhật trạng thái mute trong UI
+function updateParticipantMuteStatus(targetUserId, isMuted) {
+  const participantItem = document.querySelector(`.participant-item[data-user-id="${targetUserId}"]`);
+  if (!participantItem) return;
+  
+  // Cập nhật text hiển thị
+  const nameDiv = participantItem.querySelector('div[style*="font-weight: 600"]');
+  if (nameDiv) {
+    // Lấy username gốc (loại bỏ phần "(Đã tắt tiếng)" nếu có)
+    let username = nameDiv.textContent.replace(/\s*\(Đã tắt tiếng\)/g, '').trim();
+    // Nếu có HTML, lấy text từ node đầu tiên
+    if (nameDiv.children.length > 0) {
+      username = nameDiv.childNodes[0].textContent.trim();
+    }
+    nameDiv.innerHTML = escapeHtml(username) + (isMuted ? ' <span style="color: #f59e0b; font-size: 0.8em;">(Đã tắt tiếng)</span>' : '');
+  }
+  
+  // Cập nhật menu item
+  const muteMenuItem = participantItem.querySelector('.participant-menu-item.mute');
+  if (muteMenuItem) {
+    const icon = muteMenuItem.querySelector('i');
+    const span = muteMenuItem.querySelector('span');
+    if (icon) {
+      icon.className = isMuted ? 'bi bi-mic' : 'bi bi-mic-mute';
+    }
+    if (span) {
+      span.textContent = isMuted ? 'Bật lại tiếng' : 'Tắt tiếng';
+    }
+    // Cập nhật onclick - lấy username từ nameDiv
+    let username = 'Guest';
+    if (nameDiv) {
+      username = nameDiv.textContent.replace(/\s*\(Đã tắt tiếng\)/g, '').trim();
+      if (nameDiv.children.length > 0) {
+        username = nameDiv.childNodes[0].textContent.trim();
+      }
+    }
+    muteMenuItem.setAttribute('onclick', `muteParticipant(${targetUserId}, '${escapeHtml(username)}', ${isMuted})`);
+  }
+}
+
+socket.on('chat:message', (data) => {
+  appendMessage(data);
+});
+
+// Listen for screen share events from other users
+socket.on('room:screen-share-start', (data) => {
+  console.log('User started screen sharing:', data);
+  // Handle remote screen share if needed
+});
+
+socket.on('room:screen-share-stop', (data) => {
+  console.log('User stopped screen sharing:', data);
+  // Remove remote screen share video if exists
+  const remoteScreen = document.querySelector(`.video-wrapper[data-screen="true"][data-user-id="${data.user_id}"]`);
+  if (remoteScreen && data.user_id != userId) {
+    remoteScreen.remove();
+  }
+});
+
+// Start local video/audio
+async function startLocalStream() {
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({
+      audio: true,
+      video: { width: { ideal: 1280 }, height: { ideal: 720 } }
+    });
+    document.getElementById('localVideo').srcObject = localStream;
+    const previewVideo = document.getElementById('previewVideo');
+    if (previewVideo) {
+      previewVideo.srcObject = localStream;
+    }
+  } catch (err) {
+    console.warn('Failed to get media:', err);
+    try {
+      localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      camOn = false;
+    } catch (e) {
+      console.error('Failed to get audio:', e);
+    }
+  }
+}
+
+// Toggle microphone
+document.getElementById('toggleMic').addEventListener('click', () => {
+  if (!localStream) return;
+  micOn = !micOn;
+  localStream.getAudioTracks().forEach(track => track.enabled = micOn);
+  const btn = document.getElementById('toggleMic');
+  btn.classList.toggle('active', micOn);
+  const icon = btn.querySelector('i');
+  if (icon) {
+    icon.className = micOn ? 'bi bi-mic-fill' : 'bi bi-mic-mute-fill';
+  }
+  const previewMicIcon = document.getElementById('previewMicIcon');
+  if (previewMicIcon) {
+    previewMicIcon.innerHTML = micOn 
+      ? '<i class="bi bi-mic-fill"></i>'
+      : '<i class="bi bi-mic-mute-fill"></i>';
+    previewMicIcon.style.color = micOn ? 'var(--accent-blue)' : 'var(--accent-red)';
+  }
+});
+
+// Toggle camera
+document.getElementById('toggleCam').addEventListener('click', () => {
+  if (!localStream) return;
+  camOn = !camOn;
+  localStream.getVideoTracks().forEach(track => track.enabled = camOn);
+  const btn = document.getElementById('toggleCam');
+  const wrapper = document.querySelector('[data-user="local"]');
+  btn.classList.toggle('active', camOn);
+  wrapper.classList.toggle('video-off', !camOn);
+  const icon = btn.querySelector('i');
+  if (icon) {
+    icon.className = camOn ? 'bi bi-camera-video-fill' : 'bi bi-camera-video-off-fill';
+  }
+  const previewCamIcon = document.getElementById('previewCamIcon');
+  if (previewCamIcon) {
+    previewCamIcon.innerHTML = camOn
+      ? '<i class="bi bi-camera-video-fill"></i>'
+      : '<i class="bi bi-camera-video-off-fill"></i>';
+    previewCamIcon.style.color = camOn ? 'var(--accent-blue)' : 'var(--accent-red)';
+  }
+});
+
+// Toggle screen share
+document.getElementById('toggleScreenShare').addEventListener('click', async () => {
+  const btn = document.getElementById('toggleScreenShare');
+  const videoGrid = document.getElementById('videoGrid');
+  
+  if (!isScreenSharing) {
+    try {
+      // Request screen share
+      screenStream = await navigator.mediaDevices.getDisplayMedia({
+        video: { 
+          cursor: 'always',
+          displaySurface: 'monitor'
+        },
+        audio: false
+      });
+      
+      isScreenSharing = true;
+      btn.classList.add('active');
+      
+      // Create screen share video element
+      let screenWrapper = document.querySelector('.video-wrapper[data-screen="true"]');
+      if (!screenWrapper) {
+        screenWrapper = document.createElement('div');
+        screenWrapper.className = 'video-wrapper screen-share';
+        screenWrapper.dataset.screen = 'true';
+        screenWrapper.dataset.userId = userId;
+        
+        const screenVideo = document.createElement('video');
+        screenVideo.autoplay = true;
+        screenVideo.playsinline = true;
+        screenVideo.id = 'screenVideo';
+        
+        const overlay = document.createElement('div');
+        overlay.className = 'video-overlay';
+        overlay.innerHTML = `
+          <span class="name-tag">${escapeHtml(username)} - Màn hình</span>
+          <span class="status-badge">SHARING</span>
+        `;
+        
+        screenWrapper.appendChild(screenVideo);
+        screenWrapper.appendChild(overlay);
+        videoGrid.insertBefore(screenWrapper, videoGrid.firstChild);
+      }
+      
+      const screenVideo = screenWrapper.querySelector('video');
+      screenVideo.srcObject = screenStream;
+      
+      // Broadcast screen share to other users
+      socket.emit('room:screen-share-start', {
+        room_id: roomId,
+        user_id: userId,
+        username: username
+      });
+      
+      // Handle screen share end (when user stops sharing)
+      screenStream.getVideoTracks()[0].addEventListener('ended', () => {
+        stopScreenShare();
+      });
+      
+    } catch (err) {
+      console.error('Error starting screen share:', err);
+      alert('Không thể chia sẻ màn hình. Vui lòng thử lại.');
+      isScreenSharing = false;
+      btn.classList.remove('active');
+    }
+  } else {
+    stopScreenShare();
+  }
+});
+
+function stopScreenShare() {
+  if (screenStream) {
+    screenStream.getTracks().forEach(track => track.stop());
+    screenStream = null;
+  }
+  
+  isScreenSharing = false;
+  const btn = document.getElementById('toggleScreenShare');
+  btn.classList.remove('active');
+  
+  // Remove screen share video element
+  const screenWrapper = document.querySelector('.video-wrapper[data-screen="true"]');
+  if (screenWrapper) {
+    screenWrapper.remove();
+  }
+  
+  // Notify other users
+  if (socket) {
+    socket.emit('room:screen-share-stop', {
+      room_id: roomId,
+      user_id: userId
+    });
+  }
+}
+
+// Leave room
+document.getElementById('leaveRoom').addEventListener('click', () => {
+  if (confirm('Bạn có chắc muốn rời khỏi phòng học này?')) {
+    // Stop screen share if active
+    if (isScreenSharing) {
+      stopScreenShare();
+    }
+    if (socket) {
+      socket.emit('room:leave', { room_id: roomId });
+      socket.disconnect();
+    }
+    if (localStream) {
+      localStream.getTracks().forEach(track => track.stop());
+    }
+    window.location.href = '/study-rooms';
+  }
+});
+
+// Chat form - using bottom input
+function sendChatMessage() {
+  const input = document.getElementById('bottomMessageInput');
+  const message = input?.value.trim();
+  if (!message || !socket) return;
+  
+  const messageId = `${userId || 'guest'}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  const payload = {
+    room_id: roomId,
+    message: message,
+    user_id: userId,
+    username: username,
+    avatar: userAvatar,
+    avatar_path: userAvatarPath,  // Gửi avatar_path gốc (không có /static/ prefix) để server xử lý
+    message_id: messageId,
+    timestamp: Date.now(),
+    role: userRole,
+    reply_to: replyTarget ? replyTarget.message_id : null
+  };
+  socket.emit('chat:message', payload);
+  if (input) input.value = '';
+  clearReplyTarget();
+}
+
+const bottomMessageInput = document.getElementById('bottomMessageInput');
+const bottomSendBtn = document.getElementById('bottomSendBtn');
+
+bottomMessageInput?.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    sendChatMessage();
+  }
+});
+
+bottomSendBtn?.addEventListener('click', (e) => {
+  e.preventDefault();
+  sendChatMessage();
+});
+
+function appendMessage(data) {
+  const container = chatMessages || document.getElementById('chatMessages');
+  if (!container) return;
+  const messageId = data.message_id || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  if (renderedMessageIds.has(messageId)) return;
+  renderedMessageIds.add(messageId);
+
+  const msg = document.createElement('div');
+  msg.className = 'chat-message';
+  msg.dataset.id = messageId;
+  msg.dataset.userId = data.user_id;
+  const time = new Date(data.timestamp || Date.now()).toLocaleTimeString('vi-VN', { 
+    hour: '2-digit', 
+    minute: '2-digit' 
+  });
+  // Xử lý avatar URL - ưu tiên avatar từ user profile
+  let avatarUrl = '';
+  if (data.avatar_path) {
+    avatarUrl = data.avatar_path.startsWith('/static/') ? data.avatar_path : `/static/${data.avatar_path}`;
+  } else if (data.avatar) {
+    avatarUrl = data.avatar.startsWith('/static/') ? data.avatar : (data.avatar.startsWith('http') ? data.avatar : `/static/${data.avatar}`);
+  } else {
+    // Fallback to dicebear nếu không có avatar
+    avatarUrl = 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + encodeURIComponent(data.username || 'Guest');
+  }
+  const repliedMessage = data.reply_to ? messagesIndex.get(data.reply_to) : null;
+  const replySnippet = repliedMessage ? `
+    <div class="reply-quote">
+      <strong>${escapeHtml(repliedMessage.data.username || 'Guest')}</strong>:
+      ${escapeHtml((repliedMessage.data.message || '').slice(0, 80))}${(repliedMessage.data.message || '').length > 80 ? '…' : ''}
+    </div>
+  ` : '';
+
+  msg.innerHTML = `
+    <div class="header-line">
+      <div class="user-info">
+        <div class="avatar"><img src="${avatarUrl}" alt="avatar"></div>
+        <div>
+          <div>
+            <span class="sender">${escapeHtml(data.username || 'Guest')}</span>
+            ${data.role === 'admin' ? '<span class="role-badge">Owner</span>' : ''}
+          </div>
+          <small class="time">${time}${data.edited ? '<span class="edited-flag">(đã chỉnh sửa)</span>' : ''}</small>
+        </div>
+      </div>
+    </div>
+    ${replySnippet}
+    <div class="message-body">${escapeHtml(data.message || '')}</div>
+    <div class="chat-actions">
+      <button type="button" data-action="edit"><i class="bi bi-pencil"></i> Edit</button>
+      <button type="button" data-action="delete"><i class="bi bi-trash"></i> Del</button>
+      <button type="button" data-action="translate"><i class="bi bi-google"></i> Google</button>
+      <button type="button" data-action="reply"><i class="bi bi-reply"></i> Reply</button>
+    </div>
+  `;
+  container.appendChild(msg);
+  container.scrollTop = container.scrollHeight;
+  data.message_id = messageId;
+  messagesIndex.set(messageId, { element: msg, data });
+}
+
+function setReplyTarget(message) {
+  replyTarget = message.data;
+  replyPreviewContent.innerHTML = `<strong>${escapeHtml(message.data.username || 'Guest')}</strong>: ${escapeHtml((message.data.message || '').slice(0, 80))}`;
+  replyPreview.classList.add('show');
+}
+
+function clearReplyTarget() {
+  replyTarget = null;
+  replyPreview.classList.remove('show');
+}
+
+function editMessage(message) {
+  if (String(message.data.user_id) !== String(userId)) {
+    alert('Bạn chỉ có thể chỉnh sửa tin nhắn của mình.');
+    return;
+  }
+  const newText = prompt('Chỉnh sửa tin nhắn:', message.data.message || '');
+  if (!newText || !newText.trim()) return;
+  socket.emit('chat:edit', {
+    room_id: roomId,
+    message_id: message.data.message_id,
+    user_id: userId,
+    message: newText.trim()
+  });
+}
+
+function deleteMessage(message) {
+  if (String(message.data.user_id) !== String(userId) && userRole !== 'admin') {
+    alert('Bạn không thể xóa tin nhắn này.');
+    return;
+  }
+  if (!confirm('Xóa tin nhắn này?')) return;
+  socket.emit('chat:delete', {
+    room_id: roomId,
+    message_id: message.data.message_id,
+    user_id: userId
+  });
+}
+
+// Language names mapping
+const languageNames = {
+  'en': 'English',
+  'vi': 'Vietnamese',
+  'ja': 'Japanese',
+  'ko': 'Korean',
+  'zh': 'Chinese',
+  'fr': 'French',
+  'de': 'German',
+  'es': 'Spanish',
+  'pt': 'Portuguese',
+  'ru': 'Russian',
+  'ar': 'Arabic',
+  'th': 'Thai',
+  'id': 'Indonesian',
+  'hi': 'Hindi',
+  'it': 'Italian'
+};
+
+let currentTranslateMessage = null;
+
+function translateMessage(message) {
+  currentTranslateMessage = message;
+  const modal = document.getElementById('translateModal');
+  const select = document.getElementById('translateLanguageSelect');
+  select.value = 'en'; // Reset to default
+  modal.classList.add('show');
+}
+
+// Translate modal handlers
+document.getElementById('translateCancel')?.addEventListener('click', () => {
+  document.getElementById('translateModal').classList.remove('show');
+  currentTranslateMessage = null;
+});
+
+document.getElementById('translateConfirm')?.addEventListener('click', async () => {
+  if (!currentTranslateMessage) return;
+  
+  const select = document.getElementById('translateLanguageSelect');
+  const lang = select.value;
+  const langName = languageNames[lang] || lang;
+  
+  document.getElementById('translateModal').classList.remove('show');
+  
+  try {
+    const response = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${encodeURIComponent(lang)}&dt=t&q=${encodeURIComponent(currentTranslateMessage.data.message || '')}`);
+    const json = await response.json();
+    const translated = json[0].map(part => part[0]).join(' ');
+    let translationBlock = currentTranslateMessage.element.querySelector('.translation');
+    if (!translationBlock) {
+      translationBlock = document.createElement('div');
+      translationBlock.className = 'translation';
+      translationBlock.style.marginTop = '0.5rem';
+      translationBlock.style.fontSize = '0.85rem';
+      translationBlock.style.color = 'rgba(248,250,252,0.7)';
+      translationBlock.style.borderTop = '1px solid rgba(255,255,255,0.05)';
+      translationBlock.style.paddingTop = '0.35rem';
+      currentTranslateMessage.element.appendChild(translationBlock);
+    }
+    translationBlock.innerHTML = `<strong>Dịch (${langName}):</strong> ${escapeHtml(translated)}`;
+  } catch (error) {
+    console.error('Translate error', error);
+    alert('Không thể dịch tin nhắn.');
+  }
+  
+  currentTranslateMessage = null;
+});
+
+// Close modal when clicking outside
+document.getElementById('translateModal')?.addEventListener('click', (e) => {
+  if (e.target.id === 'translateModal') {
+    document.getElementById('translateModal').classList.remove('show');
+    currentTranslateMessage = null;
+  }
+});
+
+socket.on('chat:edit', (data) => {
+  const message = messagesIndex.get(data.message_id);
+  if (!message) return;
+  message.data.message = data.message;
+  message.data.edited = true;
+  const body = message.element.querySelector('.message-body');
+  if (body) body.textContent = data.message;
+  const timeEl = message.element.querySelector('.time');
+  if (timeEl && !timeEl.querySelector('.edited-flag')) {
+    const flag = document.createElement('span');
+    flag.className = 'edited-flag';
+    flag.textContent = '(đã chỉnh sửa)';
+    timeEl.appendChild(flag);
+  }
+});
+
+socket.on('chat:delete', (data) => {
+  const message = messagesIndex.get(data.message_id);
+  if (!message) return;
+  message.data.deleted = true;
+  message.element.classList.add('deleted');
+  const body = message.element.querySelector('.message-body');
+  if (body) body.textContent = 'Tin nhắn đã bị xóa.';
+});
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function requestFullscreenMode() {
+  if (window.__roomFullscreenRequested) return;
+  const elem = document.documentElement;
+  const tryRequest = elem.requestFullscreen?.bind(elem) || elem.webkitRequestFullscreen?.bind(elem);
+  if (tryRequest) {
+    tryRequest().then?.(() => {
+      window.__roomFullscreenRequested = true;
+    }).catch((err) => {
+      console.warn('Fullscreen denied', err);
+    });
+    if (!tryRequest.then) {
+      window.__roomFullscreenRequested = true;
+    }
+  }
+}
+
+function initFullscreenBehavior() {
+  requestFullscreenMode();
+  const once = () => {
+    requestFullscreenMode();
+    ['click', 'keydown', 'touchstart'].forEach((evt) => {
+      document.removeEventListener(evt, once, { capture: true });
+    });
+  };
+  ['click', 'keydown', 'touchstart'].forEach((evt) => {
+    document.addEventListener(evt, once, { once: true, capture: true });
+  });
+}
+
+// Initialize
+startLocalStream();
+</script>
+
+</body>
+</html>
+

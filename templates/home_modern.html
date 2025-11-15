@@ -37,40 +37,41 @@
 </section>
 
 <!-- Features Section -->
-<section id="features" class="py-5 bg-light">
+<section id="features" class="bg-light">
     <div class="container">
         <div class="section-header">
             <h2 class="section-title">Tại Sao Chọn VirtualRoom?</h2>
             <p class="section-subtitle">Công nghệ AI tiên tiến kết hợp với phương pháp học tập hiện đại</p>
         </div>
 
-        <div class="row g-4">
-            <div class="col-md-4">
-                <div class="text-center">
-                    <div class="bg-primary rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 80px; height: 80px; margin-bottom: 1rem;">
-                        <i class="bi bi-robot text-white" style="font-size: 2rem;"></i>
-                    </div>
-                    <h4>AI Cá Nhân Hóa</h4>
-                    <p>Hệ thống AI phân tích phong cách học tập của bạn để tạo nội dung phù hợp nhất</p>
+        <div class="feature-grid">
+            <div class="feature-card">
+                <div class="feature-card-icon" style="background: var(--gradient-primary);">
+                    <i class="bi bi-robot"></i>
                 </div>
+                <h4>AI Cá Nhân Hóa</h4>
+                <p>Hệ thống AI phân tích phong cách học tập của bạn để gợi ý lộ trình và nội dung phù hợp nhất.</p>
             </div>
-            <div class="col-md-4">
-                <div class="text-center">
-                    <div class="bg-success rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 80px; height: 80px; margin-bottom: 1rem;">
-                        <i class="bi bi-play-circle text-white" style="font-size: 2rem;"></i>
-                    </div>
-                    <h4>Video Tương Tác</h4>
-                    <p>Video bài giảng được tạo bởi AI với hình ảnh chính xác và nội dung bám sát chủ đề</p>
+            <div class="feature-card">
+                <div class="feature-card-icon" style="background: var(--gradient-accent);">
+                    <i class="bi bi-play-circle"></i>
                 </div>
+                <h4>Video Tương Tác</h4>
+                <p>Video bài giảng được tạo bởi AI với hình ảnh trực quan, nội dung bám sát mục tiêu và thời lượng tối ưu.</p>
             </div>
-            <div class="col-md-4">
-                <div class="text-center">
-                    <div class="bg-info rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 80px; height: 80px; margin-bottom: 1rem;">
-                        <i class="bi bi-graph-up text-white" style="font-size: 2rem;"></i>
-                    </div>
-                    <h4>Tiến Bộ Thông Minh</h4>
-                    <p>Theo dõi tiến độ học tập với báo cáo chi tiết và đề xuất cải thiện</p>
+            <div class="feature-card">
+                <div class="feature-card-icon" style="background: linear-gradient(135deg, #f59e0b, #f97316);">
+                    <i class="bi bi-graph-up"></i>
                 </div>
+                <h4>Tiến Bộ Thông Minh</h4>
+                <p>Theo dõi tiến độ học tập với dashboard phân tích, điểm số, cùng các khuyến nghị cải thiện tức thời.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-card-icon" style="background: linear-gradient(135deg, #8b5cf6, #6366f1);">
+                    <i class="bi bi-shield-check"></i>
+                </div>
+                <h4>Giám Sát An Toàn</h4>
+                <p>Công cụ proctoring AI bảo vệ tính minh bạch cho kỳ thi, lưu lại bằng chứng và cảnh báo gian lận.</p>
             </div>
         </div>
     </div>
@@ -151,24 +152,26 @@
 </section>
 
 <!-- Stats Section -->
-<section class="py-5 bg-gradient-primary text-white">
+<section class="stats-section">
     <div class="container">
-        <div class="row text-center g-4">
-            <div class="col-md-3">
-                <div class="stat-number" style="font-size: 3rem; font-weight: 800;">1000+</div>
-                <div class="stat-label">Học viên</div>
-            </div>
-            <div class="col-md-3">
-                <div class="stat-number" style="font-size: 3rem; font-weight: 800;">50+</div>
-                <div class="stat-label">Khóa học</div>
-            </div>
-            <div class="col-md-3">
-                <div class="stat-number" style="font-size: 3rem; font-weight: 800;">24/7</div>
-                <div class="stat-label">Hỗ trợ AI</div>
-            </div>
-            <div class="col-md-3">
-                <div class="stat-number" style="font-size: 3rem; font-weight: 800;">95%</div>
-                <div class="stat-label">Hài lòng</div>
+        <div class="stats-band">
+            <div class="row text-center g-4 align-items-center">
+                <div class="col-6 col-md-3">
+                    <div class="stat-number">1000+</div>
+                    <div class="stat-label">Học viên</div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="stat-number">50+</div>
+                    <div class="stat-label">Khóa học</div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="stat-number">24/7</div>
+                    <div class="stat-label">Hỗ trợ AI</div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="stat-number">95%</div>
+                    <div class="stat-label">Hài lòng</div>
+                </div>
             </div>
         </div>
     </div>
@@ -218,12 +221,9 @@
                         <p class="card-text mb-3">"Giao diện đẹp và dễ sử dụng. AI hiểu được nhu cầu học tập của tôi và gợi ý nội dung phù hợp."</p>
                         <div class="d-flex align-items-center justify-content-center">
                             <img src="https://placehold.co/40x40?text=B" class="rounded-circle me-3" alt="Avatar">
-                            <div class="d-flex align-items-center justify-content-center">
-                                <img src="https://placehold.co/40x40?text=B" class="rounded-circle me-3" alt="Avatar">
-                                <div class="text-start">
-                                    <div class="fw-bold">Trần Thị B</div>
-                                    <small class="text-muted">Designer</small>
-                                </div>
+                            <div class="text-start">
+                                <div class="fw-bold">Trần Thị B</div>
+                                <small class="text-muted">Designer</small>
                             </div>
                         </div>
                     </div>
