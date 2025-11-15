@@ -1223,7 +1223,7 @@ class CourseModel:
             u.id                          AS user_id,
             u.username,
             {email_expr},
-            c.id                          AS course_id,
+            all_users.course_id           AS course_id,
             c.title                       AS course_title,
             COALESCE(a.attempt_count, 0)  AS attempt_count,
             COALESCE(a.highest_score, 0)  AS highest_score,
@@ -1258,8 +1258,8 @@ class CourseModel:
                     )
                 END
              FROM proctor_events pe
-             WHERE pe.user_id = ea.user_id 
-               AND pe.course_id = ea.course_id
+             WHERE pe.user_id = u.id 
+               AND (pe.course_id = all_users.course_id OR (pe.course_id IS NULL AND all_users.course_id = 0))
                AND (pe.event_type IN ('cheat', 'suspicious_objects', 'block', 'warn', 'terminated', 'multiple_faces_detected')
                     OR pe.meta_json LIKE '%"cheating_detected":true%'
                     OR pe.meta_json LIKE '%"should_block":true%'
@@ -1268,14 +1268,20 @@ class CourseModel:
              LIMIT 5
             ) AS behavior_analysis,
             COALESCE(a.last_seen_attempt, e.last_seen_event, f.last_seen_frame) AS last_seen
-        FROM exam_attempts ea
-        JOIN users   u ON u.id = ea.user_id
-        JOIN courses c ON c.id = ea.course_id
-        LEFT JOIN attempts a ON a.user_id = ea.user_id AND a.course_id = ea.course_id
-        LEFT JOIN events   e ON e.user_id = ea.user_id AND e.course_id = ea.course_id
-        LEFT JOIN frames   f ON f.user_id = ea.user_id AND f.course_id = ea.course_id
-        WHERE 1=1 {where_course.format(tbl='ea')}
-        GROUP BY u.id, c.id
+        FROM (
+            SELECT DISTINCT user_id, course_id FROM exam_attempts
+            UNION
+            SELECT DISTINCT user_id, COALESCE(course_id, 0) AS course_id FROM proctor_events WHERE user_id IS NOT NULL
+            UNION
+            SELECT DISTINCT user_id, course_id FROM proctor_frames WHERE user_id IS NOT NULL AND course_id IS NOT NULL
+        ) all_users
+        JOIN users   u ON u.id = all_users.user_id
+        LEFT JOIN courses c ON c.id = all_users.course_id
+        LEFT JOIN attempts a ON a.user_id = all_users.user_id AND a.course_id = all_users.course_id
+        LEFT JOIN events e ON e.user_id = all_users.user_id AND e.course_id = all_users.course_id
+        LEFT JOIN frames f ON f.user_id = all_users.user_id AND f.course_id = all_users.course_id
+        WHERE 1=1 {where_course.format(tbl='all_users')}
+        GROUP BY u.id, all_users.course_id, c.id, c.title
         ORDER BY COALESCE(e.cheat_events,0) DESC, COALESCE(a.highest_score,0) DESC
         """
 
@@ -1506,7 +1512,18 @@ class CourseModel:
                     # Ví dụ: cheat_screenshots\user_20241215_143025\file.jpg -> /cheat_screenshots/user_20241215_143025/file.jpg
                     # Đảm bảo path không bắt đầu bằng / để tránh double slash
                     clean_path = screenshot_path.replace("\\", "/").lstrip("/")
-                    screenshot_url = "/" + clean_path
+                    
+                    # Tạo URL để truy cập qua route /cheat_screenshots/<path:filename>
+                    # Lấy phần sau "cheat_screenshots/"
+                    if "cheat_screenshots" in clean_path:
+                        # Tách phần sau "cheat_screenshots/"
+                        parts = clean_path.split("cheat_screenshots/", 1)
+                        if len(parts) > 1:
+                            screenshot_url = "/cheat_screenshots/" + parts[1]
+                        else:
+                            screenshot_url = "/cheat_screenshots/" + clean_path
+                    else:
+                        screenshot_url = "/cheat_screenshots/" + clean_path
                     
                     # Kiểm tra file có tồn tại không (optional, chỉ để debug)
                     import os
@@ -1540,6 +1557,123 @@ class CourseModel:
                 })
             
             return incidents
+
+    def get_cheating_statistics(self, course_id=None, user_id=None):
+        """
+        Lấy thống kê tổng quan về các loại hành vi gian lận
+        Returns: {
+            "total_incidents": int,
+            "total_students": int,
+            "total_courses": int,
+            "by_cheat_type": {cheat_type: count},
+            "by_cheat_type_percent": {cheat_type: percent}
+        }
+        """
+        where_clauses = []
+        params = []
+        
+        if course_id:
+            where_clauses.append("pe.course_id = ?")
+            params.append(int(course_id))
+        if user_id:
+            where_clauses.append("pe.user_id = ?")
+            params.append(int(user_id))
+        
+        where_sql = "WHERE " + " AND ".join(where_clauses) if where_clauses else ""
+        
+        with self._connect() as conn:
+            # Tổng số sự kiện
+            sql_total = f"""
+            SELECT COUNT(*) as total
+            FROM proctor_events pe
+            {where_sql}
+            """
+            cur = conn.execute(sql_total, params)
+            row = cur.fetchone()
+            total_incidents = row[0] if row else 0
+            
+            # Số học viên khác nhau
+            sql_students = f"""
+            SELECT COUNT(DISTINCT pe.user_id) as total
+            FROM proctor_events pe
+            {where_sql}
+            """
+            cur = conn.execute(sql_students, params)
+            row = cur.fetchone()
+            total_students = row[0] if row else 0
+            
+            # Số khóa học khác nhau
+            course_where = "pe.course_id > 0"
+            if where_clauses:
+                course_where = " AND ".join(where_clauses + ["pe.course_id > 0"])
+            else:
+                course_where = "pe.course_id > 0"
+            
+            sql_courses = f"""
+            SELECT COUNT(DISTINCT pe.course_id) as total
+            FROM proctor_events pe
+            WHERE {course_where}
+            """
+            cur = conn.execute(sql_courses, params)
+            row = cur.fetchone()
+            total_courses = row[0] if row else 0
+            
+            # Thống kê theo cheat_type
+            sql_by_type = f"""
+            SELECT pe.meta_json, pe.event_type
+            FROM proctor_events pe
+            {where_sql}
+            """
+            cur = conn.execute(sql_by_type, params)
+            rows = cur.fetchall()
+            
+            by_type = {}
+            for row in rows:
+                meta = {}
+                cheat_type = "unknown"
+                
+                try:
+                    if row[0]:  # meta_json
+                        meta = json.loads(row[0])
+                        cheat_type = meta.get("cheat_type", "unknown")
+                except Exception:
+                    pass
+                
+                # Nếu không có cheat_type trong meta, thử dùng event_type
+                if cheat_type in ["normal", None, "unknown"]:
+                    event_type = row[1] if len(row) > 1 else None
+                    if event_type and event_type not in ["normal", "unknown"]:
+                        # Map event_type sang cheat_type
+                        if "phone" in event_type.lower():
+                            cheat_type = "phone"
+                        elif "book" in event_type.lower():
+                            cheat_type = "book"
+                        elif "looking" in event_type.lower() or "away" in event_type.lower():
+                            cheat_type = "looking_away"
+                        elif "down" in event_type.lower():
+                            cheat_type = "looking_down"
+                        elif "face" in event_type.lower() and "no" in event_type.lower():
+                            cheat_type = "no_face"
+                        else:
+                            cheat_type = "cheating_generic"
+                    else:
+                        cheat_type = "unknown"
+                
+                by_type[cheat_type] = by_type.get(cheat_type, 0) + 1
+            
+            # Tính phần trăm
+            by_type_percent = {}
+            if total_incidents > 0:
+                for cheat_type, count in by_type.items():
+                    by_type_percent[cheat_type] = round((count / total_incidents) * 100, 1)
+            
+            return {
+                "total_incidents": total_incidents,
+                "total_students": total_students,
+                "total_courses": total_courses,
+                "by_cheat_type": by_type,
+                "by_cheat_type_percent": by_type_percent
+            }
 
     def terminate_comprehensive_attempt(self, attempt_id: str):
       """Đóng bài thi tổng hợp: set score=0, status='terminated', ended_at=NOW (idempotent)."""

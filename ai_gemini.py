@@ -8,8 +8,73 @@ except Exception as e:
     genai = None
     _GENAI_IMPORT_ERROR = e
     
-GEMINI_MODEL_QA   = os.environ.get("GEMINI_MODEL_QA", "gemini-1.5-flash")
-GEMINI_MODEL_GRADE= os.environ.get("GEMINI_MODEL_GRADE", "gemini-1.5-flash")
+GEMINI_MODEL_QA   = os.environ.get("GEMINI_MODEL_QA", "gemini-2.5-flash")
+GEMINI_MODEL_GRADE= os.environ.get("GEMINI_MODEL_GRADE", "gemini-2.5-flash")
+
+def clean_transcript_phrases(text: str) -> str:
+    """
+    Loại bỏ các cụm câu / dòng rác sinh ra từ transcript / prompt
+    như 'Dựa trên nội dung video', 'ever heard...', 'Hey there', 'WEBVTT'...
+    để câu trả lời trông tự nhiên như trợ giảng bình thường.
+    """
+    if not text:
+        return ""
+
+    import re
+
+    # 1) Xóa hẳn các cụm đầu dòng hay nguyên dòng
+    patterns = [
+        r'^Dựa trên nội dung video[:\s]*',
+        r'^Dựa trên transcript[:\s]*',
+        r'^Dựa trên[:\s]*',
+        r'WEBVTT[^\n]*',
+        r'Hey there![^\n]*',
+        r'Hey[^\n]*',
+        r'Ever heard of[^\n]*',
+        r'ever heard of[^\n]*',
+        r'Ever heard[^\n]*',
+        r'ever heard[^\n]*',
+        r'Well, they\'re[^\n]*',
+        r'well, they\'re[^\n]*',
+        r'Kind of[^\n]*',
+        r'kind of[^\n]*',
+        r'Today,[^\n]*',
+        r'today,[^\n]*',
+        r'Ready\?[^\n]*',
+        r'ready\?[^\n]*',
+        r'variables they\'re[^\n]*',
+        r'Variables they\'re[^\n]*',
+        # Nếu bạn muốn cực đoan như bản cũ:
+        # r'little[^\n]*',
+    ]
+    for pattern in patterns:
+        text = re.sub(pattern, "", text, flags=re.IGNORECASE | re.MULTILINE)
+
+    # 2) Bỏ luôn cả những dòng chỉ toàn mấy cụm vô nghĩa đó
+    banned_substrings = [
+        "ever heard",
+        "hey there",
+        "well, they",
+        "kind of",
+        "today,",
+        "ready?",
+        "variables they",
+        "webvtt",
+    ]
+
+    lines = text.split("\n")
+    cleaned_lines = []
+    for line in lines:
+        line_stripped = line.strip()
+        if not line_stripped:
+            continue
+        line_lower = line_stripped.lower()
+        if any(bad in line_lower for bad in banned_substrings):
+            continue
+        cleaned_lines.append(line_stripped)
+
+    return "\n".join(cleaned_lines).strip()
+
 
 def _gemini_configured() -> bool:
     return bool(genai and os.getenv("GEMINI_API_KEY"))
@@ -600,8 +665,9 @@ def chat_about_transcript(
         # Không có GEMINI_API_KEY hoặc lỗi import SDK
         return {"related": False, "answer": ""}
 
+    # ---- Lịch sử hội thoại ----
     history = history or []
-    conv_lines = []
+    conv_lines: List[str] = []
     for turn in history:
         role = (turn.get("role") or "").strip()
         content = (turn.get("content") or "").strip()
@@ -615,70 +681,180 @@ def chat_about_transcript(
             conv_lines.append(content)
     history_text = "\n".join(conv_lines) if conv_lines else "Không có hội thoại trước đó."
 
-    sys = (
-        "Bạn là TRỢ GIẢNG AI trong một khóa học lập trình.\n"
-        "Bạn nhận được TRANSCRIPT (có thể không đầy đủ) của video bài học "
-        "và LỊCH SỬ HỘI THOẠI với học viên.\n"
-        "Nhiệm vụ của bạn:\n"
-        "1) Quyết định xem câu hỏi cuối cùng của học viên có thuộc phạm vi bài học hay không "
-        "(chủ đề, khái niệm, ví dụ, kiến thức nền trực tiếp liên quan).\n"
-        "2) Nếu CÓ thuộc phạm vi bài học (related=true): hãy trả lời chi tiết bằng tiếng Việt, "
-        "có thể dùng kiến thức lập trình chung bên ngoài transcript, nhưng TUYỆT ĐỐI không "
-        "mâu thuẫn với nội dung transcript.\n"
-        "3) Nếu KHÔNG thuộc phạm vi bài học (related=false): không trả lời nội dung, chỉ đánh dấu là không liên quan.\n"
-    )
+    q_lower = question.lower()
 
-    prompt = f"""
-TRANSCRIPT VIDEO (có thể chưa đầy đủ):
+    # ---- 1) Nhận diện câu hỏi TÓM TẮT -> dùng transcript ----
+    summarize_keywords = [
+        "tóm tắt", "tom tat",
+        "tóm tắt đoạn", "tom tat doan",
+        "tổng hợp", "tong hop",
+        "tóm gọn", "tom gon",
+        "tóm lại", "tom lai",
+    ]
+    is_summarize = any(kw in q_lower for kw in summarize_keywords)
+
+    model = genai.GenerativeModel(GEMINI_MODEL_QA)
+
+    try:
+        # ===== MODE 1: TÓM TẮT DỰA TRÊN TRANSCRIPT =====
+        if is_summarize and transcript:
+            sys_prompt = (
+                "Bạn là TRỢ GIẢNG AI của một khóa học online.\n"
+                "Nhiệm vụ: tóm tắt / diễn giải lại nội dung video DỰA TRÊN TRANSCRIPT dưới đây.\n"
+                "- Chỉ sử dụng thông tin có trong transcript; không bịa thêm kiến thức khác.\n"
+                "- Trả lời ngắn gọn, súc tích, đúng trọng tâm câu hỏi của học viên.\n"
+                "- Viết bằng tiếng Việt, dễ hiểu với người mới học.\n"
+            )
+            prompt = f"""
+TRANSCRIPT VIDEO BÀI GIẢNG:
 <<<TRANSCRIPT>>>
 {transcript}
 <<<END_TRANSCRIPT>>>
 
-LỊCH SỬ HỘI THOẠI:
-<<<HISTORY>>>
-{history_text}
-<<<END_HISTORY>>>
-
-CÂU HỎI MỚI NHẤT CỦA HỌC VIÊN:
-<<<QUESTION>>>
+CÂU HỎI CỦA HỌC VIÊN:
 {question}
-<<<END_QUESTION>>>
 
-HÃY TRẢ VỀ DUY NHẤT JSON:
+LỊCH SỬ HỘI THOẠI (nếu có):
+{history_text}
+"""
+            resp = model.generate_content(
+                sys_prompt + "\n\n" + prompt,
+                generation_config={"temperature": 0.4, "max_output_tokens": 1024},
+            )
+            answer = (getattr(resp, "text", "") or "").strip()
+            answer = clean_transcript_phrases(answer)
+            return {"related": True, "answer": answer}
 
-{{
-  "related": true hoặc false,
-  "answer": "câu trả lời chi tiết bằng tiếng Việt nếu related=true, ngược lại để chuỗi rỗng"
-}}
+        # ===== MODE 2: CÂU HỎI GIẢI THÍCH / MỞ RỘNG =====
+        # Không dùng transcript để trả lời, chỉ dùng để biết CHỦ ĐỀ
+        if transcript:
+            topic_summary = transcript[:800]  # lấy khoảng 800 ký tự đầu làm mô tả chủ đề
+        else:
+            topic_summary = "Lập trình / khoa học máy tính cơ bản."
+
+        sys_prompt = """
+Bạn là TRỢ GIẢNG AI chuyên nghiệp trong một khóa học lập trình.
+
+BẠN KHÔNG CÓ TRANSCRIPT CHI TIẾT CỦA VIDEO.
+Bạn CHỈ có mô tả rất ngắn về CHỦ ĐỀ BÀI HỌC (TOPIC) ở dưới.
+
+NHIỆM VỤ:
+1. Xác định xem câu hỏi của học viên có LIÊN QUAN đến chủ đề bài học hoặc kiến thức nền xung quanh hay không.
+2. Nếu LIÊN QUAN → giải thích chi tiết cho người mới học, bằng tiếng Việt, có ví dụ dễ hiểu.
+3. Nếu HOÀN TOÀN KHÔNG LIÊN QUAN (tình yêu, ăn uống, du lịch, thời tiết, bóng đá, showbiz, v.v.) → đánh dấu là không liên quan, KHÔNG trả lời nội dung.
+
+QUY TẮC TRẢ LỜI:
+- Tuyệt đối KHÔNG được bắt đầu bằng: "Dựa trên nội dung video", "Dựa trên transcript", "Dựa trên...", v.v.
+- Tuyệt đối KHÔNG dùng các cụm: "Ever heard of", "Hey there", "Well, they're", "Today,", "Ready?", "variables they're little".
+- Trả lời TRỰC TIẾP như một trợ lý ảo bình thường.
+- Bắt đầu ngay với nội dung trả lời (ví dụ: "String (chuỗi) là...", "Trong Python, kiểu dữ liệu string...").
+
+HÃY TRẢ LỜI ĐÚNG ĐỊNH DẠNG SAU (bắt buộc, không thêm ký hiệu khác):
+RELATED: yes/no
+ANSWER: <câu trả lời tiếng Việt, để trống nếu RELATED: no>
 """
 
-    try:
-        model = genai.GenerativeModel(GEMINI_MODEL_QA)
+        prompt = f"""
+TOPIC (chỉ để bạn biết đang học về gì, KHÔNG được trích nguyên văn):
+{topic_summary}
+
+LỊCH SỬ HỘI THOẠI:
+{history_text}
+
+CÂU HỎI CỦA HỌC VIÊN:
+{question}
+"""
+
         resp = model.generate_content(
-            sys + "\n" + prompt,
-            generation_config={
-                "temperature": 0.2,
-                "top_p": 0.8,
-                "max_output_tokens": 1024,
-                "response_mime_type": "application/json",
-            },
+            sys_prompt + "\n\n" + prompt,
+            generation_config={"temperature": 0.5, "max_output_tokens": 1024},
         )
-        text = resp.text or ""
-        start = text.find("{")
-        end = text.rfind("}")
-        if start == -1 or end == -1:
+        raw = (getattr(resp, "text", "") or "").strip()
+        if not raw:
             return {"related": False, "answer": ""}
 
-        data = json.loads(text[start : end + 1])
-        related = bool(data.get("related"))
-        answer = str(data.get("answer") or "").strip()
+        # ---- Parse RELATED/ANSWER ----
+        lower = raw.lower()
+        related = True
+        answer = raw
+
+        if "related:" in lower:
+            rel_line = lower.split("related:", 1)[1].splitlines()[0]
+            if "no" in rel_line:
+                related = False
+            elif "yes" in rel_line:
+                related = True
+
+            if "answer:" in lower:
+                ans_idx = lower.find("answer:")
+                answer = raw[ans_idx + len("answer:"):].strip()
+        else:
+            # Không đúng format → coi như liên quan và dùng toàn bộ câu trả lời
+            related = True
+            answer = raw
+
+        # Làm sạch mấy câu mở đầu khó chịu
+        answer = clean_transcript_phrases(answer)
+
+        # ---- Override: nếu câu hỏi rõ ràng là học tập thì luôn coi là related ----
+        learning_keywords_extended = [
+            "tóm tắt", "tom tat", "giải thích", "giai thich", "ví dụ", "vi du",
+            "khái niệm", "khai niem", "nội dung", "noi dung", "video", "bài học", "bai hoc",
+            "học", "hoc", "giảng", "giang", "dạy", "day", "nói", "noi", "chi tiết", "chi tiet",
+            "kiểu", "kieu", "dữ liệu", "du lieu", "biến", "bien", "hàm", "ham", "số", "so",
+            "nguyên", "nguyen", "thực", "thuc", "chuỗi", "chuoi", "danh sách", "danh sach",
+            "là gì", "la gi", "như thế nào", "nhu the nao", "cách", "cach", "thế nào", "the nao",
+        ]
+        if not related and any(kw in q_lower for kw in learning_keywords_extended):
+            print("[GEMINI-CHAT] Override: câu hỏi có từ khóa học tập, force related=True")
+            related = True
+            if not answer:
+                try:
+                    retry = model.generate_content(
+                        "Bạn là trợ giảng lập trình. "
+                        "Hãy giải thích chi tiết, dễ hiểu bằng tiếng Việt cho người mới học:\n\n"
+                        + question,
+                        generation_config={"temperature": 0.5, "max_output_tokens": 1024},
+                    )
+                    answer = (getattr(retry, "text", "") or "").strip()
+                    answer = clean_transcript_phrases(answer)
+                except Exception as e2:
+                    print(f"[GEMINI-CHAT] Retry error: {e2}")
+                    answer = ""
+
+        print(
+            f"[GEMINI-CHAT] related={related}, "
+            f"answer_len={len(answer)}, "
+            f"answer_preview={answer[:100]!r}, "
+            f"transcript_len={len(transcript)}, "
+            f"question={question[:80]!r}"
+        )
+
         if not related:
             return {"related": False, "answer": ""}
+
         return {"related": True, "answer": answer}
+
     except Exception as e:
+        # QUAN TRỌNG: KHÔNG fallback sang việc cắt 100 từ đầu transcript nữa
+        # để tránh kiểu trả lời "Dựa trên nội dung video: ever heard variables they're little"
         print(f"⚠️ chat_about_transcript error: {e}")
-        # Lỗi thì chặn cho an toàn
+        import traceback
+        traceback.print_exc()
+
+        # Nếu lỗi nhưng câu hỏi rõ ràng là học tập → báo lỗi mềm
+        if any(kw in q_lower for kw in ["tóm tắt", "tom tat", "giải thích", "giai thich",
+                                        "khái niệm", "khai niem", "bài học", "bai hoc"]):
+            return {
+                "related": True,
+                "answer": (
+                    "Xin lỗi, trợ giảng AI đang gặp sự cố khi kết nối tới mô hình Gemini. "
+                    "Bạn hãy thử lại sau ít phút hoặc hỏi trực tiếp giảng viên nhé."
+                ),
+            }
+
         return {"related": False, "answer": ""}
+
 
 
 def generate_questions_from_video_content(video_content: str, question_type: str = "mcq", n_questions: int = 1) -> Optional[Dict]:

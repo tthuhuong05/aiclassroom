@@ -75,11 +75,12 @@ def get_user_id_from_username(course_model: CourseModel, username: str) -> int:
 def import_screenshots_to_db(course_model: CourseModel, cheat_screenshots_dir: str = "cheat_screenshots"):
     """
     Scan thư mục cheat_screenshots và tạo event cho mỗi ảnh chưa có trong DB
+    Returns: dict với imported, skipped, errors counts
     """
     screenshots_dir = Path(cheat_screenshots_dir)
     if not screenshots_dir.exists():
         print(f"❌ Thư mục {cheat_screenshots_dir} không tồn tại")
-        return
+        return {"imported": 0, "skipped": 0, "errors": 0}
     
     print(f"📂 Đang scan thư mục: {screenshots_dir}")
     
@@ -102,10 +103,13 @@ def import_screenshots_to_db(course_model: CourseModel, cheat_screenshots_dir: s
             screenshot_path = str(img_path).replace("\\", "/")
             
             # Kiểm tra xem đã có event cho ảnh này chưa
+            # Kiểm tra bằng cả screenshot_path và screenshot_url
             with course_model._connect() as conn:
+                # Escape special characters cho LIKE query
+                escaped_path = screenshot_path.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
                 cur = conn.execute(
-                    "SELECT id FROM proctor_events WHERE meta_json LIKE ?",
-                    (f'%"screenshot_path":"{screenshot_path}"%',)
+                    "SELECT id FROM proctor_events WHERE meta_json LIKE ? OR meta_json LIKE ?",
+                    (f'%"screenshot_path":"{escaped_path}"%', f'%{escaped_path}%')
                 )
                 if cur.fetchone():
                     skipped += 1
@@ -122,19 +126,77 @@ def import_screenshots_to_db(course_model: CourseModel, cheat_screenshots_dir: s
             # Extract cheating reason từ tên file (nếu có)
             filename = img_path.stem
             cheating_reason = "Phát hiện hành vi gian lận"
+            cheat_type = "cheating_generic"
+            
+            # Parse tên file: YYYYMMDD_HHMMSS_microseconds_REASON.jpg
             if "_" in filename:
                 parts = filename.split("_")
-                if len(parts) > 3:
-                    reason_part = "_".join(parts[3:])
-                    cheating_reason = reason_part.replace("_", " ").title()
+                if len(parts) >= 4:
+                    # Lấy phần reason (từ phần thứ 3 trở đi)
+                    reason_parts = parts[3:]
+                    reason_text = "_".join(reason_parts)
+                    
+                    # Decode và format lại - xử lý encoding issues
+                    try:
+                        # Thử decode từ Windows-1252 hoặc latin-1 sang UTF-8
+                        if 'á»' in reason_text or 'Ă' in reason_text:
+                            # Có vẻ như là Windows-1252 encoding
+                            reason_text = reason_text.encode('latin-1').decode('utf-8', errors='ignore')
+                        else:
+                            # Thử decode trực tiếp
+                            reason_text = reason_text.encode('utf-8').decode('utf-8', errors='ignore')
+                    except:
+                        # Nếu không decode được, giữ nguyên và clean
+                        pass
+                    
+                    # Clean và format lại
+                    cheating_reason = reason_text.replace("_", " ").strip()
+                    
+                    # Map các từ khóa phổ biến
+                    if "PHAT HIEN" in cheating_reason.upper() or "PHÁT HIỆN" in cheating_reason:
+                        if "NHIN RA NGOAI" in cheating_reason.upper() or "NHÌN RA NGOÀI" in cheating_reason:
+                            cheating_reason = "Phát hiện nhìn ra ngoài màn hình"
+                        elif "HANH VI GIAN LAN" in cheating_reason.upper() or "HÀNH VI GIAN LẬN" in cheating_reason:
+                            cheating_reason = "Phát hiện hành vi gian lận"
+                        elif "DIEN THOAI" in cheating_reason.upper() or "ĐIỆN THOẠI" in cheating_reason:
+                            cheating_reason = "Phát hiện sử dụng điện thoại"
+                        elif "SACH" in cheating_reason.upper() or "SÁCH" in cheating_reason:
+                            cheating_reason = "Phát hiện sử dụng sách"
+                        elif "CUOI XUONG" in cheating_reason.upper() or "CÚI XUỐNG" in cheating_reason:
+                            cheating_reason = "Phát hiện cúi xuống"
+                        elif "KHONG CO KHUON MAT" in cheating_reason.upper() or "KHÔNG CÓ KHUÔN MẶT" in cheating_reason:
+                            cheating_reason = "Phát hiện không có khuôn mặt"
+                        elif "NHIEU KHUON MAT" in cheating_reason.upper() or "NHIỀU KHUÔN MẶT" in cheating_reason:
+                            cheating_reason = "Phát hiện nhiều khuôn mặt"
+                    
+                    # Map reason thành cheat_type
+                    reason_lower = cheating_reason.lower()
+                    if "nhìn ra ngoài" in reason_lower or "looking away" in reason_lower:
+                        cheat_type = "looking_away"
+                    elif "điện thoại" in reason_lower or "phone" in reason_lower:
+                        cheat_type = "phone"
+                    elif "sách" in reason_lower or "book" in reason_lower:
+                        cheat_type = "book"
+                    elif "tablet" in reason_lower:
+                        cheat_type = "tablet"
+                    elif "gọi điện" in reason_lower or "phone_call" in reason_lower:
+                        cheat_type = "phone_call"
+                    elif "cúi xuống" in reason_lower or "looking down" in reason_lower:
+                        cheat_type = "looking_down"
+                    elif "không có khuôn mặt" in reason_lower or "no face" in reason_lower:
+                        cheat_type = "no_face"
+                    elif "nhiều khuôn mặt" in reason_lower or "multiple faces" in reason_lower:
+                        cheat_type = "multiple_faces"
             
-            # Tạo meta_json
+            # Tạo meta_json với đầy đủ thông tin
             meta_json = {
                 "source": "import_screenshots_script",
                 "screenshot_path": screenshot_path,
                 "screenshot_url": "/" + screenshot_path.lstrip("/"),
                 "cheating_reason": cheating_reason,
-                "cheat_type": "cheating_generic",
+                "cheat_type": cheat_type,
+                "detected_date": info["date"],
+                "detected_time": info["time"],
                 "imported_at": datetime.now().isoformat(),
                 "original_timestamp": info["timestamp"]
             }
@@ -169,6 +231,9 @@ def import_screenshots_to_db(course_model: CourseModel, cheat_screenshots_dir: s
     print(f"   ✅ Đã import: {imported} ảnh")
     print(f"   ⏭️  Đã bỏ qua (đã có): {skipped} ảnh")
     print(f"   ❌ Lỗi: {errors} ảnh")
+    
+    # Return counts để API có thể sử dụng
+    return {"imported": imported, "skipped": skipped, "errors": errors}
 
 if __name__ == "__main__":
     print("="*60)

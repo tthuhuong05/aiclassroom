@@ -159,24 +159,24 @@ class ProctorAugmentor:
             if not r.get("should_block"):
                 # Có thể thêm logic block nếu cần
                 pass
-        
+
         # Attention probability (0..1) từ model đã train / heuristic
         # Chỉ tính nếu có mặt
         if face_count > 0:
-            p_att = self.cal.attentive_proba(yaw, pitch, att)
-            # EMA cho mượt bớt dao động
-            if self._ema_att is None:
-                self._ema_att = p_att
-            else:
-                self._ema_att = self._ema_alpha * p_att + (1.0 - self._ema_alpha) * self._ema_att
+        p_att = self.cal.attentive_proba(yaw, pitch, att)
+        # EMA cho mượt bớt dao động
+        if self._ema_att is None:
+            self._ema_att = p_att
+        else:
+            self._ema_att = self._ema_alpha * p_att + (1.0 - self._ema_alpha) * self._ema_att
 
-            r["attention_proba"] = float(self._ema_att)
-            r["attention_alert"] = (r["attention_proba"] < self.cal.att_thr)
+        r["attention_proba"] = float(self._ema_att)
+        r["attention_alert"] = (r["attention_proba"] < self.cal.att_thr)
 
-            label, conf = self.cal.pose_label_and_conf(yaw, pitch)
-            r["pose_label"] = label
-            r["pose_conf"] = conf
-            
+        label, conf = self.cal.pose_label_and_conf(yaw, pitch)
+        r["pose_label"] = label
+        r["pose_conf"] = conf
+
             # LƯU Ý: Không set looking_away/looking_down ở đây
             # Sẽ được xử lý sau khi kiểm tra objects để ưu tiên objects hơn
         else:
@@ -375,12 +375,12 @@ class ProctorAugmentor:
                     r["should_warn"] = True
             # ƯU TIÊN 4: Dựa trên cheat_proba từ model
             elif p_cheat >= block_threshold:
-                r["should_block"] = True
+            r["should_block"] = True
                 r["cheating_detected"] = True
                 if not r.get("cheating_reason"):
                     r["cheating_reason"] = "Phát hiện hành vi gian lận - Xác suất cao"
             elif p_cheat >= warn_threshold:
-                r["should_warn"] = True
+            r["should_warn"] = True
                 if not r.get("cheating_reason"):
                     r["cheating_reason"] = "Phát hiện hành vi gian lận - Cảnh báo"
 

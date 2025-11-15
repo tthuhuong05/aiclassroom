@@ -1,6 +1,7 @@
 import base64
 import sys
-from services.camera_capture_service import get_camera_capture_service
+# Lazy import để tránh load nặng khi Flask reload
+# from services.camera_capture_service import get_camera_capture_service
 print(f"[APP_INIT] Python: {sys.executable}")
 print(f"[APP_INIT] Version: {sys.version}")
 
@@ -42,7 +43,8 @@ from controller.user_controller import UserController
 from controller.course_controller import CourseController
 from controller.assignment_controller import AssignmentController
 from controller.progress_controller import ProgressController
-from services.face_recognition_service import get_face_recognition_service
+# Lazy import để tránh load nặng khi Flask reload
+# from services.face_recognition_service import get_face_recognition_service
 from ai_gemini import chat_about_transcript
 
 
@@ -67,7 +69,16 @@ user_controller = UserController()
 course_controller = CourseController()
 assignment_controller = AssignmentController()
 progress_controller = ProgressController()
-face_recognition_service = get_face_recognition_service()
+# Lazy load để tránh khởi tạo nặng khi Flask reload
+face_recognition_service = None
+
+def get_face_recognition_service_lazy():
+    """Lazy load face_recognition_service chỉ khi cần dùng"""
+    global face_recognition_service
+    if face_recognition_service is None:
+        from services.face_recognition_service import get_face_recognition_service
+        face_recognition_service = get_face_recognition_service()
+    return face_recognition_service
 
 # Uploads
 UPLOAD_FOLDER = 'static/uploads'
@@ -1062,6 +1073,16 @@ def login_required(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
         if "username" not in session:
+            # Kiểm tra nếu là API request (có header Accept: application/json hoặc path bắt đầu bằng /api/)
+            is_api_request = (
+                request.path.startswith('/api/') or
+                request.headers.get('Accept', '').startswith('application/json') or
+                request.headers.get('Content-Type', '').startswith('application/json')
+            )
+            
+            if is_api_request:
+                return jsonify({"ok": False, "error": "Chưa đăng nhập"}), 401
+            
             next_url = request.full_path or request.path
             if next_url.endswith('?'):
                 next_url = next_url[:-1]
@@ -1438,6 +1459,8 @@ def api_ai_video_chat():
     course_id = int(payload.get("course_id") or 0)
     question = (payload.get("question") or "").strip()
     history  = payload.get("history") or []
+    video_time = float(payload.get("video_time") or 0)
+    transcript_context = (payload.get("transcript_context") or "").strip()
 
     if course_id <= 0 or not question:
         return jsonify({"ok": False, "error": "Thiếu course_id hoặc question"}), 400
@@ -1453,22 +1476,91 @@ def api_ai_video_chat():
         return jsonify({"ok": False, "error": "Không tìm thấy transcript cho khóa học"}), 400
 
     # 2) Đọc transcript từ file .vtt/.srt
-    transcript = _read_vtt_as_text(cap_path)
-    if not transcript:
+    full_transcript = _read_vtt_as_text(cap_path)
+    if not full_transcript:
         return jsonify({"ok": False, "error": "Không đọc được transcript từ caption"}), 400
 
-    # 3) Heuristic chặn sớm các câu hỏi rõ ràng ngoài lề
+    # 3) LUÔN đọc transcript để hiểu nội dung chính của bài học
+    # AI sẽ dùng transcript để xác định xem câu hỏi có liên quan đến bài học hay không
+    q_lower = question.lower()
+    is_summarize_request = any(kw in q_lower for kw in ["tóm tắt", "tom tat", "tóm tắt đoạn", "tom tat doan", "tổng hợp", "tong hop"])
+    
+    # Nếu là câu hỏi TÓM TẮT → dùng transcript đầy đủ (có thể kèm context)
+    if is_summarize_request:
+        if transcript_context and len(transcript_context.strip()) > 50:
+            # Câu hỏi tóm tắt đoạn vừa xem → đưa context lên đầu, sau đó là full transcript
+            transcript = transcript_context
+        else:
+            # Tóm tắt nhưng không có context → dùng toàn bộ transcript
+            transcript = full_transcript
+            current_app.logger.info(f"[VIDEO-CHAT] SUMMARIZE: Using full_transcript only (len={len(full_transcript)})")
+    else:
+        # Câu hỏi KHÁC → vẫn truyền transcript đầy đủ để AI hiểu nội dung chính
+        # AI sẽ dùng transcript để xác định xem câu hỏi có liên quan đến bài học hay không
+        transcript = full_transcript
+        current_app.logger.info(f"[VIDEO-CHAT] NON-SUMMARIZE: Using full_transcript to understand main content (len={len(full_transcript)})")
+    
+    # Log để debug
+    current_app.logger.info(
+        f"[VIDEO-CHAT] course_id={course_id}, video_time={video_time:.1f}s, "
+        f"context_len={len(transcript_context)}, full_len={len(full_transcript)}, "
+        f"final_transcript_len={len(transcript)}, question={question[:100]}"
+    )
+    
+    # Đảm bảo transcript không rỗng
+    if not transcript or len(transcript.strip()) < 10:
+        current_app.logger.error(f"[VIDEO-CHAT] Transcript is too short or empty: len={len(transcript) if transcript else 0}")
+        return jsonify({"ok": False, "error": "Transcript quá ngắn hoặc rỗng, không thể trả lời"}), 400
+
+    # 3) Heuristic chặn sớm CHỈ các câu hỏi về các chủ đề không liên quan đến học tập
+    # Chỉ chặn: cuộc sống, tình yêu, ăn uống, lối sống, địa điểm, quê hương, truyền thống, âm nhạc
     q_norm = re.sub(r"\s+", " ", question.lower())
-    obvious_off_topics = [
-        "thời tiết", "thoi tiet",
-        "trúng số", "trung so",
-        "bóng đá", "bong da",
-        "chứng khoán", "chung khoan",
-        "crush", "tán gái", "tan gai",
-        "ăn gì", "an gi",
-        "chơi game", "choi game",
+    
+    # Chỉ chặn các câu hỏi về các chủ đề không liên quan đến học tập
+    off_topic_keywords = [
+        # Cuộc sống
+        "cuộc sống", "cuoc song", "đời sống", "doi song", "sinh hoạt", "sinh hoat",
+        # Tình yêu
+        "tình yêu", "tinh yeu", "yêu", "yeu", "crush", "tán gái", "tan gai", "hẹn hò", "hen ho",
+        "người yêu", "nguoi yeu", "bạn gái", "ban gai", "bạn trai", "ban trai",
+        # Ăn uống
+        "ăn gì", "an gi", "ăn uống", "an uong", "món ăn", "mon an", "quán ăn", "quan an", 
+        "nhà hàng", "nha hang", "đồ ăn", "do an", "thức ăn", "thuc an", "ăn gì ngon", "an gi ngon",
+        # Lối sống
+        "lối sống", "loi song", "phong cách sống", "phong cach song", "cách sống", "cach song",
+        # Địa điểm
+        "địa điểm", "dia diem", "nơi nào", "noi nao", "chỗ nào", "cho nao", "ở đâu", "o dau",
+        "địa chỉ", "dia chi", "địa danh", "dia danh", "thành phố", "thanh pho", "tỉnh", "tinh",
+        # Quê hương
+        "quê hương", "que huong", "quê", "que", "quê quán", "que quan", "nơi sinh", "noi sinh",
+        # Truyền thống
+        "truyền thống", "truyen thong", "văn hóa", "van hoa", "phong tục", "phong tuc", "tập quán", "tap quan",
+        # Âm nhạc
+        "âm nhạc", "am nhac", "nhạc", "nhac", "bài hát", "bai hat", "ca sĩ", "ca si", "nhạc sĩ", "nhac si",
+        "album", "single", "mv", "music video", "nhạc pop", "nhac pop", "nhạc rock", "nhac rock",
+        # Thời tiết (không liên quan)
+        "thời tiết", "thoi tiet", "mưa", "nắng", "gió", "hôm nay mưa", "hôm nay nắng",
+        # Sức khỏe cá nhân (không liên quan đến học tập)
+        "bạn có khỏe", "ban co khoe", "làm sao để hết gầy", "lam sao de het gay", "cách tăng cân", "cach tang can",
+        # Giải trí không liên quan
+        "bóng đá", "bong da", "world cup", "premier league", "phim ảnh", "phim anh",
+        # Khác
+        "trúng số", "trung so", "xổ số", "xo so",
     ]
-    if any(k in q_norm for k in obvious_off_topics):
+    
+    # Kiểm tra xem câu hỏi có chứa từ khóa không liên quan không
+    has_off_topic = any(k in q_norm for k in off_topic_keywords)
+    
+    # Chỉ chặn nếu câu hỏi CHỈ về các chủ đề không liên quan (không có từ khóa học tập)
+    # Nếu câu hỏi có từ khóa học tập thì vẫn cho phép (ví dụ: "âm nhạc trong video này nói về gì?")
+    learning_keywords = ["tóm tắt", "tom tat", "giải thích", "giai thich", "ví dụ", "vi du", 
+                        "khái niệm", "khai niem", "nội dung", "noi dung", "video", "bài học", "bai hoc",
+                        "học", "hoc", "giảng", "giang", "dạy", "day", "trong video", "trong bai hoc"]
+    
+    has_learning_keyword = any(kw in q_norm for kw in learning_keywords)
+    
+    # Chỉ chặn nếu có từ khóa không liên quan VÀ không có từ khóa học tập
+    if has_off_topic and not has_learning_keyword:
         return jsonify({
             "ok": True,
             "blocked": True,
@@ -1477,21 +1569,74 @@ def api_ai_video_chat():
         })
 
     # 4) Gọi Gemini để quyết định trong/ngoài phạm vi bài học
-    result = chat_about_transcript(transcript, question, history)
-    if not result:
-        return jsonify({"ok": False, "error": "Gemini không phản hồi"}), 500
+    try:
+        result = chat_about_transcript(transcript, question, history)
+        if not result:
+            current_app.logger.error("[VIDEO-CHAT] Gemini returned None")
+            return jsonify({"ok": False, "error": "Gemini không phản hồi"}), 500
 
-    related = bool(result.get("related"))
-    answer = (result.get("answer") or "").strip()
+        related = bool(result.get("related"))
+        answer = (result.get("answer") or "").strip()
+        
+        current_app.logger.info(
+            f"[VIDEO-CHAT] Gemini result: related={related}, answer_len={len(answer)}, "
+            f"answer_preview={answer[:100] if answer else 'empty'}"
+        )
 
-    if not related or not answer:
-        # Câu hỏi ngoài phạm vi bài học
-        return jsonify({
-            "ok": True,
-            "blocked": True,
-            "answer": None,
-            "reason": "unrelated_or_out_of_scope"
-        })
+        # Override logic: Nếu câu hỏi có từ khóa học tập nhưng Gemini trả về related=false → force related=true
+        # Vì các câu hỏi về tóm tắt, giải thích, ví dụ, khái niệm LUÔN liên quan đến video
+        q_lower = question.lower()
+        learning_keywords_extended = [
+            "tóm tắt", "tom tat", "giải thích", "giai thich", "ví dụ", "vi du",
+            "khái niệm", "khai niem", "nội dung", "noi dung", "video", "bài học", "bai hoc",
+            "học", "hoc", "giảng", "giang", "dạy", "day", "nói", "noi", "chi tiết", "chi tiet",
+            "kiểu", "kieu", "dữ liệu", "du lieu", "biến", "bien", "hàm", "ham", "số", "so",
+            "nguyên", "nguyen", "thực", "thuc", "chuỗi", "chuoi", "danh sách", "danh sach"
+        ]
+        
+        has_learning_keyword = any(kw in q_lower for kw in learning_keywords_extended)
+        
+        # Nếu câu hỏi có từ khóa học tập nhưng Gemini đánh dấu unrelated → override
+        if has_learning_keyword and not related:
+            current_app.logger.warning(
+                f"[VIDEO-CHAT] Question has learning keywords but marked as unrelated, forcing related=true. "
+                f"Question: {question[:100]}, Original answer: {answer[:100] if answer else 'empty'}"
+            )
+            related = True
+            # Nếu không có answer từ Gemini, không tạo answer từ transcript
+            # Để Gemini tự tạo answer tự nhiên hơn
+            if not answer:
+                # Không tạo answer từ transcript, để Gemini tự xử lý
+                current_app.logger.warning(
+                    f"[VIDEO-CHAT] No answer from Gemini, but question has learning keywords. "
+                    f"Will let Gemini handle it naturally."
+                )
+        
+        # Chỉ chặn nếu không related (không liên quan đến bài học)
+        # Nếu related=true nhưng không có answer → có thể do lỗi, nhưng vẫn cho phép (sẽ trả về answer rỗng)
+        if not related:
+            # Câu hỏi ngoài phạm vi bài học
+            current_app.logger.warning(
+                f"[VIDEO-CHAT] Question blocked: related={related}, answer_empty={not answer}, "
+                f"question={question[:100]}"
+            )
+            return jsonify({
+                "ok": True,
+                "blocked": True,
+                "answer": None,
+                "reason": "unrelated_or_out_of_scope"
+            })
+        
+        # Nếu related=true nhưng không có answer → có thể do lỗi từ Gemini
+        # Trả về answer rỗng thay vì chặn
+        if not answer:
+            current_app.logger.warning(
+                f"[VIDEO-CHAT] Related question but no answer from Gemini: {question[:100]}"
+            )
+            answer = "Xin lỗi, tôi không thể trả lời câu hỏi này lúc này. Vui lòng thử lại sau."
+    except Exception as e:
+        current_app.logger.exception(f"[VIDEO-CHAT] Error calling chat_about_transcript: {e}")
+        return jsonify({"ok": False, "error": f"Lỗi khi xử lý câu hỏi: {str(e)}"}), 500
 
     return jsonify({
         "ok": True,
@@ -1542,7 +1687,7 @@ def api_exam_finish():
 @app.get("/api/proctor/status")
 @login_required
 def api_proctor_status():
-    svc = face_recognition_service
+    svc = get_face_recognition_service_lazy()
     return jsonify({
         "ok": True,
         "available": svc.is_available(),
@@ -1553,7 +1698,7 @@ def api_proctor_status():
 @login_required
 def api_proctor_health():
     import numpy as np
-    svc = face_recognition_service
+    svc = get_face_recognition_service_lazy()
     fake = np.zeros((320,480,3), dtype=np.uint8)
     probe = svc.detect_faces_and_objects(fake)
     return jsonify({"ok": True, "available": svc.is_available(), "status": svc.debug_status(), "probe": probe.get("debug")})
@@ -1876,13 +2021,12 @@ def api_proctor_analyze():
         or str(user_id or "unknown_user")
     )
 
+    # CHỈ chụp ảnh khi có dấu hiệu gian lận thực sự
+    # KHÔNG chụp chỉ vì có suspicious objects nếu không có flag gian lận
     should_capture = (
-        result.get("cheating_detected")
-        or result.get("should_block")
-        or result.get("should_warn")
-        or (int(result.get("suspicious_count") or 0) > 0)
-        or (len(result.get("suspicious_objects") or []) > 0)
-        or (result.get("cheat_type") not in [None, "normal", "unknown"])
+        result.get("cheating_detected") or 
+        result.get("should_block") or 
+        result.get("should_warn")
     )
 
     screenshot_path = None
@@ -1941,6 +2085,17 @@ def api_proctor_analyze():
                 screenshot_path = save_cheat_frame(frame_bgr, username, cheating_reason)
                 screenshot_timestamp = datetime.datetime.now().isoformat()
                 result["screenshot_path"] = screenshot_path
+                
+                # Đảm bảo screenshot_path được lưu vào meta_json để có thể query sau
+                if "meta_json" not in result:
+                    result["meta_json"] = {}
+                if isinstance(result["meta_json"], str):
+                    try:
+                        result["meta_json"] = json.loads(result["meta_json"])
+                    except:
+                        result["meta_json"] = {}
+                result["meta_json"]["screenshot_path"] = screenshot_path
+                result["meta_json"]["screenshot_url"] = "/" + screenshot_path.replace("\\", "/").lstrip("/")
 
                 current_app.logger.info(
                     f"[AUTO-CAPTURE] ✅ Saved cheat screenshot: {screenshot_path} | "
@@ -2757,6 +2912,27 @@ def ai_dashboard():
         abort(403)
     return course_controller.ai_dashboard()
 
+@app.get("/api/ai/statistics")
+@login_required
+def api_ai_statistics():
+    """API lấy thống kê tổng quan về các loại hành vi gian lận"""
+    from flask import request, jsonify
+    course_id = request.args.get("course_id", type=int)
+    user_id = request.args.get("user_id", type=int)
+    
+    try:
+        stats = course_controller.course_model.get_cheating_statistics(
+            course_id=course_id,
+            user_id=user_id
+        )
+        current_app.logger.info(f"[STATS API] Returning statistics: total_incidents={stats.get('total_incidents')}, by_type={stats.get('by_cheat_type')}")
+        return jsonify({"ok": True, "statistics": stats}), 200
+    except Exception as e:
+        current_app.logger.error(f"Error getting statistics: {e}")
+        import traceback
+        current_app.logger.error(traceback.format_exc())
+        return jsonify({"ok": False, "error": str(e)}), 500
+
 @app.get("/api/ai/progress")
 @login_required
 def api_ai_progress():
@@ -2791,6 +2967,122 @@ def serve_cheat_screenshot(filename):
     import os
     screenshot_dir = os.path.join(os.getcwd(), CHEAT_SCREENSHOT_ROOT)
     return send_from_directory(screenshot_dir, filename)
+
+@app.route("/api/ai/import-screenshots", methods=["POST"])
+@login_required
+def api_import_screenshots():
+    """API để import tất cả screenshots từ folder vào database"""
+    # Kiểm tra authentication và role
+    if not session.get("user_id") and not session.get("username"):
+        return jsonify({"ok": False, "error": "Chưa đăng nhập"}), 401
+    
+    if session.get("role") != "teacher":
+        return jsonify({"ok": False, "error": "Chỉ giáo viên mới có quyền import"}), 403
+    
+    try:
+        # Import function trực tiếp từ script
+        import sys
+        import os
+        from pathlib import Path
+        
+        # Đảm bảo có thể import module
+        script_file = Path(__file__).resolve().parent / "scripts" / "import_cheat_screenshots.py"
+        if not script_file.exists():
+            return jsonify({
+                "ok": False, 
+                "error": f"Không tìm thấy file script: {script_file}"
+            }), 500
+        
+        # Thêm scripts vào path
+        scripts_dir = script_file.parent
+        if str(scripts_dir) not in sys.path:
+            sys.path.insert(0, str(scripts_dir))
+        
+        # Import function
+        try:
+            from import_cheat_screenshots import import_screenshots_to_db
+        except ImportError as import_err:
+            # Thử import bằng cách exec file
+            import importlib.util
+            spec = importlib.util.spec_from_file_location("import_cheat_screenshots", script_file)
+            if spec and spec.loader:
+                module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(module)
+                import_screenshots_to_db = module.import_screenshots_to_db
+            else:
+                raise import_err
+        
+        # Import screenshots và lấy số lượng ảnh đã import
+        imported_count = 0
+        skipped_count = 0
+        errors_count = 0
+        
+        # Gọi hàm import và lấy kết quả trực tiếp
+        try:
+            result = import_screenshots_to_db(course_controller.course_model)
+            if result and isinstance(result, dict):
+                imported_count = result.get("imported", 0)
+                skipped_count = result.get("skipped", 0)
+                errors_count = result.get("errors", 0)
+            else:
+                # Fallback: parse output nếu hàm không return dict (backward compatibility)
+                import io
+                from contextlib import redirect_stdout, redirect_stderr
+                f = io.StringIO()
+                with redirect_stdout(f), redirect_stderr(f):
+                    import_screenshots_to_db(course_controller.course_model)
+                output = f.getvalue()
+                # Parse output để lấy số lượng
+                if "Đã import:" in output:
+                    import re
+                    match = re.search(r'Đã import:\s*(\d+)', output)
+                    if match:
+                        imported_count = int(match.group(1))
+                if "Đã bỏ qua" in output:
+                    import re
+                    match = re.search(r'Đã bỏ qua.*?:\s*(\d+)', output)
+                    if match:
+                        skipped_count = int(match.group(1))
+        except Exception as e:
+            current_app.logger.warning(f"Could not get import result: {e}")
+            # Vẫn tiếp tục, có thể import đã thành công
+        
+        # Đếm tổng số ảnh trong folder
+        total_images = 0
+        try:
+            screenshots_dir = Path(__file__).resolve().parent / "cheat_screenshots"
+            if screenshots_dir.exists():
+                for ext in ['*.jpg', '*.jpeg', '*.png']:
+                    total_images += len(list(screenshots_dir.rglob(ext)))
+        except Exception as e:
+            current_app.logger.warning(f"Could not count images: {e}")
+        
+        return jsonify({
+            "ok": True, 
+            "message": "Đã import screenshots thành công",
+            "total_images": total_images,
+            "imported_count": imported_count,
+            "skipped_count": skipped_count,
+            "errors_count": errors_count,
+            "has_new_images": imported_count > 0
+        }), 200
+        
+    except ImportError as e:
+        current_app.logger.error(f"Import error: {e}")
+        import traceback
+        current_app.logger.error(traceback.format_exc())
+        return jsonify({
+            "ok": False, 
+            "error": f"Không thể import module: {str(e)}"
+        }), 500
+    except Exception as e:
+        current_app.logger.error(f"Error importing screenshots: {e}")
+        import traceback
+        current_app.logger.error(traceback.format_exc())
+        return jsonify({
+            "ok": False, 
+            "error": str(e)
+        }), 500
 
 # --- Proctoring (camera/face) ---
 
@@ -2927,11 +3219,12 @@ def api_capture_frame_unified():
         session["server_armed_since"] = _t.time()
     
     # TỰ ĐỘNG CHỤP MÀN HÌNH cho TẤT CẢ các trường hợp có dấu hiệu gian lận
+    # CHỈ chụp ảnh khi có dấu hiệu gian lận thực sự
+    # KHÔNG chụp chỉ vì có suspicious_count nếu không có flag gian lận
     should_capture_frame = (
         out.get("cheating_detected") or 
         out.get("should_block") or 
-        out.get("should_warn") or 
-        (int(out.get("suspicious_count") or 0) > 0)
+        out.get("should_warn")
     )
     
     if should_capture_frame:
@@ -2962,4 +3255,8 @@ def api_capture_frame_unified():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    # Tắt reloader để tránh reload chậm (có thể bật lại nếu cần)
+    # Sử dụng use_reloader=False để tránh load lại các service nặng
+    import os
+    use_reloader = os.getenv("FLASK_RELOAD", "false").lower() in ("true", "1", "yes")
+    app.run(debug=True, use_reloader=use_reloader)

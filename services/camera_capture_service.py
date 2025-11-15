@@ -7,8 +7,16 @@ from typing import Dict, Optional
 
 ROOT = Path(__file__).resolve().parents[1]
 # ✨ Dùng pipeline YOLO-face + COCO + attention đã có sẵn
-from services.face_recognition_service import get_face_recognition_service
-FR = get_face_recognition_service()
+# Lazy load để tránh load nặng khi Flask reload
+FR = None
+
+def get_face_recognition_service_lazy():
+    """Lazy load face_recognition_service chỉ khi cần dùng"""
+    global FR
+    if FR is None:
+        from services.face_recognition_service import get_face_recognition_service
+        FR = get_face_recognition_service()
+    return FR
 
 class CameraCaptureService:
     def __init__(self):
@@ -87,6 +95,7 @@ class CameraCaptureService:
               bgr = cv2.resize(bgr, (newW, newH), interpolation=cv2.INTER_CUBIC)
 
             # ✨ Pipeline YOLO-face + COCO + attention
+            FR = get_face_recognition_service_lazy()
             ai = FR.detect_faces_and_objects(bgr)
 
             return {

@@ -1655,13 +1655,17 @@ class FaceRecognitionService:
         }
 
 
-face_recognition_service = FaceRecognitionService()
+# Lazy singleton để tránh load nặng khi Flask reload
+_face_recognition_service_instance = None
 
 def get_face_recognition_service() -> FaceRecognitionService:
-    return face_recognition_service
+    global _face_recognition_service_instance
+    if _face_recognition_service_instance is None:
+        _face_recognition_service_instance = FaceRecognitionService()
+    return _face_recognition_service_instance
 
 def is_face_recognition_available() -> bool:
-    return face_recognition_service.is_available()
+    return get_face_recognition_service().is_available()
 
 
 # Build: v3.7 • gating start-up reliably • generated 2025-11-09T15:55:00+0700

@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
     body { background:#f8fafc; }
     .pill { padding:.25rem .5rem;border-radius:999px;font-weight:600; }
@@ -14,6 +15,10 @@
     .pill-bad  { background:#fee2e2;color:#991b1b; }
     .table thead th { white-space:nowrap; }
     .small { font-size:.875rem; color:#6b7280; }
+    .stat-card { background:white; border-radius:8px; padding:1.5rem; box-shadow:0 1px 3px rgba(0,0,0,0.1); }
+    .stat-number { font-size:2rem; font-weight:700; color:#1f2937; }
+    .stat-label { font-size:0.875rem; color:#6b7280; margin-top:0.25rem; }
+    .chart-container { position:relative; height:400px; margin-top:2rem; }
   </style>
 </head>
 <body>
@@ -38,44 +43,117 @@
   <div class="tab-content">
     <!-- Tab Tổng quan -->
     <div class="tab-pane fade show active" id="overview">
-      <div class="card shadow-sm">
-        <div class="card-body">
-          <div class="row g-2 mb-3">
-            <div class="col-auto">
-              <label class="form-label mb-0 small">Lọc theo khóa học:</label>
-              <select id="courseFilter" class="form-select">
-                <option value="">Tất cả khóa học</option>
-                {% for c in courses %}
-                  <option value="{{ c.id }}">{{ c.title }}</option>
-                {% endfor %}
-              </select>
+      <div class="card shadow-sm mb-3">
+    <div class="card-body">
+      <div class="row g-2 mb-3">
+        <div class="col-auto">
+          <label class="form-label mb-0 small">Lọc theo khóa học:</label>
+          <select id="courseFilter" class="form-select">
+            <option value="">Tất cả khóa học</option>
+            {% for c in courses %}
+              <option value="{{ c.id }}">{{ c.title }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-auto">
+          <button id="btnRefresh" class="btn btn-primary">
+            <i class="fa-solid fa-rotate me-1"></i>Nạp dữ liệu
+          </button>
+        </div>
+      </div>
+
+          <!-- Bảng số liệu tổng quan -->
+          <div class="row g-3 mb-4" id="statisticsCards">
+            <div class="col-md-3">
+              <div class="stat-card text-center">
+                <div class="stat-number" id="statTotalIncidents">0</div>
+                <div class="stat-label">Tổng số sự kiện gian lận</div>
+              </div>
             </div>
-            <div class="col-auto">
-              <button id="btnRefresh" class="btn btn-primary">
-                <i class="fa-solid fa-rotate me-1"></i>Nạp dữ liệu
-              </button>
+            <div class="col-md-3">
+              <div class="stat-card text-center">
+                <div class="stat-number" id="statTotalStudents">0</div>
+                <div class="stat-label">Số học viên vi phạm</div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="stat-card text-center">
+                <div class="stat-number" id="statTotalCourses">0</div>
+                <div class="stat-label">Số khóa học</div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="stat-card text-center">
+                <div class="stat-number" id="statAvgPerStudent">0</div>
+                <div class="stat-label">TB sự kiện/học viên</div>
+              </div>
             </div>
           </div>
 
-          <div class="table-responsive">
-            <table class="table table-hover align-middle" id="aiTable">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Học viên</th>
-                  <th>Email</th>
-                  <th>Khóa học</th>
-                  <th>% tập trung</th>
-                  <th>Gian lận (số sự kiện)</th>
-                  <th>Số lần làm bài</th>
-                  <th>Điểm cao nhất</th>
-                  <th>Điểm TB</th>
-                  <th>Phân tích hành vi</th>
-                  <th>Cập nhật</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
+          <!-- Bảng thống kê theo loại gian lận -->
+          <div class="row mb-4">
+            <div class="col-md-6">
+              <div class="card">
+                <div class="card-header">
+                  <h5 class="mb-0"><i class="fa-solid fa-chart-pie me-2"></i>Phân bố theo loại gian lận</h5>
+                </div>
+                <div class="card-body">
+                  <div class="chart-container">
+                    <canvas id="cheatTypeChart"></canvas>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="card">
+                <div class="card-header">
+                  <h5 class="mb-0"><i class="fa-solid fa-table me-2"></i>Chi tiết số liệu</h5>
+                </div>
+                <div class="card-body">
+                  <div class="table-responsive">
+                    <table class="table table-sm" id="cheatTypeTable">
+                      <thead>
+                        <tr>
+                          <th>Loại gian lận</th>
+                          <th class="text-end">Số lượng</th>
+                          <th class="text-end">Tỷ lệ</th>
+                        </tr>
+                      </thead>
+                      <tbody></tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bảng chi tiết học viên -->
+          <div class="card">
+            <div class="card-header">
+              <h5 class="mb-0"><i class="fa-solid fa-users me-2"></i>Chi tiết theo học viên</h5>
+            </div>
+            <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle" id="aiTable">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Học viên</th>
+              <th>Email</th>
+              <th>Khóa học</th>
+              <th>% tập trung</th>
+              <th>Gian lận (số sự kiện)</th>
+              <th>Số lần làm bài</th>
+              <th>Điểm cao nhất</th>
+              <th>Điểm TB</th>
+              <th>Phân tích hành vi</th>
+              <th>Cập nhật</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -104,7 +182,18 @@
                 <i class="fa-solid fa-rotate me-1"></i>Nạp dữ liệu
               </button>
             </div>
-          </div>
+            <div class="col-auto">
+              <button id="btnImportScreenshots" class="btn btn-outline-secondary" title="Import hình ảnh mới từ folder">
+                <i class="fa-solid fa-sync me-1"></i>Import ảnh mới
+              </button>
+            </div>
+            <div class="col-auto d-flex align-items-center">
+              <small class="text-muted">
+                <i class="fa-solid fa-sync-alt fa-spin me-1"></i>
+                <span id="autoRefreshStatus">Tự động cập nhật mỗi 10 giây</span>
+              </small>
+            </div>
+      </div>
 
           <div class="table-responsive">
             <table class="table table-hover align-middle" id="incidentsTable">
@@ -133,7 +222,246 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-// Tab 1: Tổng quan
+let cheatTypeChart = null;
+
+// Mapping tên loại gian lận sang tiếng Việt
+const cheatTypeLabels = {
+  'phone': 'Điện thoại',
+  'phone_call': 'Gọi điện',
+  'phone_selfie': 'Selfie/Camera',
+  'phone_screenshot': 'Chụp màn hình',
+  'book': 'Sách/Tài liệu',
+  'tablet': 'Tablet/Laptop',
+  'looking_away': 'Nhìn ra ngoài',
+  'looking_down': 'Cúi xuống',
+  'glasses_suspicious': 'Kính đáng ngờ',
+  'cheating_generic': 'Gian lận chung',
+  'unknown': 'Không xác định',
+  'no_face': 'Không có mặt'
+};
+
+// Hàm format ngày: chuyển YYYYMMDD hoặc YYYY-MM-DD thành YYYY-MM-DD
+function formatDate(dateStr) {
+  if (!dateStr || dateStr === 'N/A') return 'N/A';
+  
+  // Nếu đã có dấu gạch ngang, trả về nguyên
+  if (dateStr.includes('-')) {
+    return dateStr.substring(0, 10); // Lấy YYYY-MM-DD
+  }
+  
+  // Nếu là format YYYYMMDD (8 ký tự)
+  if (dateStr.length === 8 && /^\d{8}$/.test(dateStr)) {
+    return `${dateStr.substring(0, 4)}-${dateStr.substring(4, 6)}-${dateStr.substring(6, 8)}`;
+  }
+  
+  // Nếu là ISO string, lấy phần date
+  if (dateStr.length >= 10) {
+    return dateStr.substring(0, 10);
+  }
+  
+  return dateStr;
+}
+
+// Hàm format giờ: chuyển HHMMSS hoặc HH:MM:SS thành HH:MM:SS
+function formatTime(timeStr) {
+  if (!timeStr || timeStr === 'N/A') return 'N/A';
+  
+  // Nếu đã có dấu hai chấm, trả về nguyên
+  if (timeStr.includes(':')) {
+    return timeStr.substring(0, 8); // Lấy HH:MM:SS
+  }
+  
+  // Nếu là format HHMMSS (6 ký tự)
+  if (timeStr.length === 6 && /^\d{6}$/.test(timeStr)) {
+    return `${timeStr.substring(0, 2)}:${timeStr.substring(2, 4)}:${timeStr.substring(4, 6)}`;
+  }
+  
+  // Nếu là ISO string, lấy phần time
+  if (timeStr.length >= 8 && timeStr.includes('T')) {
+    const timePart = timeStr.split('T')[1];
+    if (timePart) {
+      return timePart.substring(0, 8); // Lấy HH:MM:SS
+    }
+  }
+  
+  // Nếu có độ dài >= 8 và không có dấu hai chấm, thử parse
+  if (timeStr.length >= 8 && !timeStr.includes(':')) {
+    // Có thể là HHMMSS từ substring
+    return formatTime(timeStr.substring(0, 6));
+  }
+  
+  return timeStr;
+}
+
+// Tab 1: Tổng quan - Load thống kê
+async function loadStatistics() {
+  try {
+    const cid = document.getElementById('courseFilter').value || '';
+    const url = '/api/ai/statistics' + (cid ? ('?course_id=' + cid) : '');
+    console.log('[STATS] Fetching:', url);
+    
+    const startTime = Date.now();
+    const rsp = await fetch(url);
+    
+    if (!rsp.ok) {
+      console.error('[STATS] HTTP error:', rsp.status, rsp.statusText);
+      const errorText = await rsp.text();
+      console.error('[STATS] Error response:', errorText);
+      return;
+    }
+    
+    const data = await rsp.json();
+    const loadTime = Date.now() - startTime;
+    console.log('[STATS] Response:', data, `(took ${loadTime}ms)`);
+
+    if (!data.ok) {
+      console.warn('[STATS] API returned error:', data.error || 'Unknown error');
+      // Vẫn hiển thị 0 nếu có lỗi
+      document.getElementById('statTotalIncidents').textContent = '0';
+      document.getElementById('statTotalStudents').textContent = '0';
+      document.getElementById('statTotalCourses').textContent = '0';
+      document.getElementById('statAvgPerStudent').textContent = '0';
+      return;
+    }
+    
+    if (!data.statistics) {
+      console.warn('[STATS] No statistics in response:', data);
+      return;
+    }
+
+  const stats = data.statistics;
+  console.log('[STATS] Statistics data:', stats);
+
+  // Cập nhật số liệu tổng quan
+  document.getElementById('statTotalIncidents').textContent = stats.total_incidents || 0;
+  document.getElementById('statTotalStudents').textContent = stats.total_students || 0;
+  document.getElementById('statTotalCourses').textContent = stats.total_courses || 0;
+  
+  const avgPerStudent = stats.total_students > 0 
+    ? (stats.total_incidents / stats.total_students).toFixed(1)
+    : '0';
+  document.getElementById('statAvgPerStudent').textContent = avgPerStudent;
+
+  // Vẽ biểu đồ
+  const byType = stats.by_cheat_type || {};
+  const byPercent = stats.by_cheat_type_percent || {};
+  console.log('[STATS] By type:', byType);
+  console.log('[STATS] By percent:', byPercent);
+  
+  const labels = Object.keys(byType).map(type => cheatTypeLabels[type] || type);
+  const counts = Object.values(byType);
+  const percentages = Object.keys(byType).map(type => byPercent[type] || 0);
+  
+  console.log('[STATS] Labels:', labels);
+  console.log('[STATS] Counts:', counts);
+
+  // Cập nhật bảng chi tiết
+  const tableBody = document.querySelector('#cheatTypeTable tbody');
+  tableBody.innerHTML = '';
+  
+  // Sắp xếp theo số lượng giảm dần
+  const sortedTypes = Object.entries(byType).sort((a, b) => b[1] - a[1]);
+  
+  sortedTypes.forEach(([type, count]) => {
+    const tr = document.createElement('tr');
+    const label = cheatTypeLabels[type] || type;
+    const percent = byPercent[type] || 0;
+    tr.innerHTML = `
+      <td><strong>${label}</strong></td>
+      <td class="text-end">${count}</td>
+      <td class="text-end"><span class="badge bg-primary">${percent}%</span></td>
+    `;
+    tableBody.appendChild(tr);
+  });
+
+  // Vẽ biểu đồ tròn
+  const ctx = document.getElementById('cheatTypeChart');
+  if (cheatTypeChart) {
+    cheatTypeChart.destroy();
+  }
+
+  // Nếu không có dữ liệu, hiển thị thông báo
+  const totalCount = counts.reduce((a, b) => a + b, 0);
+  if (labels.length === 0 || counts.length === 0 || totalCount === 0) {
+    console.log('[STATS] No data to display in chart');
+    // Tạo biểu đồ rỗng với thông báo
+    if (cheatTypeChart) {
+      cheatTypeChart.destroy();
+    }
+    cheatTypeChart = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Chưa có dữ liệu'],
+        datasets: [{
+          data: [1],
+          backgroundColor: ['#e5e7eb'],
+          borderWidth: 0
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: false
+          },
+          tooltip: {
+            enabled: false
+          }
+        }
+      }
+    });
+  } else {
+    console.log('[STATS] Drawing chart with', labels.length, 'types, total count:', totalCount);
+    // Màu sắc cho từng loại
+    const colors = [
+      '#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6',
+      '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1'
+    ];
+
+    cheatTypeChart = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: labels,
+        datasets: [{
+          data: counts,
+          backgroundColor: colors.slice(0, labels.length),
+          borderWidth: 2,
+          borderColor: '#fff'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'right',
+            labels: {
+              padding: 15,
+              font: { size: 12 }
+            }
+          },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                const label = context.label || '';
+                const value = context.parsed || 0;
+                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                const percent = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                return `${label}: ${value} (${percent}%)`;
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+  } catch (error) {
+    console.error('[STATS] Error loading statistics:', error);
+  }
+}
+
+// Tab 1: Tổng quan - Load chi tiết học viên
 async function loadData() {
   const cid = document.getElementById('courseFilter').value || '';
   const url = '/api/ai/progress' + (cid ? ('?course_id=' + cid) : '');
@@ -169,6 +497,11 @@ async function loadData() {
   });
 }
 
+// Load cả thống kê và chi tiết
+async function loadOverview() {
+  await Promise.all([loadStatistics(), loadData()]);
+}
+
 // Tab 2: Chi tiết gian lận
 async function loadIncidents() {
   const cid = document.getElementById('incidentCourseFilter').value || '';
@@ -177,12 +510,77 @@ async function loadIncidents() {
   if (cid) url += '&course_id=' + cid;
   if (uid) url += '&user_id=' + uid;
   
-  const rsp = await fetch(url);
-  const data = await rsp.json();
-  const tb = document.querySelector('#incidentsTable tbody');
-  tb.innerHTML = '';
+  // Cập nhật trạng thái
+  const statusEl = document.getElementById('autoRefreshStatus');
+  if (statusEl) {
+    statusEl.textContent = 'Đang tải dữ liệu...';
+  }
+  
+  try {
+    // Tự động import screenshots mới trước khi load (mỗi 15 giây để cập nhật nhanh hơn)
+    const lastImportTime = sessionStorage.getItem('lastScreenshotImport');
+    const now = Date.now();
+    const importInterval = 15000; // 15 giây để cập nhật nhanh hơn
+    
+    // Luôn import khi load incidents để đảm bảo có tất cả ảnh mới nhất
+    // Không cần check interval quá chặt
+    if (!lastImportTime || (now - parseInt(lastImportTime)) > importInterval) {
+      // Import trong background nhưng đợi kết quả để reload nếu có ảnh mới
+      const importPromise = fetch('/api/ai/import-screenshots', { 
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      }).then(async (importRsp) => {
+        if (importRsp.ok) {
+          const contentType = importRsp.headers.get('content-type') || '';
+          if (contentType.includes('application/json')) {
+            try {
+              const importData = await importRsp.json();
+              if (importData.ok) {
+                sessionStorage.setItem('lastScreenshotImport', now.toString());
+                console.log('[INCIDENTS] Auto-imported screenshots successfully, total:', importData.total_images);
+                return importData;
+              }
+            } catch (e) {
+              console.warn('[INCIDENTS] Failed to parse import response:', e);
+            }
+          }
+        } else {
+          console.warn('[INCIDENTS] Auto-import failed:', importRsp.status);
+        }
+        return null;
+      }).catch((e) => {
+        console.warn('[INCIDENTS] Failed to auto-import screenshots:', e);
+        return null;
+      });
+      
+      // Đợi import xong rồi mới load incidents để đảm bảo có ảnh mới nhất
+      const importResult = await importPromise;
+      if (importResult && importResult.ok) {
+        if (importResult.has_new_images) {
+          // Có ảnh mới được import, đợi một chút để DB commit xong
+          console.log('[INCIDENTS] New images imported (' + importResult.imported_count + '), waiting 500ms before loading...');
+          await new Promise(resolve => setTimeout(resolve, 500));
+        } else {
+          console.log('[INCIDENTS] No new images (imported: ' + importResult.imported_count + ', skipped: ' + importResult.skipped_count + ')');
+        }
+      }
+    }
+    
+    // Load incidents sau khi đã import (nếu có)
+    const rsp = await fetch(url);
+    const data = await rsp.json();
+    const tb = document.querySelector('#incidentsTable tbody');
+    tb.innerHTML = '';
 
-  if (!data.ok || !data.incidents) return;
+    if (!data.ok || !data.incidents) {
+      if (statusEl) {
+        statusEl.textContent = 'Tự động cập nhật mỗi 10 giây';
+      }
+      return;
+    }
 
   (data.incidents || []).forEach((incident, idx) => {
     const tr = document.createElement('tr');
@@ -207,21 +605,129 @@ async function loadIncidents() {
       <td>${incident.course_title || 'N/A'}</td>
       <td><strong>${incident.cheating_reason || incident.event_type || 'N/A'}</strong></td>
       <td><span class="badge bg-secondary">${incident.cheat_type || 'unknown'}</span></td>
-      <td>${incident.detected_date || incident.detected_at?.substring(0, 10) || 'N/A'}</td>
-      <td>${incident.detected_time || incident.detected_at?.substring(11, 19) || 'N/A'}</td>
+      <td>${formatDate(incident.detected_date || incident.detected_at?.substring(0, 10) || '')}</td>
+      <td>${formatTime(incident.detected_time || incident.detected_at?.substring(11, 19) || '')}</td>
       <td><span class="pill ${confClass}">${(confidence * 100).toFixed(1)}%</span></td>
       <td>${incident.suspicious_count || 0}</td>
       <td>${screenshotBtn}</td>
     `;
     tb.appendChild(tr);
   });
+  
+    // Cập nhật trạng thái sau khi load xong
+    const statusEl = document.getElementById('autoRefreshStatus');
+    if (statusEl) {
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      statusEl.textContent = `Cập nhật lúc ${timeStr} - Tự động cập nhật mỗi 10 giây`;
+    }
+  } catch (error) {
+    console.error('[INCIDENTS] Error loading incidents:', error);
+    const statusEl = document.getElementById('autoRefreshStatus');
+    if (statusEl) {
+      statusEl.textContent = 'Lỗi khi tải dữ liệu - Tự động cập nhật mỗi 10 giây';
+    }
+  }
 }
 
-document.getElementById('btnRefresh').addEventListener('click', loadData);
-document.getElementById('courseFilter').addEventListener('change', loadData);
+document.getElementById('btnRefresh').addEventListener('click', loadOverview);
+document.getElementById('courseFilter').addEventListener('change', loadOverview);
 document.getElementById('btnRefreshIncidents').addEventListener('click', loadIncidents);
 document.getElementById('incidentCourseFilter').addEventListener('change', loadIncidents);
 document.getElementById('incidentUserFilter').addEventListener('change', loadIncidents);
+
+// Nút import screenshots
+const btnImportScreenshots = document.getElementById('btnImportScreenshots');
+if (btnImportScreenshots) {
+  btnImportScreenshots.addEventListener('click', async () => {
+    const btn = btnImportScreenshots;
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i>Đang import...';
+    
+    try {
+      // Gọi API import với timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 giây timeout
+      
+      const rsp = await fetch('/api/ai/import-screenshots', { 
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      // Kiểm tra status code
+      if (rsp.status === 404) {
+        throw new Error('API endpoint không tồn tại. Vui lòng kiểm tra server đã được cập nhật chưa.');
+      }
+      
+      if (!rsp.ok) {
+        // Thử parse JSON error message
+        const contentType = rsp.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          const errorData = await rsp.json();
+          throw new Error(errorData.error || `HTTP ${rsp.status}: ${rsp.statusText}`);
+        } else {
+          // Nếu không phải JSON, đọc text
+          const text = await rsp.text();
+          console.error('[IMPORT] Non-JSON error response:', text.substring(0, 500));
+          if (rsp.status === 404) {
+            throw new Error('API endpoint không tồn tại (404). Vui lòng kiểm tra server.');
+          }
+          throw new Error(`Server trả về lỗi (HTTP ${rsp.status}). Vui lòng kiểm tra console để xem chi tiết.`);
+        }
+      }
+      
+      // Kiểm tra response type
+      const contentType = rsp.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        const text = await rsp.text();
+        console.error('[IMPORT] Non-JSON response:', text.substring(0, 500));
+        throw new Error('Server trả về dữ liệu không phải JSON. Có thể là lỗi authentication hoặc server error.');
+      }
+      
+      const data = await rsp.json();
+      
+      if (data.ok) {
+        // Import thành công, reload incidents
+        const totalImages = data.total_images || 0;
+        btn.innerHTML = `<i class="fa-solid fa-check me-1"></i>Đã import ${totalImages} ảnh!`;
+        setTimeout(async () => {
+          await loadIncidents();
+          btn.innerHTML = originalText;
+        }, 1500);
+      } else {
+        throw new Error(data.error || 'Unknown error');
+      }
+    } catch (error) {
+      console.error('[IMPORT] Error:', error);
+      
+      let errorMessage = 'Lỗi không xác định';
+      if (error.name === 'AbortError') {
+        errorMessage = 'Request timeout. Vui lòng thử lại.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      } else {
+        errorMessage = String(error);
+      }
+      
+      // Hiển thị thông báo lỗi
+      alert('❌ Lỗi khi import hình ảnh: ' + errorMessage);
+    } finally {
+      btn.disabled = false;
+      if (btn.innerHTML.includes('Thành công')) {
+        // Giữ nguyên text "Thành công" nếu đã thành công
+      } else {
+        btn.innerHTML = originalText;
+      }
+    }
+  });
+}
 
 // Load data khi chuyển tab
 document.querySelectorAll('[data-bs-toggle="tab"]').forEach(tab => {
@@ -232,8 +738,172 @@ document.querySelectorAll('[data-bs-toggle="tab"]').forEach(tab => {
   });
 });
 
+// Auto-refresh để cập nhật liên tục hình ảnh mới
+// Sử dụng setTimeout thay vì setInterval để tránh tích lũy delay
+let autoRefreshTimeout = null;
+let autoRefreshIncidentsTimeout = null;
+let isRefreshingOverview = false;
+let isRefreshingIncidents = false;
+
+function scheduleOverviewRefresh() {
+  // Clear timeout cũ nếu có
+  if (autoRefreshTimeout) {
+    clearTimeout(autoRefreshTimeout);
+    autoRefreshTimeout = null;
+  }
+  
+  // Chỉ schedule nếu không đang refresh
+  if (!isRefreshingOverview) {
+    autoRefreshTimeout = setTimeout(async () => {
+      const activeTab = document.querySelector('.nav-link.active');
+      if (activeTab && activeTab.getAttribute('data-bs-target') === '#overview') {
+        isRefreshingOverview = true;
+        try {
+          await loadOverview();
+        } finally {
+          isRefreshingOverview = false;
+          // Schedule lại sau đúng 30 giây từ lúc request hoàn thành
+          // Đảm bảo luôn có 30 giây giữa các lần refresh
+          autoRefreshTimeout = setTimeout(scheduleOverviewRefresh, 30000);
+        }
+      } else {
+        // Nếu tab không active, schedule lại ngay (vẫn đảm bảo 30 giây)
+        scheduleOverviewRefresh();
+      }
+    }, 30000); // 30 giây
+  }
+}
+
+function scheduleIncidentsRefresh() {
+  // Clear timeout cũ nếu có
+  if (autoRefreshIncidentsTimeout) {
+    clearTimeout(autoRefreshIncidentsTimeout);
+    autoRefreshIncidentsTimeout = null;
+  }
+  
+  // Chỉ schedule nếu không đang refresh
+  if (!isRefreshingIncidents) {
+    autoRefreshIncidentsTimeout = setTimeout(async () => {
+      const activeTab = document.querySelector('.nav-link.active');
+      if (activeTab && activeTab.getAttribute('data-bs-target') === '#incidents') {
+        isRefreshingIncidents = true;
+        try {
+          // Tự động import screenshots mới trước khi load incidents
+          // Đảm bảo ảnh mới luôn được cập nhật
+          const lastImportTime = sessionStorage.getItem('lastScreenshotImport');
+          const now = Date.now();
+          const importInterval = 15000; // 15 giây
+          
+          if (!lastImportTime || (now - parseInt(lastImportTime)) > importInterval) {
+            // Import trước khi load incidents để đảm bảo có ảnh mới nhất
+            try {
+              const importRsp = await fetch('/api/ai/import-screenshots', { 
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Accept': 'application/json'
+                }
+              });
+              
+              if (importRsp.ok) {
+                const contentType = importRsp.headers.get('content-type') || '';
+                if (contentType.includes('application/json')) {
+                  try {
+                    const importData = await importRsp.json();
+                    if (importData.ok) {
+                      sessionStorage.setItem('lastScreenshotImport', now.toString());
+                      console.log('[AUTO-REFRESH] Auto-imported screenshots, total:', importData.total_images);
+                    }
+                  } catch (e) {
+                    console.warn('[AUTO-REFRESH] Failed to parse import response:', e);
+                  }
+                }
+              }
+            } catch (e) {
+              console.warn('[AUTO-REFRESH] Failed to auto-import screenshots:', e);
+            }
+          }
+          
+          // Load incidents sau khi đã import (nếu có)
+          await loadIncidents();
+        } finally {
+          isRefreshingIncidents = false;
+          // Schedule lại sau đúng 10 giây từ lúc request hoàn thành
+          // Đảm bảo luôn có 10 giây giữa các lần refresh
+          autoRefreshIncidentsTimeout = setTimeout(scheduleIncidentsRefresh, 10000);
+        }
+      } else {
+        // Nếu tab không active, schedule lại ngay (vẫn đảm bảo 10 giây)
+        scheduleIncidentsRefresh();
+      }
+    }, 10000); // 10 giây
+  }
+}
+
+function startAutoRefresh() {
+  // Dừng tất cả refresh đang chạy
+  stopAutoRefresh();
+  
+  // Bắt đầu schedule refresh
+  scheduleOverviewRefresh();
+  scheduleIncidentsRefresh();
+}
+
+function stopAutoRefresh() {
+  if (autoRefreshTimeout) {
+    clearTimeout(autoRefreshTimeout);
+    autoRefreshTimeout = null;
+  }
+  if (autoRefreshIncidentsTimeout) {
+    clearTimeout(autoRefreshIncidentsTimeout);
+    autoRefreshIncidentsTimeout = null;
+  }
+  isRefreshingOverview = false;
+  isRefreshingIncidents = false;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
-  loadData();
+  loadOverview();
+  startAutoRefresh();
+  
+  // Import screenshots ngay khi load trang lần đầu để đảm bảo có tất cả ảnh
+  // Không cần chờ, import trong background
+  setTimeout(() => {
+    fetch('/api/ai/import-screenshots', { 
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      }
+    }).then(async (rsp) => {
+      if (rsp.ok) {
+        const contentType = rsp.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          try {
+            const data = await rsp.json();
+            if (data.ok) {
+              sessionStorage.setItem('lastScreenshotImport', Date.now().toString());
+              console.log('[INIT] Imported screenshots on page load');
+              // Reload incidents nếu đang ở tab incidents
+              const activeTab = document.querySelector('.nav-link.active');
+              if (activeTab && activeTab.getAttribute('data-bs-target') === '#incidents') {
+                setTimeout(() => loadIncidents(), 1000);
+              }
+            }
+          } catch (e) {
+            // Ignore errors
+          }
+        }
+      }
+    }).catch(() => {
+      // Ignore errors for initial import
+    });
+  }, 1000); // Đợi 1 giây sau khi trang load xong
+});
+
+// Dừng auto-refresh khi rời khỏi trang
+window.addEventListener('beforeunload', () => {
+  stopAutoRefresh();
 });
 </script>
 </body>
