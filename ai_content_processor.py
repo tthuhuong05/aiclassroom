@@ -58,14 +58,29 @@ class AIContentProcessor:
         
         print(f"✅ Đã trích xuất {len(raw_content)} ký tự")
         
-        # Bước 2: AI Gemini tóm tắt nội dung chính
-        print("\n🧠 Bước 2: AI Gemini tóm tắt nội dung chính...")
+        # Bước 2: AI Gemini tóm tắt nội dung chính và tạo dàn ý 10-15 ý
+        print("\n🧠 Bước 2: AI Gemini tóm tắt nội dung chính và tạo dàn ý (mục tiêu: 10-15 slides, 2-3 phút)...")
         content_summary = self._summarize_content_with_ai(raw_content)
         
         if not content_summary:
             raise ValueError("AI Gemini không thể tóm tắt nội dung.")
         
-        print(f"✅ Đã tóm tắt thành {len(content_summary.get('slides', []))} slides")
+        slides_count = len(content_summary.get('slides', []))
+        outline = content_summary.get('outline', [])
+        
+        # Kiểm tra số lượng slides
+        if slides_count < 10:
+            print(f"⚠️ CẢNH BÁO: Chỉ có {slides_count} slides, cần ít nhất 10 slides để đạt 2-3 phút")
+            print(f"   Video có thể ngắn hơn mong đợi. Hãy kiểm tra lại tài liệu hoặc prompt.")
+        else:
+            print(f"✅ Đã tóm tắt thành {slides_count} mục (mục tiêu: 10-15)")
+        
+        if outline:
+            print(f"✅ Dàn ý: {', '.join(outline[:8])}")
+        
+        # Tính toán thời lượng dự kiến
+        estimated_duration = (slides_count + 2) * 15  # +2 cho intro và conclusion
+        print(f"📊 Thời lượng dự kiến: ~{estimated_duration/60:.1f} phút ({estimated_duration} giây)")
         
         # Bước 3: Tạo hình ảnh chân thật cho từng slide
         print("\n🖼️ Bước 3: Tạo hình ảnh chân thật...")
@@ -84,8 +99,19 @@ class AIContentProcessor:
         print("=" * 60)
         print(f"📹 Video: {video_result['video_path']}")
         print(f"📝 Captions: {video_result['caption_path']}")
-        print(f"⏱️ Thời lượng: {video_result['duration']:.1f} giây")
+        duration_sec = video_result['duration']
+        duration_min = duration_sec / 60
+        print(f"⏱️ Thời lượng: {duration_sec:.1f} giây ({duration_min:.1f} phút)")
         print(f"🎯 Slides: {video_result['slide_count']}")
+        
+        # Kiểm tra thời lượng có đạt mục tiêu không
+        if duration_sec < 120:
+            print(f"⚠️ CẢNH BÁO: Video chỉ dài {duration_sec:.1f} giây, chưa đạt mục tiêu 2-3 phút (120-180 giây)")
+            print(f"   Gợi ý: Tài liệu có thể quá ngắn, hoặc cần tăng số lượng slides")
+        elif duration_sec >= 120 and duration_sec <= 180:
+            print(f"✅ Thời lượng đạt mục tiêu: {duration_min:.1f} phút (2-3 phút)")
+        else:
+            print(f"ℹ️ Video dài hơn mục tiêu: {duration_min:.1f} phút (mục tiêu: 2-3 phút)")
         
         return video_result
     
@@ -120,27 +146,34 @@ class AIContentProcessor:
         
         slides_with_images.append({
             "type": "introduction",
-            "content": intro_data.get("script", ""),
+            "script": intro_data.get("script", ""),  # Script ngắn từ AI
+            "content": intro_data.get("script", ""),  # Fallback
+            "subtitle": intro_data.get("subtitle", ""),  # Phụ đề ngắn
             "key_points": intro_data.get("key_points", []),
             "image_path": intro_image,
-            "image_keywords": intro_keywords
+            "image_keywords": intro_keywords,
+                "duration_sec": intro_data.get("duration_sec", 14.0)  # Thời lượng 12-18 giây
         })
         
         # Các slides chính
         slides_data = content_summary.get("slides", [])
         for i, slide_data in enumerate(slides_data, 1):
-            print(f"🖼️ Tạo hình ảnh cho slide {i}/{len(slides_data)}: {slide_data.get('title', 'N/A')}")
+            print(f"🖼️ Tạo hình ảnh cho mục {i}/{len(slides_data)}: {slide_data.get('title', 'N/A')}")
             
             img_keywords = slide_data.get("image_keywords", [])
+            # Ưu tiên: Hình ảnh trong file (nếu có), sau đó mới tạo AI
             slide_image = self._find_realistic_image(img_keywords, f"slide_{i}")
             
             slides_with_images.append({
                 "type": "main_slide",
                 "title": slide_data.get("title", ""),
-                "content": slide_data.get("script", slide_data.get("main_content", "")),
+                "script": slide_data.get("script", ""),  # Script ngắn từ AI
+                "content": slide_data.get("script", slide_data.get("main_content", "")),  # Fallback
+                "subtitle": slide_data.get("subtitle", ""),  # Phụ đề ngắn
                 "key_points": slide_data.get("key_points", []),
                 "image_path": slide_image,
-                "image_keywords": img_keywords
+                "image_keywords": img_keywords,
+                "duration_sec": slide_data.get("duration_sec", 15.0)  # Thời lượng 12-18 giây
             })
         
         # Slide kết luận
@@ -152,10 +185,13 @@ class AIContentProcessor:
         
         slides_with_images.append({
             "type": "conclusion",
-            "content": conclusion_data.get("script", ""),
+            "script": conclusion_data.get("script", ""),  # Script ngắn từ AI
+            "content": conclusion_data.get("script", ""),  # Fallback
+            "subtitle": conclusion_data.get("subtitle", ""),  # Phụ đề ngắn
             "key_points": conclusion_data.get("key_takeaways", []),
             "image_path": conclusion_image,
-            "image_keywords": conclusion_keywords
+            "image_keywords": conclusion_keywords,
+                "duration_sec": conclusion_data.get("duration_sec", 14.0)  # Thời lượng 12-18 giây
         })
         
         return slides_with_images
@@ -227,32 +263,52 @@ class AIContentProcessor:
         return realistic_keywords[:8]  # Tăng số lượng từ khóa để có nhiều lựa chọn hơn
     
     def _create_human_voice_audio(self, slides_with_images: List[Dict]) -> List[Dict]:
-        """Tạo giọng người thật cho từng slide"""
+        """Tạo giọng đọc TTS tự nhiên cho từng slide (script chi tiết 30-50 từ, phong cách NotebookLM)"""
         
         slides_with_audio = []
         
         for i, slide in enumerate(slides_with_images):
-            print(f"🎤 Tạo giọng người thật cho slide {i+1}...")
+            print(f"🎤 Tạo giọng đọc TTS cho mục {i+1}...")
             
-            content = slide.get("content", "")
-            if not content:
+            # Ưu tiên sử dụng script ngắn từ AI (15-25 từ)
+            script = slide.get("script") or slide.get("content", "")
+            if not script:
                 continue
             
-            # Tạo audio với giọng người thật
+            # Đảm bảo script phù hợp với 12-18 giây (khoảng 35-55 từ)
+            words = script.split()
+            if len(words) > 65:
+                # Cắt script nếu quá dài (tối đa 65 từ cho 18 giây)
+                script = " ".join(words[:65])
+                print(f"⚠️ Script quá dài, đã cắt xuống còn {len(script.split())} từ")
+            elif len(words) < 25:
+                # Nếu script quá ngắn, cảnh báo để đảm bảo video đủ dài
+                print(f"⚠️ Script hơi ngắn ({len(words)} từ), cần ít nhất 35 từ để đạt 12 giây")
+            
+            # Tạo audio với giọng TTS tự nhiên
             audio_path = os.path.join(self.temp_dir, f"audio_{i:03d}.mp3")
             
             try:
-                result = synthesize_human_voice(content, output_path=audio_path)
+                result = synthesize_human_voice(script, output_path=audio_path)
                 if result.get("success"):
                     slide["audio_path"] = audio_path
-                    slide["duration"] = result.get("duration", 30.0)
-                    print(f"✅ Giọng người thật: {slide['duration']:.1f}s")
+                    # Lưu script để dùng cho caption
+                    slide["script"] = script
+                    # Thời lượng từ AI response hoặc từ audio
+                    audio_duration = result.get("duration", 0)
+                    if audio_duration:
+                        slide["duration"] = audio_duration
+                    print(f"✅ Giọng TTS: {len(script.split())} từ, ~{audio_duration:.1f}s")
                 else:
-                    print(f"❌ Lỗi tạo giọng người thật: {result.get('error', 'Unknown')}")
+                    print(f"❌ Lỗi tạo giọng TTS: {result.get('error', 'Unknown')}")
+                    # Vẫn tiếp tục với slide này nhưng không có audio
+                    slide["duration"] = slide.get("duration_sec", 15.0)
                     continue
                     
             except Exception as e:
-                print(f"❌ Lỗi tạo giọng người thật: {e}")
+                print(f"❌ Lỗi tạo giọng TTS: {e}")
+                # Vẫn tiếp tục với slide này nhưng không có audio
+                slide["duration"] = slide.get("duration_sec", 15.0)
                 continue
             
             slides_with_audio.append(slide)
@@ -280,23 +336,42 @@ class AIContentProcessor:
             if not slide_image:
                 continue
             
-            # Tạo video clip
-            duration = slide.get("duration", 30.0)
-            clip = ImageClip(slide_image).set_duration(duration)
+            # Lấy thời lượng từ AI response (12-18 giây) hoặc từ audio, mặc định 15 giây
+            duration_sec = slide.get("duration_sec") or slide.get("duration")
+            if duration_sec:
+                # Đảm bảo thời lượng trong khoảng 12-18 giây để đạt tổng 2-3 phút
+                duration_sec = max(12.0, min(18.0, float(duration_sec)))
+            else:
+                duration_sec = 15.0  # Mặc định 15 giây
             
-            # Thêm audio
+            # Tạo video clip với thời lượng cố định
+            clip = ImageClip(slide_image).set_duration(duration_sec)
+            
+            # Thêm audio (nếu có)
             audio_path = slide.get("audio_path")
             if audio_path and os.path.exists(audio_path):
                 audio_clip = AudioFileClip(audio_path)
-                clip = clip.set_audio(audio_clip).set_duration(audio_clip.duration)
+                # Nếu audio ngắn hơn duration_sec, giữ nguyên duration_sec
+                # Nếu audio dài hơn, cắt audio hoặc điều chỉnh
+                if audio_clip.duration > duration_sec:
+                    audio_clip = audio_clip.subclip(0, duration_sec)
+                elif audio_clip.duration < duration_sec:
+                    # Nếu audio ngắn, giữ nguyên duration của clip (sẽ có khoảng lặng)
+                    pass
+                clip = clip.set_audio(audio_clip)
             
-            # Thêm hiệu ứng mượt mà
-            clip = clip.fx(vfx.fadein, 0.5).fx(vfx.fadeout, 0.5)
+            # Thêm hiệu ứng mượt mà (ngắn hơn vì clip ngắn)
+            fade_duration = min(0.3, duration_sec * 0.1)  # 10% thời lượng hoặc tối đa 0.3s
+            clip = clip.fx(vfx.fadein, fade_duration).fx(vfx.fadeout, fade_duration)
             if clip.audio:
-                clip = clip.fx(afx.audio_fadein, 0.5).fx(afx.audio_fadeout, 0.5)
+                clip = clip.fx(afx.audio_fadein, fade_duration).fx(afx.audio_fadeout, fade_duration)
             
             clips.append(clip)
-            timeline.append((current_time, current_time + clip.duration, slide.get("content", "")))
+            
+            # Lấy subtitle từ slide (nếu có), nếu không thì dùng script
+            subtitle = slide.get("subtitle") or slide.get("content", "")
+            script_text = slide.get("script") or slide.get("content", "")
+            timeline.append((current_time, current_time + clip.duration, subtitle, script_text))
             current_time += clip.duration
         
         # Ghép video
@@ -362,7 +437,7 @@ class AIContentProcessor:
             return None
     
     def _create_captions(self, timeline: List[Tuple], caption_path: str):
-        """Tạo file captions VTT"""
+        """Tạo file captions VTT với phụ đề ngắn gọn"""
         
         def format_time(seconds):
             ms = int((seconds - int(seconds)) * 1000)
@@ -373,10 +448,20 @@ class AIContentProcessor:
             return f"{h:02d}:{m:02d}:{s:02d}.{ms:03d}"
         
         lines = ["WEBVTT", ""]
-        for start, end, text in timeline:
-            lines.append(f"{format_time(start)} --> {format_time(end)}")
-            lines.append(text.strip())
-            lines.append("")
+        for entry in timeline:
+            # Hỗ trợ cả format cũ (3 phần tử) và format mới (4 phần tử)
+            if len(entry) >= 4:
+                start, end, subtitle, script = entry
+                # Sử dụng subtitle (phụ đề ngắn) cho VTT
+                text = subtitle.strip()
+            else:
+                start, end, text = entry[:3]
+                text = text.strip()
+            
+            if text:
+                lines.append(f"{format_time(start)} --> {format_time(end)}")
+                lines.append(text)
+                lines.append("")
         
         with open(caption_path, "w", encoding="utf-8") as f:
             f.write("\n".join(lines))

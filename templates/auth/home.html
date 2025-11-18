@@ -13,6 +13,13 @@
       theme: {
         extend: {
           fontFamily: { sans: ['Inter', 'sans-serif'] },
+          colors: {
+            'dark-bg': '#1a1d23',      // Background chính - xám nhẹ, không quá tối
+            'dark-surface': '#23272f',  // Cards/surfaces - sáng hơn một chút
+            'dark-text': '#e4e7eb',     // Text chính - không quá trắng
+            'dark-text-light': '#b0b5ba', // Text phụ - xám nhẹ
+            'dark-border': '#3a3f47',   // Borders - nhẹ nhàng
+          },
           animation: { 'fade-in': 'fadeIn 0.5s ease-out', 'slide-up': 'slideUp 0.6s ease-out' },
           keyframes: {
             fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
@@ -39,49 +46,147 @@
     @keyframes loading { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
   </style>
 </head>
-<body class="bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 text-gray-800 dark:text-gray-200 min-h-screen">
+<body class="bg-gradient-to-b from-gray-50 to-gray-100 dark:from-dark-bg dark:to-[#1f2329] text-gray-800 dark:text-dark-text min-h-screen">
 
   <!-- Navbar -->
-  <nav class="bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm shadow-lg sticky top-0 z-50 border-b border-gray-200 dark:border-gray-700">
+  <nav class="bg-white/95 dark:bg-dark-surface/95 backdrop-blur-sm shadow-lg sticky top-0 z-50 border-b border-gray-200 dark:border-dark-border">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex justify-between items-center h-16">
         <a href="{{ url_for('home') }}" class="flex items-center space-x-2 group">
           <img src="{{ url_for('static', filename='logo1.jpeg') }}" alt="Logo" class="w-9 h-9 rounded-full ring-2 ring-blue-500 group-hover:ring-blue-600 transition-all">
-          <span class="font-bold text-xl text-gray-800 dark:text-white">EduVerse</span>
+          <span class="font-bold text-xl text-gray-800 dark:text-dark-text">EduVerse</span>
         </a>
 
         <div class="hidden md:flex items-center space-x-1">
-          <a href="{{ url_for('home') }}" class="px-4 py-2 rounded-lg font-medium transition-all {% if request.endpoint == 'home' %}bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300{% else %}hover:bg-gray-100 dark:hover:bg-gray-800{% endif %}">Trang chủ</a>
-          <a href="{{ url_for('course') }}" class="px-4 py-2 rounded-lg font-medium transition-all {% if request.endpoint == 'course' %}bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300{% else %}hover:bg-gray-100 dark:hover:bg-gray-800{% endif %}">Khóa học</a>
+          <a href="{{ url_for('home') }}" class="px-4 py-2 rounded-lg font-medium transition-all {% if request.endpoint == 'home' %}bg-blue-100 text-blue-700 dark:bg-blue-800/30 dark:text-blue-300{% else %}hover:bg-gray-100 dark:hover:bg-dark-surface{% endif %}" data-translate="nav.home">Trang chủ</a>
+          <a href="{{ url_for('course') }}" class="px-4 py-2 rounded-lg font-medium transition-all {% if request.endpoint == 'course' %}bg-blue-100 text-blue-700 dark:bg-blue-800/30 dark:text-blue-300{% else %}hover:bg-gray-100 dark:hover:bg-dark-surface{% endif %}" data-translate="nav.courses">Khóa học</a>
+          <a href="{{ url_for('list_study_rooms') }}" class="px-4 py-2 rounded-lg font-medium transition-all {% if request.endpoint == 'list_study_rooms' %}bg-pink-100 text-pink-700 dark:bg-pink-800/30 dark:text-pink-300{% else %}hover:bg-gray-100 dark:hover:bg-dark-surface{% endif %} flex items-center gap-2">
+            <i class="bi bi-people-fill"></i>
+            <span data-translate="nav.social">Social</span>
+          </a>
+          <a href="{{ url_for('history') }}" class="px-4 py-2 rounded-lg font-medium transition-all {% if request.endpoint == 'history' %}bg-blue-100 text-blue-700 dark:bg-blue-800/30 dark:text-blue-300{% else %}hover:bg-gray-100 dark:hover:bg-dark-surface{% endif %} flex items-center gap-2">
+            <i class="bi bi-clock-history"></i>
+            <span data-translate="nav.history">Lịch sử</span>
+          </a>
+          <a href="{{ url_for('ai_tool') }}" class="px-4 py-2 rounded-lg font-medium transition-all {% if request.endpoint == 'ai_tool' %}bg-blue-100 text-blue-700 dark:bg-blue-800/30 dark:text-blue-300{% else %}hover:bg-gray-100 dark:hover:bg-dark-surface{% endif %} flex items-center gap-2">
+            <i class="bi bi-robot"></i>
+            <span>AI TOOL</span>
+          </a>
           {% if username and is_teacher %}
-          <a href="{{ url_for('manage_courses') }}" class="px-4 py-2 rounded-lg font-medium transition-all hover:bg-gray-100 dark:hover:bg-gray-800">Quản lý</a>
-          <a href="{{ url_for('list_users') }}" class="px-4 py-2 rounded-lg font-medium transition-all hover:bg-gray-100 dark:hover:bg-gray-800">Người dùng</a>
+          <a href="{{ url_for('manage_courses') }}" class="px-4 py-2 rounded-lg font-medium transition-all hover:bg-gray-100 dark:hover:bg-dark-surface" data-translate="nav.manage">Quản lý</a>
+          <a href="{{ url_for('list_users') }}" class="px-4 py-2 rounded-lg font-medium transition-all hover:bg-gray-100 dark:hover:bg-dark-surface" data-translate="nav.users">Người dùng</a>
           {% endif %}
         </div>
 
         <div class="flex items-center space-x-3">
+          <!-- Language Selector -->
+          <div class="relative">
+            <button id="languageToggle" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-surface transition-all relative" title="Chọn ngôn ngữ">
+              <i class="bi bi-globe text-lg text-gray-700 dark:text-dark-text"></i>
+            </button>
+            <div id="languageDropdown" class="absolute right-0 mt-2 w-56 bg-white dark:bg-dark-surface rounded-xl shadow-xl opacity-0 invisible transition-all duration-200 z-50 border border-gray-200 dark:border-dark-border max-h-96 overflow-y-auto" style="display: none;">
+              <div class="py-2">
+                <a href="#" data-lang="vi" class="language-option block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-dark-bg flex items-center gap-2">
+                  <span class="text-2xl">🇻🇳</span>
+                  <span class="text-gray-700 dark:text-dark-text">Tiếng Việt</span>
+                  <i class="bi bi-check text-blue-500 ml-auto hidden" data-lang-check="vi"></i>
+                </a>
+                <a href="#" data-lang="en" class="language-option block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-dark-bg flex items-center gap-2">
+                  <span class="text-2xl">🇺🇸</span>
+                  <span class="text-gray-700 dark:text-dark-text">English</span>
+                  <i class="bi bi-check text-blue-500 ml-auto hidden" data-lang-check="en"></i>
+                </a>
+                <a href="#" data-lang="zh" class="language-option block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-dark-bg flex items-center gap-2">
+                  <span class="text-2xl">🇨🇳</span>
+                  <span class="text-gray-700 dark:text-dark-text">中文</span>
+                  <i class="bi bi-check text-blue-500 ml-auto hidden" data-lang-check="zh"></i>
+                </a>
+                <a href="#" data-lang="ja" class="language-option block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-dark-bg flex items-center gap-2">
+                  <span class="text-2xl">🇯🇵</span>
+                  <span class="text-gray-700 dark:text-dark-text">日本語</span>
+                  <i class="bi bi-check text-blue-500 ml-auto hidden" data-lang-check="ja"></i>
+                </a>
+                <a href="#" data-lang="ko" class="language-option block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-dark-bg flex items-center gap-2">
+                  <span class="text-2xl">🇰🇷</span>
+                  <span class="text-gray-700 dark:text-dark-text">한국어</span>
+                  <i class="bi bi-check text-blue-500 ml-auto hidden" data-lang-check="ko"></i>
+                </a>
+                <a href="#" data-lang="es" class="language-option block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-dark-bg flex items-center gap-2">
+                  <span class="text-2xl">🇪🇸</span>
+                  <span class="text-gray-700 dark:text-dark-text">Español</span>
+                  <i class="bi bi-check text-blue-500 ml-auto hidden" data-lang-check="es"></i>
+                </a>
+                <a href="#" data-lang="fr" class="language-option block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-dark-bg flex items-center gap-2">
+                  <span class="text-2xl">🇫🇷</span>
+                  <span class="text-gray-700 dark:text-dark-text">Français</span>
+                  <i class="bi bi-check text-blue-500 ml-auto hidden" data-lang-check="fr"></i>
+                </a>
+                <a href="#" data-lang="de" class="language-option block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-dark-bg flex items-center gap-2">
+                  <span class="text-2xl">🇩🇪</span>
+                  <span class="text-gray-700 dark:text-dark-text">Deutsch</span>
+                  <i class="bi bi-check text-blue-500 ml-auto hidden" data-lang-check="de"></i>
+                </a>
+                <a href="#" data-lang="pt" class="language-option block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-dark-bg flex items-center gap-2">
+                  <span class="text-2xl">🇵🇹</span>
+                  <span class="text-gray-700 dark:text-dark-text">Português</span>
+                  <i class="bi bi-check text-blue-500 ml-auto hidden" data-lang-check="pt"></i>
+                </a>
+                <a href="#" data-lang="ru" class="language-option block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-dark-bg flex items-center gap-2">
+                  <span class="text-2xl">🇷🇺</span>
+                  <span class="text-gray-700 dark:text-dark-text">Русский</span>
+                  <i class="bi bi-check text-blue-500 ml-auto hidden" data-lang-check="ru"></i>
+                </a>
+                <a href="#" data-lang="th" class="language-option block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-dark-bg flex items-center gap-2">
+                  <span class="text-2xl">🇹🇭</span>
+                  <span class="text-gray-700 dark:text-dark-text">ไทย</span>
+                  <i class="bi bi-check text-blue-500 ml-auto hidden" data-lang-check="th"></i>
+                </a>
+                <a href="#" data-lang="id" class="language-option block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-dark-bg flex items-center gap-2">
+                  <span class="text-2xl">🇮🇩</span>
+                  <span class="text-gray-700 dark:text-dark-text">Bahasa Indonesia</span>
+                  <i class="bi bi-check text-blue-500 ml-auto hidden" data-lang-check="id"></i>
+                </a>
+                <a href="#" data-lang="ar" class="language-option block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-dark-bg flex items-center gap-2">
+                  <span class="text-2xl">🇸🇦</span>
+                  <span class="text-gray-700 dark:text-dark-text">العربية</span>
+                  <i class="bi bi-check text-blue-500 ml-auto hidden" data-lang-check="ar"></i>
+                </a>
+                <a href="#" data-lang="hi" class="language-option block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-dark-bg flex items-center gap-2">
+                  <span class="text-2xl">🇮🇳</span>
+                  <span class="text-gray-700 dark:text-dark-text">हिन्दी</span>
+                  <i class="bi bi-check text-blue-500 ml-auto hidden" data-lang-check="hi"></i>
+                </a>
+                <a href="#" data-lang="it" class="language-option block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-dark-bg flex items-center gap-2">
+                  <span class="text-2xl">🇮🇹</span>
+                  <span class="text-gray-700 dark:text-dark-text">Italiano</span>
+                  <i class="bi bi-check text-blue-500 ml-auto hidden" data-lang-check="it"></i>
+                </a>
+              </div>
+            </div>
+          </div>
+
           <!-- Dark Mode Toggle -->
-          <button id="themeToggle" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-all">
+          <button id="themeToggle" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-surface transition-all">
             <i class="bi bi-moon-stars-fill text-lg dark:hidden"></i>
             <i class="bi bi-sun-fill text-lg hidden dark:inline"></i>
           </button>
 
           {% if username %}
           <div class="relative group">
-            <button class="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-all">
+            <button class="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-surface transition-all">
               <img src="{{ user.avatar_url or 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + username }}" class="w-8 h-8 rounded-full ring-2 ring-blue-500">
               <span class="font-medium hidden sm:inline">{{ username }}</span>
             </button>
-            <div class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
-              <a href="{{ url_for('logout') }}" class="block px-4 py-3 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 rounded-t-xl flex items-center gap-2">
-                <i class="bi bi-box-arrow-right"></i> Đăng xuất
+            <div class="absolute right-0 mt-2 w-48 bg-white dark:bg-dark-surface rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+              <a href="{{ url_for('logout') }}" class="block px-4 py-3 text-sm hover:bg-gray-100 dark:hover:bg-dark-bg rounded-t-xl flex items-center gap-2">
+                <i class="bi bi-box-arrow-right"></i> <span data-translate="nav.logout">Đăng xuất</span>
               </a>
             </div>
           </div>
           {% else %}
           <div class="flex gap-2">
-            <a href="{{ url_for('login') }}" class="px-4 py-2 rounded-lg font-medium border border-blue-600 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all">Đăng nhập</a>
-            <a href="{{ url_for('register') }}" class="px-4 py-2 rounded-lg font-medium bg-blue-600 text-white hover:bg-blue-700 transition-all">Đăng ký</a>
+            <a href="{{ url_for('login') }}" class="px-4 py-2 rounded-lg font-medium border border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-dark-surface transition-all" data-translate="nav.login">Đăng nhập</a>
+            <a href="{{ url_for('register') }}" class="px-4 py-2 rounded-lg font-medium bg-blue-600 text-white hover:bg-blue-700 transition-all" data-translate="nav.register">Đăng ký</a>
           </div>
           {% endif %}
         </div>
@@ -97,176 +202,1243 @@
         <i class="bi bi-stars mr-2 text-yellow-300"></i> Phiên bản mới EduVerse 3.0
       </div>
       <h1 class="text-4xl md:text-6xl font-extrabold text-white mb-6 animate-fade-in leading-tight">
-        Nền tảng học tập toàn diện<br>
-        <span class="text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-pink-300 to-blue-300">AI Adaptive · Anti-cheat · Social Learning</span>
+        <span data-translate="hero.title">Nền tảng học tập AI</span><br>
+        <span class="text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-pink-300 to-blue-300" data-translate="hero.subtitle">Thế hệ mới</span>
       </h1>
-      <p class="text-xl md:text-2xl text-gray-100 mb-10 max-w-4xl mx-auto font-medium">
-        Chào mừng {{ username or 'bạn' }}! Khám phá hành trình học thông minh với hệ thống phát hiện gian lận theo thời gian thực,
-        lộ trình adaptive learning cá nhân hóa và cộng đồng học nhóm năng động.
+      <p class="text-xl md:text-2xl text-gray-100 mb-10 max-w-4xl mx-auto font-medium leading-relaxed">
+        <span data-translate="hero.welcome">Chào mừng</span> <strong>{{ username or 'bạn' }}</strong>! <span data-translate="hero.desc">Khám phá EduVerse 3.0 - Hệ sinh thái học tập thông minh với</span> 
+        <strong data-translate="hero.feature1">AI tạo video từ tài liệu</strong>, <strong data-translate="hero.feature2">phát hiện gian lận realtime</strong>, 
+        <strong data-translate="hero.feature3">lộ trình học cá nhân hóa</strong> và <strong data-translate="hero.feature4">cộng đồng học tập năng động</strong>. 
+        <span data-translate="hero.desc2">Tất cả trong một nền tảng duy nhất.</span>
       </p>
       <div class="flex flex-wrap justify-center gap-4">
-        <a href="#features" class="inline-flex items-center px-8 py-4 bg-white text-blue-700 font-semibold rounded-full hover:bg-blue-50 transform hover:-translate-y-1 transition-all shadow-xl">
-          <i class="bi bi-lightning-charge-fill mr-2"></i> Xem tính năng mới
+        <a href="#features" class="inline-flex items-center px-8 py-4 bg-white dark:bg-dark-surface text-blue-700 dark:text-blue-300 font-semibold rounded-full hover:bg-blue-50 dark:hover:bg-dark-bg transform hover:-translate-y-1 transition-all shadow-xl">
+          <i class="bi bi-lightning-charge-fill mr-2"></i> <span data-translate="hero.cta1">Xem tính năng mới</span>
         </a>
         <a href="#courses" class="inline-flex items-center px-8 py-4 border-2 border-white/70 text-white font-semibold rounded-full hover:bg-white/10 transform hover:-translate-y-1 transition-all">
-          <i class="bi bi-arrow-down-circle-fill mr-2"></i> Bắt đầu học ngay
+          <i class="bi bi-arrow-down-circle-fill mr-2"></i> <span data-translate="hero.cta2">Bắt đầu học ngay</span>
         </a>
       </div>
     </div>
-    <div class="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-gray-50 dark:from-gray-900 to-transparent"></div>
+    <div class="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-gray-50 dark:from-dark-bg to-transparent"></div>
   </section>
 
   <!-- Feature Highlights -->
-  <section id="features" class="py-16 md:py-20 bg-gradient-to-b from-white to-blue-50 dark:from-gray-900 dark:to-gray-800">
+  <section id="features" class="py-16 md:py-24 bg-gradient-to-b from-white via-blue-50/50 to-white dark:from-dark-bg dark:via-[#1f2329] dark:to-dark-bg">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="text-center mb-12">
-        <p class="text-sm font-semibold uppercase tracking-widest text-blue-600 dark:text-blue-300 mb-2">Tính năng mới</p>
-        <h2 class="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">Trải nghiệm học tập thế hệ mới</h2>
-        <p class="text-lg text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
-          EduVerse 3.0 giới thiệu bộ công cụ thông minh giúp giảng viên yên tâm giám sát, học viên luôn được cá nhân hóa và kết nối cộng đồng dễ dàng.
+      <div class="text-center mb-16">
+        <p class="text-sm font-semibold uppercase tracking-widest text-blue-600 dark:text-blue-400 mb-3" data-translate="features.subtitle">Công nghệ AI tiên tiến</p>
+        <h2 class="text-4xl md:text-5xl font-extrabold text-gray-900 dark:text-dark-text mb-5 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent" data-translate="features.title">
+          Hệ sinh thái học tập thông minh
+        </h2>
+        <p class="text-xl text-gray-600 dark:text-dark-text-light max-w-4xl mx-auto leading-relaxed" data-translate="features.desc">
+          EduVerse 3.0 tích hợp AI toàn diện: Tạo video bài giảng tự động, phát hiện gian lận thời gian thực, 
+          lộ trình học cá nhân hóa và cộng đồng học tập năng động. Tất cả trong một nền tảng duy nhất.
         </p>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div class="bg-white dark:bg-gray-800 rounded-3xl p-8 shadow-lg border border-blue-100 dark:border-blue-900/40">
-          <div class="w-14 h-14 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center text-2xl mb-5">
+      <!-- Main Features Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
+        <!-- 1. AI Video Generation -->
+        <div class="group bg-white dark:bg-dark-surface rounded-3xl p-8 shadow-xl border-2 border-transparent hover:border-blue-500 dark:hover:border-blue-400 transition-all duration-300 hover:shadow-2xl hover:-translate-y-2">
+          <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 text-white flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform">
+            <i class="bi bi-camera-video-fill"></i>
+          </div>
+          <h3 class="text-2xl font-bold text-gray-900 dark:text-dark-text mb-3" data-translate="feature1.title">AI Video Generation</h3>
+          <p class="text-gray-600 dark:text-dark-text-light leading-relaxed mb-4" data-translate="feature1.desc">
+            Tự động tạo video bài giảng chuyên nghiệp từ tài liệu (PDF, DOCX, PPTX) với phong cách NotebookLM. 
+            AI phân tích nội dung, tạo script tự nhiên, hình ảnh minh họa và giọng đọc TTS chất lượng cao.
+          </p>
+          <ul class="space-y-2 text-sm text-gray-600 dark:text-dark-text-light">
+            <li class="flex items-center"><i class="bi bi-check-circle-fill text-blue-500 mr-2"></i><span data-translate="feature1.bullet1">Tạo video 2-3 phút từ tài liệu</span></li>
+            <li class="flex items-center"><i class="bi bi-check-circle-fill text-blue-500 mr-2"></i><span data-translate="feature1.bullet2">Script tự nhiên như giáo viên thật</span></li>
+            <li class="flex items-center"><i class="bi bi-check-circle-fill text-blue-500 mr-2"></i><span data-translate="feature1.bullet3">Hình ảnh AI phù hợp nội dung</span></li>
+            <li class="flex items-center"><i class="bi bi-check-circle-fill text-blue-500 mr-2"></i><span data-translate="feature1.bullet4">Giọng đọc TTS tự nhiên</span></li>
+          </ul>
+        </div>
+
+        <!-- 2. AI Anti-Cheat Proctoring -->
+        <div class="group bg-white dark:bg-dark-surface rounded-3xl p-8 shadow-xl border-2 border-transparent hover:border-red-500 dark:hover:border-red-400 transition-all duration-300 hover:shadow-2xl hover:-translate-y-2">
+          <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-red-500 to-pink-500 text-white flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform">
             <i class="bi bi-shield-lock-fill"></i>
           </div>
-          <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">AI Anti-Cheat Proctoring</h3>
-          <p class="text-gray-600 dark:text-gray-400 leading-relaxed">
-            Hệ thống phát hiện gian lận thời gian thực: nhận diện khuôn mặt, theo dõi bất thường, cảnh báo tự động để đảm bảo
-            kỳ thi online minh bạch và an toàn tuyệt đối.
+          <h3 class="text-2xl font-bold text-gray-900 dark:text-dark-text mb-3" data-translate="feature2.title">AI Anti-Cheat Proctoring</h3>
+          <p class="text-gray-600 dark:text-dark-text-light leading-relaxed mb-4" data-translate="feature2.desc">
+            Hệ thống giám sát thi cử thông minh với AI nhận diện khuôn mặt, phát hiện hành vi bất thường, 
+            cảnh báo gian lận theo thời gian thực và lưu trữ bằng chứng tự động.
           </p>
-          <ul class="mt-4 space-y-2 text-sm text-gray-600 dark:text-gray-400">
-            <li><i class="bi bi-check-circle-fill text-blue-500 mr-2"></i>Nhận diện nhiều khuôn mặt</li>
-            <li><i class="bi bi-check-circle-fill text-blue-500 mr-2"></i>Cảnh báo khi rời màn hình</li>
-            <li><i class="bi bi-check-circle-fill text-blue-500 mr-2"></i>Báo cáo gian lận chi tiết</li>
+          <ul class="space-y-2 text-sm text-gray-600 dark:text-dark-text-light">
+            <li class="flex items-center"><i class="bi bi-check-circle-fill text-red-500 mr-2"></i><span data-translate="feature2.bullet1">Nhận diện nhiều khuôn mặt realtime</span></li>
+            <li class="flex items-center"><i class="bi bi-check-circle-fill text-red-500 mr-2"></i><span data-translate="feature2.bullet2">Phát hiện rời màn hình, tab switching</span></li>
+            <li class="flex items-center"><i class="bi bi-check-circle-fill text-red-500 mr-2"></i><span data-translate="feature2.bullet3">Dashboard báo cáo gian lận chi tiết</span></li>
+            <li class="flex items-center"><i class="bi bi-check-circle-fill text-red-500 mr-2"></i><span data-translate="feature2.bullet4">Lưu ảnh bằng chứng tự động</span></li>
           </ul>
         </div>
 
-        <div class="bg-white dark:bg-gray-800 rounded-3xl p-8 shadow-lg border border-violet-100 dark:border-violet-900/40">
-          <div class="w-14 h-14 rounded-2xl bg-violet-100 text-violet-600 flex items-center justify-center text-2xl mb-5">
-            <i class="bi bi-magic"></i>
+        <!-- 3. Adaptive Learning Path -->
+        <div class="group bg-white dark:bg-dark-surface rounded-3xl p-8 shadow-xl border-2 border-transparent hover:border-purple-500 dark:hover:border-purple-400 transition-all duration-300 hover:shadow-2xl hover:-translate-y-2">
+          <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-500 text-white flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform">
+            <i class="bi bi-graph-up-arrow"></i>
           </div>
-          <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">Adaptive Learning Path</h3>
-          <p class="text-gray-600 dark:text-gray-400 leading-relaxed">
-            AI phân tích tiến độ, điểm mạnh yếu của từng học viên để đề xuất khóa học, quiz, tài nguyên phù hợp – tạo hành trình học cá nhân hóa thật sự.
+          <h3 class="text-2xl font-bold text-gray-900 dark:text-dark-text mb-3" data-translate="feature3.title">Adaptive Learning Path</h3>
+          <p class="text-gray-600 dark:text-dark-text-light leading-relaxed mb-4" data-translate="feature3.desc">
+            AI phân tích sâu tiến độ, điểm mạnh yếu của từng học viên để đề xuất khóa học, quiz, 
+            tài nguyên phù hợp – tạo hành trình học tập cá nhân hóa hoàn toàn.
           </p>
-          <ul class="mt-4 space-y-2 text-sm text-gray-600 dark:text-gray-400">
-            <li><i class="bi bi-check-circle-fill text-violet-500 mr-2"></i>Gợi ý nội dung theo năng lực</li>
-            <li><i class="bi bi-check-circle-fill text-violet-500 mr-2"></i>Quiz động theo kết quả gần nhất</li>
-            <li><i class="bi bi-check-circle-fill text-violet-500 mr-2"></i>Dashboard tiến độ cá nhân</li>
+          <ul class="space-y-2 text-sm text-gray-600 dark:text-dark-text-light">
+            <li class="flex items-center"><i class="bi bi-check-circle-fill text-purple-500 mr-2"></i><span data-translate="feature3.bullet1">Gợi ý nội dung theo năng lực</span></li>
+            <li class="flex items-center"><i class="bi bi-check-circle-fill text-purple-500 mr-2"></i><span data-translate="feature3.bullet2">Quiz động điều chỉnh độ khó</span></li>
+            <li class="flex items-center"><i class="bi bi-check-circle-fill text-purple-500 mr-2"></i><span data-translate="feature3.bullet3">Dashboard tiến độ cá nhân chi tiết</span></li>
+            <li class="flex items-center"><i class="bi bi-check-circle-fill text-purple-500 mr-2"></i><span data-translate="feature3.bullet4">Phân tích điểm yếu và đề xuất cải thiện</span></li>
           </ul>
         </div>
 
-        <div class="bg-white dark:bg-gray-800 rounded-3xl p-8 shadow-lg border border-pink-100 dark:border-pink-900/40">
-          <div class="w-14 h-14 rounded-2xl bg-pink-100 text-pink-600 flex items-center justify-center text-2xl mb-5">
+        <!-- 4. AI Quiz Generation -->
+        <div class="group bg-white dark:bg-dark-surface rounded-3xl p-8 shadow-xl border-2 border-transparent hover:border-green-500 dark:hover:border-green-400 transition-all duration-300 hover:shadow-2xl hover:-translate-y-2">
+          <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-500 text-white flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform">
+            <i class="bi bi-question-circle-fill"></i>
+          </div>
+          <h3 class="text-2xl font-bold text-gray-900 dark:text-dark-text mb-3" data-translate="feature4.title">AI Quiz Generation</h3>
+          <p class="text-gray-600 dark:text-dark-text-light leading-relaxed mb-4" data-translate="feature4.desc">
+            Tự động tạo câu hỏi kiểm tra đa dạng từ transcript video bài giảng. AI Gemini phân tích nội dung, 
+            tạo 20+ câu hỏi khác nhau với đáp án và giải thích chi tiết.
+          </p>
+          <ul class="space-y-2 text-sm text-gray-600 dark:text-dark-text-light">
+            <li class="flex items-center"><i class="bi bi-check-circle-fill text-green-500 mr-2"></i><span data-translate="feature4.bullet1">Tạo câu hỏi từ transcript tự động</span></li>
+            <li class="flex items-center"><i class="bi bi-check-circle-fill text-green-500 mr-2"></i><span data-translate="feature4.bullet2">20+ câu hỏi đa dạng mỗi bài</span></li>
+            <li class="flex items-center"><i class="bi bi-check-circle-fill text-green-500 mr-2"></i><span data-translate="feature4.bullet3">Giải thích đáp án chi tiết</span></li>
+            <li class="flex items-center"><i class="bi bi-check-circle-fill text-green-500 mr-2"></i><span data-translate="feature4.bullet4">Chấm điểm và phân tích tự động</span></li>
+          </ul>
+        </div>
+
+        <!-- 5. AI Video Chat -->
+        <div class="group bg-white dark:bg-dark-surface rounded-3xl p-8 shadow-xl border-2 border-transparent hover:border-yellow-500 dark:hover:border-yellow-400 transition-all duration-300 hover:shadow-2xl hover:-translate-y-2">
+          <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-yellow-500 to-orange-500 text-white flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform">
+            <i class="bi bi-chat-dots-fill"></i>
+          </div>
+          <h3 class="text-2xl font-bold text-gray-900 dark:text-dark-text mb-3" data-translate="feature5.title">AI Video Chat</h3>
+          <p class="text-gray-600 dark:text-dark-text-light leading-relaxed mb-4" data-translate="feature5.desc">
+            Trợ lý AI thông minh có thể trả lời câu hỏi về nội dung video bài giảng. 
+            Hỏi bất kỳ điều gì, AI sẽ phân tích transcript và đưa ra câu trả lời chính xác, chi tiết.
+          </p>
+          <ul class="space-y-2 text-sm text-gray-600 dark:text-dark-text-light">
+            <li class="flex items-center"><i class="bi bi-check-circle-fill text-yellow-500 mr-2"></i><span data-translate="feature5.bullet1">Chat với AI về nội dung video</span></li>
+            <li class="flex items-center"><i class="bi bi-check-circle-fill text-yellow-500 mr-2"></i><span data-translate="feature5.bullet2">Phân tích transcript thông minh</span></li>
+            <li class="flex items-center"><i class="bi bi-check-circle-fill text-yellow-500 mr-2"></i><span data-translate="feature5.bullet3">Trả lời câu hỏi chi tiết, chính xác</span></li>
+            <li class="flex items-center"><i class="bi bi-check-circle-fill text-yellow-500 mr-2"></i><span data-translate="feature5.bullet4">Hỗ trợ học tập 24/7</span></li>
+          </ul>
+        </div>
+
+        <!-- 6. Social Learning Hub -->
+        <div class="group bg-white dark:bg-dark-surface rounded-3xl p-8 shadow-xl border-2 border-transparent hover:border-pink-500 dark:hover:border-pink-400 transition-all duration-300 hover:shadow-2xl hover:-translate-y-2">
+          <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-pink-500 to-rose-500 text-white flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform">
             <i class="bi bi-people-fill"></i>
           </div>
-          <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">Social Learning Hub</h3>
-          <p class="text-gray-600 dark:text-gray-400 leading-relaxed">
-            Cộng đồng học tập sôi động, tạo phòng học nhóm, livestream, chia sẻ tài nguyên và mentor hỗ trợ –
-            giúp việc học không còn cô đơn.
+          <h3 class="text-2xl font-bold text-gray-900 dark:text-dark-text mb-3" data-translate="feature6.title">Social Learning Hub</h3>
+          <p class="text-gray-600 dark:text-dark-text-light leading-relaxed mb-4" data-translate="feature6.desc">
+            Cộng đồng học tập sôi động với phòng học nhóm realtime, livestream bài giảng, 
+            chia sẻ tài nguyên và hệ thống mentor hỗ trợ – học tập không còn cô đơn.
           </p>
-          <ul class="mt-4 space-y-2 text-sm text-gray-600 dark:text-gray-400">
-            <li><i class="bi bi-check-circle-fill text-pink-500 mr-2"></i>Phòng học nhóm realtime</li>
-            <li><i class="bi bi-check-circle-fill text-pink-500 mr-2"></i>Bảng tin chia sẻ tài nguyên</li>
-            <li><i class="bi bi-check-circle-fill text-pink-500 mr-2"></i>Mentor ghép cặp tức thì</li>
+          <ul class="space-y-2 text-sm text-gray-600 dark:text-dark-text-light">
+            <li class="flex items-center"><i class="bi bi-check-circle-fill text-pink-500 mr-2"></i><span data-translate="feature6.bullet1">Phòng học nhóm realtime</span></li>
+            <li class="flex items-center"><i class="bi bi-check-circle-fill text-pink-500 mr-2"></i><span data-translate="feature6.bullet2">Livestream bài giảng trực tiếp</span></li>
+            <li class="flex items-center"><i class="bi bi-check-circle-fill text-pink-500 mr-2"></i><span data-translate="feature6.bullet3">Bảng tin chia sẻ tài nguyên</span></li>
+            <li class="flex items-center"><i class="bi bi-check-circle-fill text-pink-500 mr-2"></i><span data-translate="feature6.bullet4">Mentor ghép cặp thông minh</span></li>
           </ul>
+        </div>
+      </div>
+
+      <!-- Additional Features Row -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- 7. Smart Exam System -->
+        <div class="bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-dark-surface dark:to-[#1f2329] rounded-2xl p-6 border border-indigo-200 dark:border-dark-border">
+          <div class="flex items-start gap-4">
+            <div class="w-12 h-12 rounded-xl bg-indigo-500 text-white flex items-center justify-center text-xl flex-shrink-0">
+              <i class="bi bi-clipboard-check-fill"></i>
+            </div>
+            <div>
+              <h4 class="text-lg font-bold text-gray-900 dark:text-dark-text mb-2" data-translate="feature7.title">Smart Exam System</h4>
+              <p class="text-sm text-gray-600 dark:text-dark-text-light" data-translate="feature7.desc">
+                Hệ thống thi trực tuyến với timer, auto-submit, lưu tiến độ tự động và tích hợp proctoring AI. 
+                Kết quả được phân tích chi tiết với biểu đồ và thống kê.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 8. Course Management AI -->
+        <div class="bg-gradient-to-br from-teal-50 to-cyan-50 dark:from-dark-surface dark:to-[#1f2329] rounded-2xl p-6 border border-teal-200 dark:border-dark-border">
+          <div class="flex items-start gap-4">
+            <div class="w-12 h-12 rounded-xl bg-teal-500 text-white flex items-center justify-center text-xl flex-shrink-0">
+              <i class="bi bi-journal-bookmark-fill"></i>
+            </div>
+            <div>
+              <h4 class="text-lg font-bold text-gray-900 dark:text-dark-text mb-2" data-translate="feature8.title">Course Management AI</h4>
+              <p class="text-sm text-gray-600 dark:text-dark-text-light" data-translate="feature8.desc">
+                Quản lý khóa học thông minh với AI: Tạo module, bài học, upload video, tài liệu. 
+                Tự động tạo video từ PDF, quản lý học viên và theo dõi tiến độ.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- Courses Section -->
-  <section id="courses" class="py-16 md:py-20">
+  <!-- Quick Access: Social & History -->
+  <section class="py-12 md:py-16 bg-gradient-to-b from-white to-gray-50 dark:from-dark-bg dark:to-[#1f2329]">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="text-center mb-12">
-        <h2 class="text-3xl md:text-4xl font-bold text-gray-800 dark:text-white mb-4">Khám Phá Các Khóa Học</h2>
-        <p class="text-lg text-gray-600 dark:text-gray-400">Hàng trăm khóa học chất lượng cao đang chờ bạn</p>
-      </div>
-
-      <!-- Search & Filter -->
-      <div class="mb-10 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div class="relative md:col-span-2">
-            <div class="flex">
-              <span class="inline-flex items-center px-4 text-gray-500 bg-gray-100 dark:bg-gray-700 border border-r-0 border-gray-300 dark:border-gray-600 rounded-l-xl">
-                <i class="bi bi-search"></i>
-              </span>
-              <input id="searchTitle" type="text" placeholder="Tìm tên, tag, thể loại..." class="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-r-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white outline-none">
-            </div>
-            <div id="searchSuggest" class="absolute top-full mt-2 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-64 overflow-auto search-suggest hidden z-20"></div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Social Learning Hub Card -->
+        <a href="{{ url_for('list_study_rooms') }}" class="group relative bg-white dark:bg-dark-surface rounded-3xl p-8 shadow-xl border-2 border-transparent hover:border-pink-500 dark:hover:border-pink-400 transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 overflow-hidden">
+          <!-- RGB Border Animation -->
+          <div class="absolute top-0 left-0 right-0 bottom-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            <div class="absolute -inset-1 bg-gradient-to-r from-pink-500 via-purple-500 via-blue-500 to-cyan-500 rounded-3xl blur-sm animate-pulse"></div>
           </div>
-          <select id="filterCategory" class="px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none">
-            <option value="">Tất cả thể loại</option>
-            {% for cat in categories or [] %}
-              <option value="{{ cat|lower }}">{{ cat }}</option>
-            {% endfor %}
-          </select>
-          <button id="resetFilter" class="px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-300 dark:hover:bg-gray-600 transition-all font-medium">
-            <i class="bi bi-arrow-counterclockwise"></i> Xóa
-          </button>
-        </div>
-      </div>
-
-      <!-- Course Grid -->
-      <div id="courseGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {% for course in courses %}
-        {% set _title = course.title or course.name or course.course_name or course.CourseName or course.Title or course.Name %}
-        {% set _desc  = course.description or course.short_description or course.desc or course.summary %}
-        {% set _cate  = course.category or course.cate or course.topic or course.subject or '' %}
-        {% set _tags  = course.tags if course.tags is iterable and course.tags is not string else ([course.tags] if course.tags else []) %}
-
-        <div class="course-item opacity-0 animate-slide-up" 
-             data-title="{{ (_title or '')|lower }}"
-             data-category="{{ _cate|lower }}"
-             data-tags="{{ _tags|join(',')|lower }}"
-             style="animation-delay: {{ loop.index * 0.1 }}s">
-          <div class="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-lg card-hover">
-            <div class="relative group">
-              <img src="{{ course.image_url or 'https://placehold.co/600x400?text=' + (_title[:20] | urlencode) }}" class="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300" alt="{{ _title }}">
-              <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
-                <span class="text-white font-semibold">{{ _cate }}</span>
-              </div>
+          
+          <div class="relative z-10">
+            <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-pink-500 to-rose-500 text-white flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform">
+              <i class="bi bi-people-fill"></i>
             </div>
-            <div class="p-6">
-              <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-2 line-clamp-2">{{ _title }}</h3>
-              <p class="text-gray-600 dark:text-gray-400 text-sm mb-4 line-clamp-2">{{ _desc or 'Khám phá khóa học này để nâng cao kỹ năng.' }}</p>
-              {% if _tags %}
-              <div class="flex flex-wrap gap-2 mb-4">
-                {% for t in _tags %}{% if t %}
-                <span class="px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-xs font-medium rounded-full">{{ t }}</span>
-                {% endif %}{% endfor %}
-              </div>
-              {% endif %}
-              <a href="{{ url_for('course_detail', course_id=(course.id or course.course_id or course.ID or course.Id or course.CourseId)) }}"
-                 class="inline-flex items-center text-blue-600 dark:text-blue-400 font-semibold hover:text-blue-800 dark:hover:text-blue-300 transition-colors">
-                Xem chi tiết <i class="bi bi-arrow-right ml-1"></i>
-              </a>
+            <h3 class="text-2xl font-bold text-gray-900 dark:text-dark-text mb-3" data-translate="quick.social.title">Social Learning Hub</h3>
+            <p class="text-gray-600 dark:text-dark-text-light leading-relaxed mb-4" data-translate="quick.social.desc">
+              Tham gia phòng học nhóm, kết nối với bạn bè, học tập cùng nhau và chia sẻ kiến thức trong cộng đồng học tập năng động.
+            </p>
+            <div class="flex items-center text-pink-600 dark:text-pink-400 font-semibold">
+              <span data-translate="quick.social.cta">Khám phá ngay</span>
+              <i class="bi bi-arrow-right ml-2 group-hover:translate-x-2 transition-transform"></i>
             </div>
           </div>
-        </div>
-        {% endfor %}
-      </div>
+        </a>
 
-      <div id="noResults" class="text-center py-12 text-gray-500 dark:text-gray-400 hidden">
-        <i class="bi bi-emoji-frown text-4xl mb-4"></i>
-        <p class="text-lg">Không tìm thấy khóa học nào phù hợp.</p>
+        <!-- History Card -->
+        <a href="{{ url_for('history') }}" class="group relative bg-white dark:bg-dark-surface rounded-3xl p-8 shadow-xl border-2 border-transparent hover:border-blue-500 dark:hover:border-blue-400 transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 overflow-hidden">
+          <!-- RGB Border Animation -->
+          <div class="absolute top-0 left-0 right-0 bottom-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            <div class="absolute -inset-1 bg-gradient-to-r from-blue-500 via-cyan-500 to-teal-500 rounded-3xl blur-sm animate-pulse"></div>
+          </div>
+          
+          <div class="relative z-10">
+            <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 text-white flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform">
+              <i class="bi bi-clock-history"></i>
+            </div>
+            <h3 class="text-2xl font-bold text-gray-900 dark:text-dark-text mb-3" data-translate="quick.history.title">Lịch sử</h3>
+            <p class="text-gray-600 dark:text-dark-text-light leading-relaxed mb-4" data-translate="quick.history.desc">
+              Xem lại lịch sử học tập, bài kiểm tra đã làm, điểm số và tiến độ của bạn. Theo dõi hành trình học tập và cải thiện liên tục.
+            </p>
+            <div class="flex items-center text-blue-600 dark:text-blue-400 font-semibold">
+              <span data-translate="quick.history.cta">Xem lịch sử</span>
+              <i class="bi bi-arrow-right ml-2 group-hover:translate-x-2 transition-transform"></i>
+            </div>
+          </div>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Feedback Section -->
+  <section class="py-12 md:py-16 bg-gradient-to-b from-white to-gray-50 dark:from-dark-bg dark:to-[#1f2329]">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="bg-white dark:bg-dark-surface rounded-2xl shadow-xl border border-gray-200 dark:border-dark-border p-6 md:p-8">
+        <div class="text-center mb-6">
+          <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 text-white mb-4">
+            <i class="bi bi-chat-heart-fill text-2xl"></i>
+          </div>
+          <h3 class="text-2xl font-bold text-gray-900 dark:text-dark-text mb-2" data-translate="feedback.title">Góp ý của bạn rất quan trọng!</h3>
+          <p class="text-gray-600 dark:text-dark-text-light" data-translate="feedback.subtitle">Chia sẻ ý kiến để chúng tôi cải thiện EduVerse tốt hơn</p>
+        </div>
+
+        <form id="feedbackForm" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-dark-text-light mb-2" data-translate="feedback.name">Tên của bạn (tùy chọn)</label>
+            <input type="text" id="feedbackName" name="name" class="w-full px-4 py-3 border border-gray-300 dark:border-dark-border rounded-xl dark:bg-dark-surface dark:text-dark-text focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" data-placeholder="feedback.namePlaceholder" placeholder="Nhập tên của bạn...">
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-dark-text-light mb-2" data-translate="feedback.email">Email (tùy chọn)</label>
+            <input type="email" id="feedbackEmail" name="email" class="w-full px-4 py-3 border border-gray-300 dark:border-dark-border rounded-xl dark:bg-dark-surface dark:text-dark-text focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" data-placeholder="feedback.emailPlaceholder" placeholder="your.email@example.com">
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-dark-text-light mb-2" data-translate="feedback.message">Tin nhắn của bạn <span class="text-red-500">*</span></label>
+            <textarea id="feedbackMessage" name="message" rows="4" required class="w-full px-4 py-3 border border-gray-300 dark:border-dark-border rounded-xl dark:bg-dark-surface dark:text-dark-text focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none" data-placeholder="feedback.messagePlaceholder" placeholder="Chia sẻ ý kiến, đề xuất hoặc báo cáo vấn đề..."></textarea>
+            <p class="text-xs text-gray-500 dark:text-dark-text-light mt-1" data-translate="feedback.messageHint">Tối thiểu 10 ký tự</p>
+          </div>
+
+          <div class="flex items-center gap-4">
+            <button type="submit" class="flex-1 bg-gradient-to-r from-blue-500 to-purple-500 text-white font-semibold py-3 px-6 rounded-xl hover:from-blue-600 hover:to-purple-600 transform hover:-translate-y-0.5 transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2">
+              <i class="bi bi-send-fill"></i>
+              <span data-translate="feedback.submit">Gửi phản hồi</span>
+            </button>
+          </div>
+
+          <div id="feedbackSuccess" class="hidden p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl">
+            <div class="flex items-center gap-2 text-green-700 dark:text-green-400">
+              <i class="bi bi-check-circle-fill text-xl"></i>
+              <p class="font-medium" data-translate="feedback.success">Cảm ơn bạn đã góp ý! Chúng tôi sẽ xem xét và cải thiện.</p>
+            </div>
+          </div>
+
+          <div id="feedbackError" class="hidden p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
+            <div class="flex items-center gap-2 text-red-700 dark:text-red-400">
+              <i class="bi bi-exclamation-circle-fill text-xl"></i>
+              <p class="font-medium" data-translate="feedback.error">Có lỗi xảy ra. Vui lòng thử lại sau.</p>
+            </div>
+          </div>
+        </form>
       </div>
     </div>
   </section>
 
   <!-- Footer -->
-  <footer class="bg-gradient-to-t from-gray-900 to-gray-800 text-gray-300 py-12 mt-20">
+  <footer class="bg-gradient-to-t from-gray-900 dark:from-dark-bg to-gray-800 dark:to-[#1f2329] text-gray-300 dark:text-dark-text-light py-12 mt-20">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-      <p class="text-sm">&copy; 2025 <span class="text-blue-400 font-semibold">EduVerse</span>. Tất cả quyền được bảo lưu.</p>
-      <p class="text-xs mt-2">Thiết kế với ❤️ cho người học Việt Nam</p>
+      <p class="text-sm">&copy; 2025 <span class="text-blue-400 dark:text-blue-300 font-semibold">EduVerse</span>. <span data-translate="footer.copyright">Tất cả quyền được bảo lưu.</span></p>
+      <p class="text-xs mt-2" data-translate="footer.design">Thiết kế với ❤️ cho người học Việt Nam</p>
     </div>
   </footer>
 
   <!-- Scripts -->
   <script>
+    // Translation System
+    const translations = {
+      vi: {
+        'nav.home': 'Trang chủ',
+        'nav.courses': 'Khóa học',
+        'nav.social': 'Social',
+        'nav.history': 'Lịch sử',
+        'nav.manage': 'Quản lý',
+        'nav.users': 'Người dùng',
+        'nav.login': 'Đăng nhập',
+        'nav.register': 'Đăng ký',
+        'nav.logout': 'Đăng xuất',
+        'hero.title': 'Nền tảng học tập AI',
+        'hero.subtitle': 'Thế hệ mới',
+        'hero.welcome': 'Chào mừng',
+        'hero.desc': 'Khám phá EduVerse 3.0 - Hệ sinh thái học tập thông minh với',
+        'hero.desc2': 'Tất cả trong một nền tảng duy nhất.',
+        'hero.feature1': 'AI tạo video từ tài liệu',
+        'hero.feature2': 'phát hiện gian lận realtime',
+        'hero.feature3': 'lộ trình học cá nhân hóa',
+        'hero.feature4': 'cộng đồng học tập năng động',
+        'hero.cta1': 'Xem tính năng mới',
+        'hero.cta2': 'Bắt đầu học ngay',
+        'features.title': 'Hệ sinh thái học tập thông minh',
+        'features.subtitle': 'Công nghệ AI tiên tiến',
+        'features.desc': 'EduVerse 3.0 tích hợp AI toàn diện: Tạo video bài giảng tự động, phát hiện gian lận thời gian thực, lộ trình học cá nhân hóa và cộng đồng học tập năng động. Tất cả trong một nền tảng duy nhất.',
+        'courses.title': 'Khám Phá Các Khóa Học',
+        'courses.subtitle': 'Hàng trăm khóa học chất lượng cao đang chờ bạn',
+        'courses.search': 'Tìm tên, tag, thể loại...',
+        'courses.filter': 'Tất cả thể loại',
+        'courses.reset': 'Xóa',
+        'courses.view': 'Xem chi tiết',
+        'courses.noresults': 'Không tìm thấy khóa học nào phù hợp.',
+        'footer.copyright': 'Tất cả quyền được bảo lưu.',
+        'footer.design': 'Thiết kế với ❤️ cho người học Việt Nam',
+        'feature1.title': 'AI Video Generation',
+        'feature1.desc': 'Tự động tạo video bài giảng chuyên nghiệp từ tài liệu (PDF, DOCX, PPTX) với phong cách NotebookLM. AI phân tích nội dung, tạo script tự nhiên, hình ảnh minh họa và giọng đọc TTS chất lượng cao.',
+        'feature1.bullet1': 'Tạo video 2-3 phút từ tài liệu',
+        'feature1.bullet2': 'Script tự nhiên như giáo viên thật',
+        'feature1.bullet3': 'Hình ảnh AI phù hợp nội dung',
+        'feature1.bullet4': 'Giọng đọc TTS tự nhiên',
+        'feature2.title': 'AI Anti-Cheat Proctoring',
+        'feature2.desc': 'Hệ thống giám sát thi cử thông minh với AI nhận diện khuôn mặt, phát hiện hành vi bất thường, cảnh báo gian lận theo thời gian thực và lưu trữ bằng chứng tự động.',
+        'feature2.bullet1': 'Nhận diện nhiều khuôn mặt realtime',
+        'feature2.bullet2': 'Phát hiện rời màn hình, tab switching',
+        'feature2.bullet3': 'Dashboard báo cáo gian lận chi tiết',
+        'feature2.bullet4': 'Lưu ảnh bằng chứng tự động',
+        'feature3.title': 'Adaptive Learning Path',
+        'feature3.desc': 'AI phân tích sâu tiến độ, điểm mạnh yếu của từng học viên để đề xuất khóa học, quiz, tài nguyên phù hợp – tạo hành trình học tập cá nhân hóa hoàn toàn.',
+        'feature3.bullet1': 'Gợi ý nội dung theo năng lực',
+        'feature3.bullet2': 'Quiz động điều chỉnh độ khó',
+        'feature3.bullet3': 'Dashboard tiến độ cá nhân chi tiết',
+        'feature3.bullet4': 'Phân tích điểm yếu và đề xuất cải thiện',
+        'feature4.title': 'AI Quiz Generation',
+        'feature4.desc': 'Tự động tạo câu hỏi kiểm tra đa dạng từ transcript video bài giảng. AI Gemini phân tích nội dung, tạo 20+ câu hỏi khác nhau với đáp án và giải thích chi tiết.',
+        'feature4.bullet1': 'Tạo câu hỏi từ transcript tự động',
+        'feature4.bullet2': '20+ câu hỏi đa dạng mỗi bài',
+        'feature4.bullet3': 'Giải thích đáp án chi tiết',
+        'feature4.bullet4': 'Chấm điểm và phân tích tự động',
+        'feature5.title': 'AI Video Chat',
+        'feature5.desc': 'Trợ lý AI thông minh có thể trả lời câu hỏi về nội dung video bài giảng. Hỏi bất kỳ điều gì, AI sẽ phân tích transcript và đưa ra câu trả lời chính xác, chi tiết.',
+        'feature5.bullet1': 'Chat với AI về nội dung video',
+        'feature5.bullet2': 'Phân tích transcript thông minh',
+        'feature5.bullet3': 'Trả lời câu hỏi chi tiết, chính xác',
+        'feature5.bullet4': 'Hỗ trợ học tập 24/7',
+        'feature6.title': 'Social Learning Hub',
+        'feature6.desc': 'Cộng đồng học tập sôi động với phòng học nhóm realtime, livestream bài giảng, chia sẻ tài nguyên và hệ thống mentor hỗ trợ – học tập không còn cô đơn.',
+        'feature6.bullet1': 'Phòng học nhóm realtime',
+        'feature6.bullet2': 'Livestream bài giảng trực tiếp',
+        'feature6.bullet3': 'Bảng tin chia sẻ tài nguyên',
+        'feature6.bullet4': 'Mentor ghép cặp thông minh',
+        'feature7.title': 'Smart Exam System',
+        'feature7.desc': 'Hệ thống thi trực tuyến với timer, auto-submit, lưu tiến độ tự động và tích hợp proctoring AI. Kết quả được phân tích chi tiết với biểu đồ và thống kê.',
+        'feature8.title': 'Course Management AI',
+        'feature8.desc': 'Quản lý khóa học thông minh với AI: Tạo module, bài học, upload video, tài liệu. Tự động tạo video từ PDF, quản lý học viên và theo dõi tiến độ.',
+        'quick.social.title': 'Social Learning Hub',
+        'quick.social.desc': 'Tham gia phòng học nhóm, kết nối với bạn bè, học tập cùng nhau và chia sẻ kiến thức trong cộng đồng học tập năng động.',
+        'quick.social.cta': 'Khám phá ngay',
+        'quick.history.title': 'Lịch sử',
+        'quick.history.desc': 'Xem lại lịch sử học tập, bài kiểm tra đã làm, điểm số và tiến độ của bạn. Theo dõi hành trình học tập và cải thiện liên tục.',
+        'quick.history.cta': 'Xem lịch sử',
+        'feedback.title': 'Góp ý của bạn rất quan trọng!',
+        'feedback.subtitle': 'Chia sẻ ý kiến để chúng tôi cải thiện EduVerse tốt hơn',
+        'feedback.name': 'Tên của bạn (tùy chọn)',
+        'feedback.namePlaceholder': 'Nhập tên của bạn...',
+        'feedback.email': 'Email (tùy chọn)',
+        'feedback.emailPlaceholder': 'your.email@example.com',
+        'feedback.message': 'Tin nhắn của bạn',
+        'feedback.messagePlaceholder': 'Chia sẻ ý kiến, đề xuất hoặc báo cáo vấn đề...',
+        'feedback.messageHint': 'Tối thiểu 10 ký tự',
+        'feedback.submit': 'Gửi phản hồi',
+        'feedback.success': 'Cảm ơn bạn đã góp ý! Chúng tôi sẽ xem xét và cải thiện.',
+        'feedback.error': 'Có lỗi xảy ra. Vui lòng thử lại sau.'
+      },
+      en: {
+        'nav.home': 'Home',
+        'nav.courses': 'Courses',
+        'nav.social': 'Social',
+        'nav.history': 'History',
+        'nav.manage': 'Manage',
+        'nav.users': 'Users',
+        'nav.login': 'Login',
+        'nav.register': 'Register',
+        'nav.logout': 'Logout',
+        'hero.title': 'AI Learning Platform',
+        'hero.subtitle': 'Next Generation',
+        'hero.welcome': 'Welcome',
+        'hero.desc': 'Discover EduVerse 3.0 - Smart learning ecosystem with',
+        'hero.desc2': 'All in one platform.',
+        'hero.feature1': 'AI video generation from documents',
+        'hero.feature2': 'realtime cheating detection',
+        'hero.feature3': 'personalized learning paths',
+        'hero.feature4': 'dynamic learning community',
+        'hero.cta1': 'View new features',
+        'hero.cta2': 'Start learning now',
+        'features.title': 'Smart Learning Ecosystem',
+        'features.subtitle': 'Advanced AI Technology',
+        'features.desc': 'EduVerse 3.0 integrates comprehensive AI: Automatic lecture video generation, real-time cheating detection, personalized learning paths and dynamic learning community. All in one platform.',
+        'courses.title': 'Explore Courses',
+        'courses.subtitle': 'Hundreds of high-quality courses are waiting for you',
+        'courses.search': 'Search by name, tag, category...',
+        'courses.filter': 'All categories',
+        'courses.reset': 'Reset',
+        'courses.view': 'View details',
+        'courses.noresults': 'No courses found.',
+        'footer.copyright': 'All rights reserved.',
+        'footer.design': 'Designed with ❤️ for Vietnamese learners',
+        'feature1.title': 'AI Video Generation',
+        'feature1.desc': 'Automatically create professional lecture videos from documents (PDF, DOCX, PPTX) in NotebookLM style. AI analyzes content, generates natural scripts, illustrative images, and high-quality TTS voiceovers.',
+        'feature1.bullet1': 'Create 2-3 minute videos from documents',
+        'feature1.bullet2': 'Natural script like a real teacher',
+        'feature1.bullet3': 'AI images suitable for content',
+        'feature1.bullet4': 'Natural TTS voiceover',
+        'feature2.title': 'AI Anti-Cheat Proctoring',
+        'feature2.desc': 'Smart exam proctoring system with AI facial recognition, abnormal behavior detection, real-time cheat warnings, and automatic evidence storage.',
+        'feature2.bullet1': 'Real-time multi-face detection',
+        'feature2.bullet2': 'Detect screen exit, tab switching',
+        'feature2.bullet3': 'Detailed cheat report dashboard',
+        'feature2.bullet4': 'Automatically save evidence images',
+        'feature3.title': 'Adaptive Learning Path',
+        'feature3.desc': 'AI deeply analyzes each student\'s progress, strengths, and weaknesses to suggest suitable courses, quizzes, and resources – creating a completely personalized learning journey.',
+        'feature3.bullet1': 'Content suggestions based on ability',
+        'feature3.bullet2': 'Dynamic quiz difficulty adjustment',
+        'feature3.bullet3': 'Detailed personal progress dashboard',
+        'feature3.bullet4': 'Weakness analysis and improvement suggestions',
+        'feature4.title': 'AI Quiz Generation',
+        'feature4.desc': 'Automatically generate diverse quiz questions from lecture video transcripts. AI Gemini analyzes content, creates 20+ different questions with answers and detailed explanations.',
+        'feature4.bullet1': 'Automatically generate questions from transcript',
+        'feature4.bullet2': '20+ diverse questions per lesson',
+        'feature4.bullet3': 'Detailed answer explanations',
+        'feature4.bullet4': 'Automatic grading and analysis',
+        'feature5.title': 'AI Video Chat',
+        'feature5.desc': 'Smart AI assistant can answer questions about lecture video content. Ask anything, AI will analyze the transcript and provide accurate, detailed answers.',
+        'feature5.bullet1': 'Chat with AI about video content',
+        'feature5.bullet2': 'Smart transcript analysis',
+        'feature5.bullet3': 'Detailed, accurate answers',
+        'feature5.bullet4': '24/7 learning support',
+        'feature6.title': 'Social Learning Hub',
+        'feature6.desc': 'Vibrant learning community with real-time group study rooms, live lecture streams, resource sharing, and a mentor support system – learning is no longer lonely.',
+        'feature6.bullet1': 'Real-time group study rooms',
+        'feature6.bullet2': 'Live lecture streams',
+        'feature6.bullet3': 'Resource sharing board',
+        'feature6.bullet4': 'Smart mentor matching',
+        'feature7.title': 'Smart Exam System',
+        'feature7.desc': 'Online exam system with timer, auto-submit, automatic progress saving, and AI proctoring integration. Results are analyzed in detail with charts and statistics.',
+        'feature8.title': 'Course Management AI',
+        'feature8.desc': 'Smart course management with AI: Create modules, lessons, upload videos, documents. Automatically create videos from PDF, manage students and track progress.',
+        'quick.social.title': 'Social Learning Hub',
+        'quick.social.desc': 'Join group study rooms, connect with friends, learn together and share knowledge in a vibrant learning community.',
+        'quick.social.cta': 'Explore now',
+        'quick.history.title': 'History',
+        'quick.history.desc': 'Review your learning history, completed tests, scores and progress. Track your learning journey and continuously improve.',
+        'quick.history.cta': 'View history',
+        'feedback.title': 'Your Feedback Matters!',
+        'feedback.subtitle': 'Share your thoughts to help us improve EduVerse',
+        'feedback.name': 'Your Name (optional)',
+        'feedback.namePlaceholder': 'Enter your name...',
+        'feedback.email': 'Email (optional)',
+        'feedback.emailPlaceholder': 'your.email@example.com',
+        'feedback.message': 'Your Message',
+        'feedback.messagePlaceholder': 'Share your thoughts, suggestions, or report issues...',
+        'feedback.messageHint': 'Minimum 10 characters',
+        'feedback.submit': 'Send Feedback',
+        'feedback.success': 'Thank you for your feedback! We will review and improve.',
+        'feedback.error': 'An error occurred. Please try again later.'
+      },
+      zh: {
+        'nav.home': '首页',
+        'nav.courses': '课程',
+        'nav.social': '社交',
+        'nav.history': '历史',
+        'nav.manage': '管理',
+        'nav.users': '用户',
+        'nav.login': '登录',
+        'nav.register': '注册',
+        'nav.logout': '登出',
+        'hero.title': 'AI学习平台',
+        'hero.subtitle': '新一代',
+        'hero.welcome': '欢迎',
+        'hero.desc': '探索EduVerse 3.0 - 智能学习生态系统，具有',
+        'hero.desc2': '一切尽在一个平台。',
+        'hero.feature1': '从文档生成AI视频',
+        'hero.feature2': '实时作弊检测',
+        'hero.feature3': '个性化学习路径',
+        'hero.feature4': '动态学习社区',
+        'hero.cta1': '查看新功能',
+        'hero.cta2': '立即开始学习',
+        'features.title': '智能学习生态系统',
+        'features.subtitle': '先进AI技术',
+        'features.desc': 'EduVerse 3.0集成全面AI：自动生成讲座视频、实时作弊检测、个性化学习路径和动态学习社区。一切尽在一个平台。',
+        'courses.title': '探索课程',
+        'courses.subtitle': '数百门高质量课程等待您',
+        'courses.search': '按名称、标签、类别搜索...',
+        'courses.filter': '所有类别',
+        'courses.reset': '重置',
+        'courses.view': '查看详情',
+        'courses.noresults': '未找到课程。',
+        'footer.copyright': '保留所有权利。',
+        'footer.design': '为越南学习者设计 ❤️',
+        'feature1.title': 'AI视频生成',
+        'feature1.desc': '从文档（PDF、DOCX、PPTX）自动创建专业讲座视频，采用NotebookLM风格。AI分析内容，生成自然脚本、插图和高质量TTS语音。',
+        'feature1.bullet1': '从文档创建2-3分钟视频',
+        'feature1.bullet2': '自然脚本如真实教师',
+        'feature1.bullet3': '适合内容的AI图像',
+        'feature1.bullet4': '自然TTS语音',
+        'feature2.title': 'AI防作弊监考',
+        'feature2.desc': '智能考试监考系统，具有AI人脸识别、异常行为检测、实时作弊警告和自动证据存储。',
+        'feature2.bullet1': '实时多人脸检测',
+        'feature2.bullet2': '检测离开屏幕、切换标签',
+        'feature2.bullet3': '详细作弊报告仪表板',
+        'feature2.bullet4': '自动保存证据图像',
+        'feature3.title': '自适应学习路径',
+        'feature3.desc': 'AI深入分析每个学生的进度、优缺点，推荐合适的课程、测验和资源——创建完全个性化的学习旅程。',
+        'feature3.bullet1': '根据能力推荐内容',
+        'feature3.bullet2': '动态调整测验难度',
+        'feature3.bullet3': '详细个人进度仪表板',
+        'feature3.bullet4': '弱点分析和改进建议',
+        'feature4.title': 'AI测验生成',
+        'feature4.desc': '从讲座视频转录本自动生成多样化测验问题。AI Gemini分析内容，创建20+不同问题，附答案和详细解释。',
+        'feature4.bullet1': '从转录本自动生成问题',
+        'feature4.bullet2': '每课20+多样化问题',
+        'feature4.bullet3': '详细答案解释',
+        'feature4.bullet4': '自动评分和分析',
+        'feature5.title': 'AI视频聊天',
+        'feature5.desc': '智能AI助手可以回答有关讲座视频内容的问题。询问任何内容，AI将分析转录本并提供准确、详细的答案。',
+        'feature5.bullet1': '与AI聊天视频内容',
+        'feature5.bullet2': '智能转录本分析',
+        'feature5.bullet3': '详细、准确的答案',
+        'feature5.bullet4': '24/7学习支持',
+        'feature6.title': '社交学习中心',
+        'feature6.desc': '充满活力的学习社区，具有实时小组学习室、直播讲座、资源共享和导师支持系统——学习不再孤单。',
+        'feature6.bullet1': '实时小组学习室',
+        'feature6.bullet2': '直播讲座',
+        'feature6.bullet3': '资源共享板',
+        'feature6.bullet4': '智能导师匹配',
+        'feature7.title': '智能考试系统',
+        'feature7.desc': '在线考试系统，具有计时器、自动提交、自动保存进度和AI监考集成。结果通过图表和统计详细分析。',
+        'feature8.title': '课程管理AI',
+        'feature8.desc': '智能课程管理，使用AI：创建模块、课程、上传视频、文档。从PDF自动创建视频，管理学生并跟踪进度。',
+        'quick.social.title': '社交学习中心',
+        'quick.social.desc': '加入小组学习室，与朋友联系，一起学习并在充满活力的学习社区中分享知识。',
+        'quick.social.cta': '立即探索',
+        'quick.history.title': '历史',
+        'quick.history.desc': '查看您的学习历史、完成的测试、分数和进度。跟踪您的学习旅程并持续改进。',
+        'quick.history.cta': '查看历史'
+      },
+      ja: {
+        'nav.home': 'ホーム',
+        'nav.courses': 'コース',
+        'nav.social': 'ソーシャル',
+        'nav.history': '履歴',
+        'nav.manage': '管理',
+        'nav.users': 'ユーザー',
+        'nav.login': 'ログイン',
+        'nav.register': '登録',
+        'nav.logout': 'ログアウト',
+        'hero.title': 'AI学習プラットフォーム',
+        'hero.subtitle': '次世代',
+        'hero.welcome': 'ようこそ',
+        'hero.desc': 'EduVerse 3.0を探索 - スマート学習エコシステム、',
+        'hero.desc2': 'すべてが1つのプラットフォームに。',
+        'hero.feature1': 'ドキュメントからAI動画生成',
+        'hero.feature2': 'リアルタイム不正検出',
+        'hero.feature3': 'パーソナライズされた学習パス',
+        'hero.feature4': 'ダイナミックな学習コミュニティ',
+        'hero.cta1': '新機能を見る',
+        'hero.cta2': '今すぐ学習を始める',
+        'features.title': 'スマート学習エコシステム',
+        'features.subtitle': '先進AI技術',
+        'features.desc': 'EduVerse 3.0は包括的なAIを統合：自動講義動画生成、リアルタイム不正検出、パーソナライズされた学習パス、ダイナミックな学習コミュニティ。すべてが1つのプラットフォームに。',
+        'courses.title': 'コースを探索',
+        'courses.subtitle': '数百の高品質コースがあなたを待っています',
+        'courses.search': '名前、タグ、カテゴリで検索...',
+        'courses.filter': 'すべてのカテゴリ',
+        'courses.reset': 'リセット',
+        'courses.view': '詳細を見る',
+        'courses.noresults': 'コースが見つかりません。',
+        'footer.copyright': '全著作権所有。',
+        'footer.design': 'ベトナムの学習者のために設計 ❤️',
+        'feature1.title': 'AI動画生成',
+        'feature1.desc': 'ドキュメント（PDF、DOCX、PPTX）からNotebookLMスタイルでプロフェッショナルな講義動画を自動生成。AIがコンテンツを分析し、自然なスクリプト、イラスト、高品質なTTS音声を生成。',
+        'feature1.bullet1': 'ドキュメントから2-3分の動画を作成',
+        'feature1.bullet2': '本物の教師のような自然なスクリプト',
+        'feature1.bullet3': 'コンテンツに適したAI画像',
+        'feature1.bullet4': '自然なTTS音声',
+        'feature2.title': 'AI不正防止監視',
+        'feature2.desc': 'AI顔認識、異常行動検出、リアルタイム不正警告、自動証拠保存を備えたスマート試験監視システム。',
+        'feature2.bullet1': 'リアルタイム複数顔検出',
+        'feature2.bullet2': '画面離脱、タブ切り替え検出',
+        'feature2.bullet3': '詳細な不正報告ダッシュボード',
+        'feature2.bullet4': '証拠画像の自動保存',
+        'feature3.title': '適応型学習パス',
+        'feature3.desc': 'AIが各学生の進捗、強み、弱みを深く分析し、適切なコース、クイズ、リソースを提案——完全にパーソナライズされた学習ジャーニーを作成。',
+        'feature3.bullet1': '能力に基づくコンテンツ提案',
+        'feature3.bullet2': '動的クイズ難易度調整',
+        'feature3.bullet3': '詳細な個人進捗ダッシュボード',
+        'feature3.bullet4': '弱点分析と改善提案',
+        'feature4.title': 'AIクイズ生成',
+        'feature4.desc': '講義動画のトランスクリプトから多様なクイズ問題を自動生成。AI Geminiがコンテンツを分析し、回答と詳細な説明付きで20+の異なる問題を作成。',
+        'feature4.bullet1': 'トランスクリプトから自動的に問題を生成',
+        'feature4.bullet2': 'レッスンごとに20+の多様な問題',
+        'feature4.bullet3': '詳細な回答説明',
+        'feature4.bullet4': '自動採点と分析',
+        'feature5.title': 'AI動画チャット',
+        'feature5.desc': 'スマートAIアシスタントが講義動画のコンテンツに関する質問に答えます。何でも聞いてください。AIがトランスクリプトを分析し、正確で詳細な回答を提供します。',
+        'feature5.bullet1': '動画コンテンツについてAIとチャット',
+        'feature5.bullet2': 'スマートトランスクリプト分析',
+        'feature5.bullet3': '詳細で正確な回答',
+        'feature5.bullet4': '24/7学習サポート',
+        'feature6.title': 'ソーシャル学習ハブ',
+        'feature6.desc': 'リアルタイムグループ学習室、ライブ講義ストリーム、リソース共有、メンターサポートシステムを備えた活気のある学習コミュニティ——学習はもはや孤独ではありません。',
+        'feature6.bullet1': 'リアルタイムグループ学習室',
+        'feature6.bullet2': 'ライブ講義ストリーム',
+        'feature6.bullet3': 'リソース共有ボード',
+        'feature6.bullet4': 'スマートメンターマッチング',
+        'feature7.title': 'スマート試験システム',
+        'feature7.desc': 'タイマー、自動提出、自動進捗保存、AI監視統合を備えたオンライン試験システム。結果はグラフと統計で詳細に分析されます。',
+        'feature8.title': 'コース管理AI',
+        'feature8.desc': 'AIを活用したスマートコース管理：モジュール、レッスンを作成し、動画、ドキュメントをアップロード。PDFから自動的に動画を作成し、学生を管理し、進捗を追跡。',
+        'quick.social.title': 'ソーシャル学習ハブ',
+        'quick.social.desc': 'グループ学習室に参加し、友達とつながり、一緒に学び、活気のある学習コミュニティで知識を共有。',
+        'quick.social.cta': '今すぐ探索',
+        'quick.history.title': '履歴',
+        'quick.history.desc': '学習履歴、完了したテスト、スコア、進捗を確認。学習ジャーニーを追跡し、継続的に改善。',
+        'quick.history.cta': '履歴を表示'
+      },
+      ko: {
+        'nav.home': '홈',
+        'nav.courses': '코스',
+        'nav.social': '소셜',
+        'nav.history': '기록',
+        'nav.manage': '관리',
+        'nav.users': '사용자',
+        'nav.login': '로그인',
+        'nav.register': '등록',
+        'nav.logout': '로그아웃',
+        'hero.title': 'AI 학습 플랫폼',
+        'hero.subtitle': '차세대',
+        'hero.welcome': '환영합니다',
+        'hero.desc': 'EduVerse 3.0 탐색 - 스마트 학습 생태계,',
+        'hero.desc2': '모든 것이 하나의 플랫폼에.',
+        'hero.feature1': '문서에서 AI 비디오 생성',
+        'hero.feature2': '실시간 부정행위 감지',
+        'hero.feature3': '개인화된 학습 경로',
+        'hero.feature4': '역동적인 학습 커뮤니티',
+        'hero.cta1': '새 기능 보기',
+        'hero.cta2': '지금 학습 시작',
+        'features.title': '스마트 학습 생태계',
+        'features.subtitle': '고급 AI 기술',
+        'features.desc': 'EduVerse 3.0은 포괄적인 AI를 통합: 자동 강의 비디오 생성, 실시간 부정행위 감지, 개인화된 학습 경로 및 역동적인 학습 커뮤니티. 모든 것이 하나의 플랫폼에.',
+        'courses.title': '코스 탐색',
+        'courses.subtitle': '수백 개의 고품질 코스가 여러분을 기다립니다',
+        'courses.search': '이름, 태그, 카테고리로 검색...',
+        'courses.filter': '모든 카테고리',
+        'courses.reset': '재설정',
+        'courses.view': '자세히 보기',
+        'courses.noresults': '코스를 찾을 수 없습니다.',
+        'footer.copyright': '모든 권리 보유.',
+        'footer.design': '베트남 학습자를 위해 설계 ❤️',
+        'feature1.title': 'AI 비디오 생성',
+        'feature1.desc': '문서(PDF, DOCX, PPTX)에서 NotebookLM 스타일로 전문 강의 비디오를 자동 생성. AI가 콘텐츠를 분석하고 자연스러운 스크립트, 일러스트, 고품질 TTS 음성을 생성.',
+        'feature1.bullet1': '문서에서 2-3분 비디오 생성',
+        'feature1.bullet2': '진짜 교사 같은 자연스러운 스크립트',
+        'feature1.bullet3': '콘텐츠에 적합한 AI 이미지',
+        'feature1.bullet4': '자연스러운 TTS 음성',
+        'feature2.title': 'AI 부정행위 방지 감독',
+        'feature2.desc': 'AI 얼굴 인식, 이상 행동 감지, 실시간 부정행위 경고, 자동 증거 저장을 갖춘 스마트 시험 감독 시스템.',
+        'feature2.bullet1': '실시간 다중 얼굴 감지',
+        'feature2.bullet2': '화면 이탈, 탭 전환 감지',
+        'feature2.bullet3': '상세한 부정행위 보고 대시보드',
+        'feature2.bullet4': '증거 이미지 자동 저장',
+        'feature3.title': '적응형 학습 경로',
+        'feature3.desc': 'AI가 각 학생의 진행 상황, 강점, 약점을 깊이 분석하여 적합한 코스, 퀴즈, 리소스를 제안——완전히 개인화된 학습 여정을 생성.',
+        'feature3.bullet1': '능력 기반 콘텐츠 제안',
+        'feature3.bullet2': '동적 퀴즈 난이도 조정',
+        'feature3.bullet3': '상세한 개인 진행 대시보드',
+        'feature3.bullet4': '약점 분석 및 개선 제안',
+        'feature4.title': 'AI 퀴즈 생성',
+        'feature4.desc': '강의 비디오 트랜스크립트에서 다양한 퀴즈 문제를 자동 생성. AI Gemini가 콘텐츠를 분석하고 답변과 상세한 설명이 포함된 20+개의 다른 문제를 생성.',
+        'feature4.bullet1': '트랜스크립트에서 자동으로 문제 생성',
+        'feature4.bullet2': '레슨당 20+개의 다양한 문제',
+        'feature4.bullet3': '상세한 답변 설명',
+        'feature4.bullet4': '자동 채점 및 분석',
+        'feature5.title': 'AI 비디오 채팅',
+        'feature5.desc': '스마트 AI 어시스턴트가 강의 비디오 콘텐츠에 대한 질문에 답변. 무엇이든 물어보세요. AI가 트랜스크립트를 분석하고 정확하고 상세한 답변을 제공합니다.',
+        'feature5.bullet1': '비디오 콘텐츠에 대해 AI와 채팅',
+        'feature5.bullet2': '스마트 트랜스크립트 분석',
+        'feature5.bullet3': '상세하고 정확한 답변',
+        'feature5.bullet4': '24/7 학습 지원',
+        'feature6.title': '소셜 학습 허브',
+        'feature6.desc': '실시간 그룹 학습실, 라이브 강의 스트림, 리소스 공유, 멘토 지원 시스템을 갖춘 활기찬 학습 커뮤니티——학습은 더 이상 외롭지 않습니다.',
+        'feature6.bullet1': '실시간 그룹 학습실',
+        'feature6.bullet2': '라이브 강의 스트림',
+        'feature6.bullet3': '리소스 공유 게시판',
+        'feature6.bullet4': '스마트 멘토 매칭',
+        'feature7.title': '스마트 시험 시스템',
+        'feature7.desc': '타이머, 자동 제출, 자동 진행 저장, AI 감독 통합을 갖춘 온라인 시험 시스템. 결과는 차트와 통계로 상세히 분석됩니다.',
+        'feature8.title': '코스 관리 AI',
+        'feature8.desc': 'AI를 활용한 스마트 코스 관리: 모듈, 레슨 생성, 비디오, 문서 업로드. PDF에서 자동으로 비디오 생성, 학생 관리 및 진행 상황 추적.',
+        'quick.social.title': '소셜 학습 허브',
+        'quick.social.desc': '그룹 학습실에 참여하고, 친구들과 연결하고, 함께 학습하며 활기찬 학습 커뮤니티에서 지식을 공유.',
+        'quick.social.cta': '지금 탐색',
+        'quick.history.title': '기록',
+        'quick.history.desc': '학습 기록, 완료한 테스트, 점수 및 진행 상황을 검토. 학습 여정을 추적하고 지속적으로 개선.',
+        'quick.history.cta': '기록 보기'
+      },
+      es: {
+        'nav.home': 'Inicio',
+        'nav.courses': 'Cursos',
+        'nav.social': 'Social',
+        'nav.history': 'Historial',
+        'nav.manage': 'Gestionar',
+        'nav.users': 'Usuarios',
+        'nav.login': 'Iniciar sesión',
+        'nav.register': 'Registrarse',
+        'nav.logout': 'Cerrar sesión',
+        'hero.title': 'Plataforma de Aprendizaje IA',
+        'hero.subtitle': 'Nueva Generación',
+        'hero.welcome': 'Bienvenido',
+        'hero.desc': 'Descubre EduVerse 3.0 - Ecosistema de aprendizaje inteligente con',
+        'hero.desc2': 'Todo en una sola plataforma.',
+        'hero.feature1': 'generación de video IA desde documentos',
+        'hero.feature2': 'detección de trampas en tiempo real',
+        'hero.feature3': 'rutas de aprendizaje personalizadas',
+        'hero.feature4': 'comunidad de aprendizaje dinámica',
+        'hero.cta1': 'Ver nuevas funciones',
+        'hero.cta2': 'Comenzar a aprender ahora',
+        'features.title': 'Ecosistema de Aprendizaje Inteligente',
+        'features.subtitle': 'Tecnología IA Avanzada',
+        'features.desc': 'EduVerse 3.0 integra IA integral: Generación automática de videos de conferencias, detección de trampas en tiempo real, rutas de aprendizaje personalizadas y comunidad de aprendizaje dinámica. Todo en una plataforma.',
+        'courses.title': 'Explorar Cursos',
+        'courses.subtitle': 'Cientos de cursos de alta calidad te esperan',
+        'courses.search': 'Buscar por nombre, etiqueta, categoría...',
+        'courses.filter': 'Todas las categorías',
+        'courses.reset': 'Restablecer',
+        'courses.view': 'Ver detalles',
+        'courses.noresults': 'No se encontraron cursos.',
+        'footer.copyright': 'Todos los derechos reservados.',
+        'footer.design': 'Diseñado con ❤️ para estudiantes vietnamitas',
+        'feature1.title': 'Generación de Video IA',
+        'feature1.desc': 'Crea automáticamente videos de conferencias profesionales desde documentos (PDF, DOCX, PPTX) con estilo NotebookLM. IA analiza contenido, genera guiones naturales, imágenes ilustrativas y voces TTS de alta calidad.',
+        'feature1.bullet1': 'Crea videos de 2-3 minutos desde documentos',
+        'feature1.bullet2': 'Guion natural como un profesor real',
+        'feature1.bullet3': 'Imágenes IA adecuadas para el contenido',
+        'feature1.bullet4': 'Voz TTS natural',
+        'feature2.title': 'Vigilancia Anti-Trampa IA',
+        'feature2.desc': 'Sistema de vigilancia de exámenes inteligente con reconocimiento facial IA, detección de comportamiento anormal, advertencias de trampa en tiempo real y almacenamiento automático de evidencia.',
+        'feature2.bullet1': 'Detección de múltiples caras en tiempo real',
+        'feature2.bullet2': 'Detecta salida de pantalla, cambio de pestañas',
+        'feature2.bullet3': 'Panel de informes de trampa detallado',
+        'feature2.bullet4': 'Guarda automáticamente imágenes de evidencia',
+        'feature3.title': 'Ruta de Aprendizaje Adaptativa',
+        'feature3.desc': 'IA analiza profundamente el progreso, fortalezas y debilidades de cada estudiante para sugerir cursos, cuestionarios y recursos adecuados – creando un viaje de aprendizaje completamente personalizado.',
+        'feature3.bullet1': 'Sugerencias de contenido basadas en capacidad',
+        'feature3.bullet2': 'Ajuste dinámico de dificultad del cuestionario',
+        'feature3.bullet3': 'Panel de progreso personal detallado',
+        'feature3.bullet4': 'Análisis de debilidades y sugerencias de mejora',
+        'feature4.title': 'Generación de Cuestionarios IA',
+        'feature4.desc': 'Genera automáticamente preguntas de cuestionario diversas desde transcripciones de videos de conferencias. IA Gemini analiza contenido, crea 20+ preguntas diferentes con respuestas y explicaciones detalladas.',
+        'feature4.bullet1': 'Genera automáticamente preguntas desde transcripción',
+        'feature4.bullet2': '20+ preguntas diversas por lección',
+        'feature4.bullet3': 'Explicaciones detalladas de respuestas',
+        'feature4.bullet4': 'Calificación y análisis automático',
+        'feature5.title': 'Chat de Video IA',
+        'feature5.desc': 'Asistente IA inteligente puede responder preguntas sobre el contenido del video de conferencias. Pregunta cualquier cosa, IA analizará la transcripción y proporcionará respuestas precisas y detalladas.',
+        'feature5.bullet1': 'Chatea con IA sobre contenido de video',
+        'feature5.bullet2': 'Análisis inteligente de transcripción',
+        'feature5.bullet3': 'Respuestas detalladas y precisas',
+        'feature5.bullet4': 'Soporte de aprendizaje 24/7',
+        'feature6.title': 'Centro de Aprendizaje Social',
+        'feature6.desc': 'Comunidad de aprendizaje vibrante con salas de estudio grupal en tiempo real, transmisiones de conferencias en vivo, intercambio de recursos y sistema de apoyo de mentores – el aprendizaje ya no es solitario.',
+        'feature6.bullet1': 'Salas de estudio grupal en tiempo real',
+        'feature6.bullet2': 'Transmisiones de conferencias en vivo',
+        'feature6.bullet3': 'Tablero de intercambio de recursos',
+        'feature6.bullet4': 'Emparejamiento inteligente de mentores',
+        'feature7.title': 'Sistema de Examen Inteligente',
+        'feature7.desc': 'Sistema de examen en línea con temporizador, envío automático, guardado automático de progreso e integración de vigilancia IA. Los resultados se analizan en detalle con gráficos y estadísticas.',
+        'feature8.title': 'Gestión de Cursos IA',
+        'feature8.desc': 'Gestión inteligente de cursos con IA: Crea módulos, lecciones, sube videos, documentos. Crea automáticamente videos desde PDF, gestiona estudiantes y rastrea el progreso.',
+        'quick.social.title': 'Centro de Aprendizaje Social',
+        'quick.social.desc': 'Únete a salas de estudio grupal, conéctate con amigos, aprende juntos y comparte conocimiento en una comunidad de aprendizaje vibrante.',
+        'quick.social.cta': 'Explorar ahora',
+        'quick.history.title': 'Historial',
+        'quick.history.desc': 'Revisa tu historial de aprendizaje, pruebas completadas, puntuaciones y progreso. Rastrea tu viaje de aprendizaje y mejora continuamente.',
+        'quick.history.cta': 'Ver historial'
+      },
+      fr: {
+        'nav.home': 'Accueil',
+        'nav.courses': 'Cours',
+        'nav.social': 'Social',
+        'nav.history': 'Historique',
+        'nav.manage': 'Gérer',
+        'nav.users': 'Utilisateurs',
+        'nav.login': 'Connexion',
+        'nav.register': 'S\'inscrire',
+        'nav.logout': 'Déconnexion',
+        'hero.title': 'Plateforme d\'Apprentissage IA',
+        'hero.subtitle': 'Nouvelle Génération',
+        'hero.welcome': 'Bienvenue',
+        'hero.desc': 'Découvrez EduVerse 3.0 - Écosystème d\'apprentissage intelligent avec',
+        'hero.desc2': 'Tout en une seule plateforme.',
+        'hero.feature1': 'génération de vidéo IA à partir de documents',
+        'hero.feature2': 'détection de triche en temps réel',
+        'hero.feature3': 'parcours d\'apprentissage personnalisés',
+        'hero.feature4': 'communauté d\'apprentissage dynamique',
+        'hero.cta1': 'Voir les nouvelles fonctionnalités',
+        'hero.cta2': 'Commencer à apprendre maintenant',
+        'features.title': 'Écosystème d\'Apprentissage Intelligent',
+        'features.subtitle': 'Technologie IA Avancée',
+        'features.desc': 'EduVerse 3.0 intègre une IA complète : Génération automatique de vidéos de cours, détection de triche en temps réel, parcours d\'apprentissage personnalisés et communauté d\'apprentissage dynamique. Tout en une plateforme.',
+        'courses.title': 'Explorer les Cours',
+        'courses.subtitle': 'Des centaines de cours de haute qualité vous attendent',
+        'courses.search': 'Rechercher par nom, tag, catégorie...',
+        'courses.filter': 'Toutes les catégories',
+        'courses.reset': 'Réinitialiser',
+        'courses.view': 'Voir les détails',
+        'courses.noresults': 'Aucun cours trouvé.',
+        'footer.copyright': 'Tous droits réservés.',
+        'footer.design': 'Conçu avec ❤️ pour les apprenants vietnamiens',
+        'feature1.title': 'Génération de Vidéo IA',
+        'feature1.desc': 'Créez automatiquement des vidéos de conférences professionnelles à partir de documents (PDF, DOCX, PPTX) dans le style NotebookLM. L\'IA analyse le contenu, génère des scripts naturels, des images illustratives et des voix TTS de haute qualité.',
+        'feature1.bullet1': 'Créez des vidéos de 2-3 minutes à partir de documents',
+        'feature1.bullet2': 'Script naturel comme un vrai professeur',
+        'feature1.bullet3': 'Images IA adaptées au contenu',
+        'feature1.bullet4': 'Voix TTS naturelle',
+        'feature2.title': 'Surveillance Anti-Triche IA',
+        'feature2.desc': 'Système de surveillance d\'examen intelligent avec reconnaissance faciale IA, détection de comportement anormal, avertissements de triche en temps réel et stockage automatique de preuves.',
+        'feature2.bullet1': 'Détection multi-visages en temps réel',
+        'feature2.bullet2': 'Détecte la sortie d\'écran, le changement d\'onglet',
+        'feature2.bullet3': 'Tableau de bord de rapports de triche détaillé',
+        'feature2.bullet4': 'Enregistre automatiquement les images de preuve',
+        'feature3.title': 'Parcours d\'Apprentissage Adaptatif',
+        'feature3.desc': 'L\'IA analyse en profondeur les progrès, forces et faiblesses de chaque étudiant pour suggérer des cours, quiz et ressources appropriés – créant un parcours d\'apprentissage entièrement personnalisé.',
+        'feature3.bullet1': 'Suggestions de contenu basées sur les capacités',
+        'feature3.bullet2': 'Ajustement dynamique de la difficulté du quiz',
+        'feature3.bullet3': 'Tableau de bord de progression personnelle détaillé',
+        'feature3.bullet4': 'Analyse des faiblesses et suggestions d\'amélioration',
+        'feature4.title': 'Génération de Quiz IA',
+        'feature4.desc': 'Génère automatiquement des questions de quiz diverses à partir de transcriptions de vidéos de conférences. L\'IA Gemini analyse le contenu, crée 20+ questions différentes avec réponses et explications détaillées.',
+        'feature4.bullet1': 'Génère automatiquement des questions à partir de la transcription',
+        'feature4.bullet2': '20+ questions diverses par leçon',
+        'feature4.bullet3': 'Explications détaillées des réponses',
+        'feature4.bullet4': 'Notation et analyse automatiques',
+        'feature5.title': 'Chat Vidéo IA',
+        'feature5.desc': 'Assistant IA intelligent peut répondre aux questions sur le contenu de la vidéo de conférence. Posez n\'importe quelle question, l\'IA analysera la transcription et fournira des réponses précises et détaillées.',
+        'feature5.bullet1': 'Chattez avec l\'IA sur le contenu vidéo',
+        'feature5.bullet2': 'Analyse intelligente de la transcription',
+        'feature5.bullet3': 'Réponses détaillées et précises',
+        'feature5.bullet4': 'Support d\'apprentissage 24/7',
+        'feature6.title': 'Centre d\'Apprentissage Social',
+        'feature6.desc': 'Communauté d\'apprentissage dynamique avec salles d\'étude de groupe en temps réel, diffusions de conférences en direct, partage de ressources et système de soutien de mentors – l\'apprentissage n\'est plus solitaire.',
+        'feature6.bullet1': 'Salles d\'étude de groupe en temps réel',
+        'feature6.bullet2': 'Diffusions de conférences en direct',
+        'feature6.bullet3': 'Tableau de partage de ressources',
+        'feature6.bullet4': 'Appariement intelligent de mentors',
+        'feature7.title': 'Système d\'Examen Intelligent',
+        'feature7.desc': 'Système d\'examen en ligne avec minuteur, soumission automatique, sauvegarde automatique des progrès et intégration de surveillance IA. Les résultats sont analysés en détail avec graphiques et statistiques.',
+        'feature8.title': 'Gestion de Cours IA',
+        'feature8.desc': 'Gestion intelligente de cours avec IA : Créez des modules, leçons, téléchargez des vidéos, documents. Créez automatiquement des vidéos à partir de PDF, gérez les étudiants et suivez les progrès.',
+        'quick.social.title': 'Centre d\'Apprentissage Social',
+        'quick.social.desc': 'Rejoignez les salles d\'étude de groupe, connectez-vous avec des amis, apprenez ensemble et partagez des connaissances dans une communauté d\'apprentissage dynamique.',
+        'quick.social.cta': 'Explorer maintenant',
+        'quick.history.title': 'Historique',
+        'quick.history.desc': 'Consultez votre historique d\'apprentissage, tests terminés, scores et progrès. Suivez votre parcours d\'apprentissage et améliorez-vous continuellement.',
+        'quick.history.cta': 'Voir l\'historique'
+      },
+      de: {
+        'nav.home': 'Startseite',
+        'nav.courses': 'Kurse',
+        'nav.social': 'Sozial',
+        'nav.history': 'Verlauf',
+        'nav.manage': 'Verwalten',
+        'nav.users': 'Benutzer',
+        'nav.login': 'Anmelden',
+        'nav.register': 'Registrieren',
+        'nav.logout': 'Abmelden',
+        'hero.title': 'KI-Lernplattform',
+        'hero.subtitle': 'Neue Generation',
+        'hero.welcome': 'Willkommen',
+        'hero.desc': 'Entdecken Sie EduVerse 3.0 - Intelligentes Lernökosystem mit',
+        'hero.desc2': 'Alles in einer Plattform.',
+        'hero.feature1': 'KI-Videogenerierung aus Dokumenten',
+        'hero.feature2': 'Echtzeit-Betrugserkennung',
+        'hero.feature3': 'personalisierte Lernpfade',
+        'hero.feature4': 'dynamische Lerngemeinschaft',
+        'hero.cta1': 'Neue Funktionen ansehen',
+        'hero.cta2': 'Jetzt lernen beginnen',
+        'features.title': 'Intelligentes Lernökosystem',
+        'features.subtitle': 'Fortschrittliche KI-Technologie',
+        'features.desc': 'EduVerse 3.0 integriert umfassende KI: Automatische Vorlesungsvideogenerierung, Echtzeit-Betrugserkennung, personalisierte Lernpfade und dynamische Lerngemeinschaft. Alles in einer Plattform.',
+        'courses.title': 'Kurse Erkunden',
+        'courses.subtitle': 'Hunderte hochwertige Kurse warten auf Sie',
+        'courses.search': 'Suche nach Name, Tag, Kategorie...',
+        'courses.filter': 'Alle Kategorien',
+        'courses.reset': 'Zurücksetzen',
+        'courses.view': 'Details anzeigen',
+        'courses.noresults': 'Keine Kurse gefunden.',
+        'footer.copyright': 'Alle Rechte vorbehalten.',
+        'footer.design': 'Entworfen mit ❤️ für vietnamesische Lernende'
+      },
+      pt: {
+        'nav.home': 'Início',
+        'nav.courses': 'Cursos',
+        'nav.social': 'Social',
+        'nav.history': 'Histórico',
+        'nav.manage': 'Gerenciar',
+        'nav.users': 'Usuários',
+        'nav.login': 'Entrar',
+        'nav.register': 'Registrar',
+        'nav.logout': 'Sair',
+        'hero.title': 'Plataforma de Aprendizagem IA',
+        'hero.subtitle': 'Nova Geração',
+        'hero.welcome': 'Bem-vindo',
+        'hero.desc': 'Descubra EduVerse 3.0 - Ecossistema de aprendizagem inteligente com',
+        'hero.desc2': 'Tudo em uma plataforma.',
+        'hero.feature1': 'geração de vídeo IA a partir de documentos',
+        'hero.feature2': 'detecção de trapaça em tempo real',
+        'hero.feature3': 'caminhos de aprendizagem personalizados',
+        'hero.feature4': 'comunidade de aprendizagem dinâmica',
+        'hero.cta1': 'Ver novos recursos',
+        'hero.cta2': 'Começar a aprender agora',
+        'features.title': 'Ecossistema de Aprendizagem Inteligente',
+        'features.subtitle': 'Tecnologia IA Avançada',
+        'features.desc': 'EduVerse 3.0 integra IA abrangente: Geração automática de vídeos de palestras, detecção de trapaça em tempo real, caminhos de aprendizagem personalizados e comunidade de aprendizagem dinâmica. Tudo em uma plataforma.',
+        'courses.title': 'Explorar Cursos',
+        'courses.subtitle': 'Centenas de cursos de alta qualidade estão esperando por você',
+        'courses.search': 'Pesquisar por nome, tag, categoria...',
+        'courses.filter': 'Todas as categorias',
+        'courses.reset': 'Redefinir',
+        'courses.view': 'Ver detalhes',
+        'courses.noresults': 'Nenhum curso encontrado.',
+        'footer.copyright': 'Todos os direitos reservados.',
+        'footer.design': 'Projetado com ❤️ para aprendizes vietnamitas'
+      },
+      ru: {
+        'nav.home': 'Главная',
+        'nav.courses': 'Курсы',
+        'nav.social': 'Социальная',
+        'nav.history': 'История',
+        'nav.manage': 'Управление',
+        'nav.users': 'Пользователи',
+        'nav.login': 'Войти',
+        'nav.register': 'Регистрация',
+        'nav.logout': 'Выйти',
+        'hero.title': 'Платформа Обучения с ИИ',
+        'hero.subtitle': 'Новое Поколение',
+        'hero.welcome': 'Добро пожаловать',
+        'hero.desc': 'Откройте для себя EduVerse 3.0 - Умная экосистема обучения с',
+        'hero.desc2': 'Всё в одной платформе.',
+        'hero.feature1': 'генерация видео ИИ из документов',
+        'hero.feature2': 'обнаружение мошенничества в реальном времени',
+        'hero.feature3': 'персонализированные пути обучения',
+        'hero.feature4': 'динамическое обучающее сообщество',
+        'hero.cta1': 'Посмотреть новые функции',
+        'hero.cta2': 'Начать обучение сейчас',
+        'features.title': 'Умная Экосистема Обучения',
+        'features.subtitle': 'Передовые Технологии ИИ',
+        'features.desc': 'EduVerse 3.0 интегрирует комплексный ИИ: Автоматическая генерация видео лекций, обнаружение мошенничества в реальном времени, персонализированные пути обучения и динамическое обучающее сообщество. Всё в одной платформе.',
+        'courses.title': 'Исследовать Курсы',
+        'courses.subtitle': 'Сотни качественных курсов ждут вас',
+        'courses.search': 'Поиск по имени, тегу, категории...',
+        'courses.filter': 'Все категории',
+        'courses.reset': 'Сбросить',
+        'courses.view': 'Посмотреть детали',
+        'courses.noresults': 'Курсы не найдены.',
+        'footer.copyright': 'Все права защищены.',
+        'footer.design': 'Разработано с ❤️ для вьетнамских учащихся'
+      },
+      th: {
+        'nav.home': 'หน้าแรก',
+        'nav.courses': 'หลักสูตร',
+        'nav.social': 'โซเชียล',
+        'nav.history': 'ประวัติ',
+        'nav.manage': 'จัดการ',
+        'nav.users': 'ผู้ใช้',
+        'nav.login': 'เข้าสู่ระบบ',
+        'nav.register': 'ลงทะเบียน',
+        'nav.logout': 'ออกจากระบบ',
+        'hero.title': 'แพลตฟอร์มการเรียนรู้ AI',
+        'hero.subtitle': 'รุ่นใหม่',
+        'hero.welcome': 'ยินดีต้อนรับ',
+        'hero.desc': 'ค้นพบ EduVerse 3.0 - ระบบนิเวศการเรียนรู้อัจฉริยะด้วย',
+        'hero.desc2': 'ทั้งหมดในแพลตฟอร์มเดียว',
+        'hero.feature1': 'การสร้างวิดีโอ AI จากเอกสาร',
+        'hero.feature2': 'การตรวจจับการโกงแบบเรียลไทม์',
+        'hero.feature3': 'เส้นทางการเรียนรู้ส่วนบุคคล',
+        'hero.feature4': 'ชุมชนการเรียนรู้แบบไดนามิก',
+        'hero.cta1': 'ดูคุณสมบัติใหม่',
+        'hero.cta2': 'เริ่มเรียนรู้ตอนนี้',
+        'features.title': 'ระบบนิเวศการเรียนรู้อัจฉริยะ',
+        'features.subtitle': 'เทคโนโลยี AI ขั้นสูง',
+        'features.desc': 'EduVerse 3.0 รวม AI แบบครอบคลุม: การสร้างวิดีโอการบรรยายอัตโนมัติ การตรวจจับการโกงแบบเรียลไทม์ เส้นทางการเรียนรู้ส่วนบุคคล และชุมชนการเรียนรู้แบบไดนามิก ทั้งหมดในแพลตฟอร์มเดียว',
+        'courses.title': 'สำรวจหลักสูตร',
+        'courses.subtitle': 'หลักสูตรคุณภาพสูงหลายร้อยหลักสูตรรอคุณอยู่',
+        'courses.search': 'ค้นหาตามชื่อ แท็ก หมวดหมู่...',
+        'courses.filter': 'ทุกหมวดหมู่',
+        'courses.reset': 'รีเซ็ต',
+        'courses.view': 'ดูรายละเอียด',
+        'courses.noresults': 'ไม่พบหลักสูตร',
+        'footer.copyright': 'สงวนลิขสิทธิ์',
+        'footer.design': 'ออกแบบด้วย ❤️ สำหรับผู้เรียนเวียดนาม'
+      },
+      id: {
+        'nav.home': 'Beranda',
+        'nav.courses': 'Kursus',
+        'nav.social': 'Sosial',
+        'nav.history': 'Riwayat',
+        'nav.manage': 'Kelola',
+        'nav.users': 'Pengguna',
+        'nav.login': 'Masuk',
+        'nav.register': 'Daftar',
+        'nav.logout': 'Keluar',
+        'hero.title': 'Platform Pembelajaran AI',
+        'hero.subtitle': 'Generasi Baru',
+        'hero.welcome': 'Selamat datang',
+        'hero.desc': 'Temukan EduVerse 3.0 - Ekosistem pembelajaran cerdas dengan',
+        'hero.desc2': 'Semua dalam satu platform.',
+        'hero.feature1': 'pembuatan video AI dari dokumen',
+        'hero.feature2': 'deteksi kecurangan waktu nyata',
+        'hero.feature3': 'jalur pembelajaran yang dipersonalisasi',
+        'hero.feature4': 'komunitas pembelajaran dinamis',
+        'hero.cta1': 'Lihat fitur baru',
+        'hero.cta2': 'Mulai belajar sekarang',
+        'features.title': 'Ekosistem Pembelajaran Cerdas',
+        'features.subtitle': 'Teknologi AI Canggih',
+        'features.desc': 'EduVerse 3.0 mengintegrasikan AI komprehensif: Pembuatan video kuliah otomatis, deteksi kecurangan waktu nyata, jalur pembelajaran yang dipersonalisasi dan komunitas pembelajaran dinamis. Semua dalam satu platform.',
+        'courses.title': 'Jelajahi Kursus',
+        'courses.subtitle': 'Ratusan kursus berkualitas tinggi menunggu Anda',
+        'courses.search': 'Cari berdasarkan nama, tag, kategori...',
+        'courses.filter': 'Semua kategori',
+        'courses.reset': 'Reset',
+        'courses.view': 'Lihat detail',
+        'courses.noresults': 'Tidak ada kursus ditemukan.',
+        'footer.copyright': 'Hak cipta dilindungi.',
+        'footer.design': 'Dirancang dengan ❤️ untuk pelajar Vietnam'
+      },
+      ar: {
+        'nav.home': 'الرئيسية',
+        'nav.courses': 'الدورات',
+        'nav.social': 'اجتماعي',
+        'nav.history': 'السجل',
+        'nav.manage': 'إدارة',
+        'nav.users': 'المستخدمون',
+        'nav.login': 'تسجيل الدخول',
+        'nav.register': 'التسجيل',
+        'nav.logout': 'تسجيل الخروج',
+        'hero.title': 'منصة التعلم بالذكاء الاصطناعي',
+        'hero.subtitle': 'الجيل الجديد',
+        'hero.welcome': 'مرحباً',
+        'hero.desc': 'اكتشف EduVerse 3.0 - نظام التعلم الذكي مع',
+        'hero.desc2': 'كل شيء في منصة واحدة.',
+        'hero.feature1': 'إنشاء فيديو بالذكاء الاصطناعي من المستندات',
+        'hero.feature2': 'كشف الغش في الوقت الفعلي',
+        'hero.feature3': 'مسارات تعلم مخصصة',
+        'hero.feature4': 'مجتمع تعلم ديناميكي',
+        'hero.cta1': 'عرض الميزات الجديدة',
+        'hero.cta2': 'ابدأ التعلم الآن',
+        'features.title': 'نظام التعلم الذكي',
+        'features.subtitle': 'تقنية الذكاء الاصطناعي المتقدمة',
+        'features.desc': 'EduVerse 3.0 يدمج الذكاء الاصطناعي الشامل: إنشاء فيديو المحاضرات تلقائياً، كشف الغش في الوقت الفعلي، مسارات التعلم المخصصة ومجتمع التعلم الديناميكي. كل شيء في منصة واحدة.',
+        'courses.title': 'استكشف الدورات',
+        'courses.subtitle': 'مئات الدورات عالية الجودة في انتظارك',
+        'courses.search': 'البحث بالاسم، العلامة، الفئة...',
+        'courses.filter': 'جميع الفئات',
+        'courses.reset': 'إعادة تعيين',
+        'courses.view': 'عرض التفاصيل',
+        'courses.noresults': 'لم يتم العثور على دورات.',
+        'footer.copyright': 'جميع الحقوق محفوظة.',
+        'footer.design': 'صمم بـ ❤️ للمتعلمين الفيتناميين'
+      },
+      hi: {
+        'nav.home': 'होम',
+        'nav.courses': 'कोर्स',
+        'nav.social': 'सोशल',
+        'nav.history': 'इतिहास',
+        'nav.manage': 'प्रबंधन',
+        'nav.users': 'उपयोगकर्ता',
+        'nav.login': 'लॉगिन',
+        'nav.register': 'रजिस्टर',
+        'nav.logout': 'लॉगआउट',
+        'hero.title': 'AI लर्निंग प्लेटफॉर्म',
+        'hero.subtitle': 'नई पीढ़ी',
+        'hero.welcome': 'स्वागत है',
+        'hero.desc': 'EduVerse 3.0 खोजें - स्मार्ट लर्निंग इकोसिस्टम के साथ',
+        'hero.desc2': 'सब कुछ एक प्लेटफॉर्म में।',
+        'hero.feature1': 'दस्तावेजों से AI वीडियो जनरेशन',
+        'hero.feature2': 'रियल-टाइम धोखाधड़ी का पता लगाना',
+        'hero.feature3': 'व्यक्तिगत लर्निंग पथ',
+        'hero.feature4': 'गतिशील लर्निंग समुदाय',
+        'hero.cta1': 'नई सुविधाएं देखें',
+        'hero.cta2': 'अभी सीखना शुरू करें',
+        'features.title': 'स्मार्ट लर्निंग इकोसिस्टम',
+        'features.subtitle': 'उन्नत AI प्रौद्योगिकी',
+        'features.desc': 'EduVerse 3.0 व्यापक AI को एकीकृत करता है: स्वचालित लेक्चर वीडियो जनरेशन, रियल-टाइम धोखाधड़ी का पता लगाना, व्यक्तिगत लर्निंग पथ और गतिशील लर्निंग समुदाय। सब कुछ एक प्लेटफॉर्म में।',
+        'courses.title': 'कोर्स एक्सप्लोर करें',
+        'courses.subtitle': 'सैकड़ों उच्च-गुणवत्ता वाले कोर्स आपका इंतजार कर रहे हैं',
+        'courses.search': 'नाम, टैग, श्रेणी से खोजें...',
+        'courses.filter': 'सभी श्रेणियां',
+        'courses.reset': 'रीसेट',
+        'courses.view': 'विवरण देखें',
+        'courses.noresults': 'कोई कोर्स नहीं मिला।',
+        'footer.copyright': 'सभी अधिकार सुरक्षित।',
+        'footer.design': 'वियतनामी शिक्षार्थियों के लिए ❤️ के साथ डिज़ाइन किया गया'
+      },
+      it: {
+        'nav.home': 'Home',
+        'nav.courses': 'Corsi',
+        'nav.social': 'Social',
+        'nav.history': 'Cronologia',
+        'nav.manage': 'Gestisci',
+        'nav.users': 'Utenti',
+        'nav.login': 'Accedi',
+        'nav.register': 'Registrati',
+        'nav.logout': 'Esci',
+        'hero.title': 'Piattaforma di Apprendimento IA',
+        'hero.subtitle': 'Nuova Generazione',
+        'hero.welcome': 'Benvenuto',
+        'hero.desc': 'Scopri EduVerse 3.0 - Ecosistema di apprendimento intelligente con',
+        'hero.desc2': 'Tutto in una piattaforma.',
+        'hero.feature1': 'generazione video IA da documenti',
+        'hero.feature2': 'rilevamento frodi in tempo reale',
+        'hero.feature3': 'percorsi di apprendimento personalizzati',
+        'hero.feature4': 'comunità di apprendimento dinamica',
+        'hero.cta1': 'Visualizza nuove funzionalità',
+        'hero.cta2': 'Inizia a imparare ora',
+        'features.title': 'Ecosistema di Apprendimento Intelligente',
+        'features.subtitle': 'Tecnologia IA Avanzata',
+        'features.desc': 'EduVerse 3.0 integra IA completa: Generazione automatica di video lezioni, rilevamento frodi in tempo reale, percorsi di apprendimento personalizzati e comunità di apprendimento dinamica. Tutto in una piattaforma.',
+        'courses.title': 'Esplora Corsi',
+        'courses.subtitle': 'Centinaia di corsi di alta qualità ti aspettano',
+        'courses.search': 'Cerca per nome, tag, categoria...',
+        'courses.filter': 'Tutte le categorie',
+        'courses.reset': 'Reimposta',
+        'courses.view': 'Visualizza dettagli',
+        'courses.noresults': 'Nessun corso trovato.',
+        'footer.copyright': 'Tutti i diritti riservati.',
+        'footer.design': 'Progettato con ❤️ per studenti vietnamiti'
+      }
+    };
+
+    let currentLang = localStorage.getItem('language') || 'vi';
+
+    function translatePage(lang) {
+      currentLang = lang;
+      localStorage.setItem('language', lang);
+      
+      // Update all elements with data-translate attribute
+      document.querySelectorAll('[data-translate]').forEach(el => {
+        const key = el.getAttribute('data-translate');
+        if (translations[lang] && translations[lang][key]) {
+          el.textContent = translations[lang][key];
+        }
+      });
+
+      // Update placeholders
+      document.querySelectorAll('[data-placeholder]').forEach(el => {
+        const key = el.getAttribute('data-placeholder');
+        if (translations[lang] && translations[lang][key]) {
+          el.placeholder = translations[lang][key];
+        }
+      });
+
+      // Update checkmarks in language dropdown
+      document.querySelectorAll('[data-lang-check]').forEach(check => {
+        check.classList.add('hidden');
+      });
+      const activeCheck = document.querySelector(`[data-lang-check="${lang}"]`);
+      if (activeCheck) {
+        activeCheck.classList.remove('hidden');
+      }
+    }
+
+    // Language selector - Toggle dropdown on click
+    const languageToggle = document.getElementById('languageToggle');
+    const languageDropdown = document.getElementById('languageDropdown');
+    
+    languageToggle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isVisible = languageDropdown.classList.contains('opacity-100');
+      if (isVisible) {
+        languageDropdown.classList.add('opacity-0', 'invisible');
+        languageDropdown.style.display = 'none';
+      } else {
+        languageDropdown.style.display = 'block';
+        setTimeout(() => {
+          languageDropdown.classList.remove('opacity-0', 'invisible');
+          languageDropdown.classList.add('opacity-100', 'visible');
+        }, 10);
+      }
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!languageToggle.contains(e.target) && !languageDropdown.contains(e.target)) {
+        languageDropdown.classList.add('opacity-0', 'invisible');
+        setTimeout(() => {
+          languageDropdown.style.display = 'none';
+        }, 200);
+      }
+    });
+
+    // Language option click
+    document.querySelectorAll('.language-option').forEach(option => {
+      option.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const lang = option.getAttribute('data-lang');
+        translatePage(lang);
+        // Close dropdown after selection
+        languageDropdown.classList.add('opacity-0', 'invisible');
+        setTimeout(() => {
+          languageDropdown.style.display = 'none';
+        }, 200);
+      });
+    });
+
+    // Load saved language on page load
+    translatePage(currentLang);
+
     // Dark Mode Toggle
     const themeToggle = document.getElementById('themeToggle');
     const html = document.documentElement;
@@ -292,104 +1464,62 @@
       el.classList.add('opacity-0');
       observer.observe(el);
     });
-  </script>
 
-  <!-- SEARCH & FILTER SCRIPT (giữ nguyên, đã tối ưu) -->
-  <script id="course-search-fix">
-  ;(function(){
-    const $ = (s)=>document.querySelector(s);
-    const $$ = (s)=>Array.from(document.querySelectorAll(s));
-
-    const input = $('#searchTitle');
-    const select = $('#filterCategory');
-    const suggest = $('#searchSuggest');
-    const grid = $('#courseGrid');
-    const noResults = $('#noResults');
-
-    function stripVN(s){
-      return s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').replace(/Đ/g,'D').toLowerCase();
-    }
-    function norm(s){ return stripVN(s).replace(/[^a-z0-9+#\s]/g,' ').replace(/\s+/g,' ').trim(); }
-
-    function index(){
-      $$('.course-item').forEach(el => {
-        const title = el.dataset.title || '';
-        const tags = el.dataset.tags || '';
-        const cat = el.dataset.category || '';
-        const blob = [title, tags, cat].join(' ');
-        el.dataset.search = ' ' + norm(blob) + ' ';
-        el.dataset.compact = norm(blob).replace(/\s/g,'');
+    // Feedback Form Handler
+    const feedbackForm = document.getElementById('feedbackForm');
+    if (feedbackForm) {
+      feedbackForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const name = document.getElementById('feedbackName').value.trim();
+        const email = document.getElementById('feedbackEmail').value.trim();
+        const message = document.getElementById('feedbackMessage').value.trim();
+        
+        // Validation
+        if (message.length < 10) {
+          alert('Tin nhắn phải có ít nhất 10 ký tự');
+          return;
+        }
+        
+        const successDiv = document.getElementById('feedbackSuccess');
+        const errorDiv = document.getElementById('feedbackError');
+        
+        // Hide previous messages
+        successDiv.classList.add('hidden');
+        errorDiv.classList.add('hidden');
+        
+        try {
+          const response = await fetch('/api/feedback', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              name: name || null,
+              email: email || null,
+              message: message
+            })
+          });
+          
+          const data = await response.json();
+          
+          if (response.ok && data.success) {
+            successDiv.classList.remove('hidden');
+            feedbackForm.reset();
+            // Hide success message after 5 seconds
+            setTimeout(() => {
+              successDiv.classList.add('hidden');
+            }, 5000);
+          } else {
+            errorDiv.classList.remove('hidden');
+          }
+        } catch (error) {
+          console.error('Feedback error:', error);
+          errorDiv.classList.remove('hidden');
+        }
       });
     }
-
-    function filter(){
-      const q = norm(input.value);
-      const tokens = q ? q.split(' ').filter(Boolean) : [];
-      const cat = select.value;
-
-      let visible = 0;
-      $$('.course-item').forEach(el => {
-        const passCat = !cat || el.dataset.category === cat;
-        const passText = tokens.length === 0 || tokens.every(t => 
-          el.dataset.search.includes(' ' + t + ' ') || el.dataset.compact.includes(t)
-        );
-        const show = passCat && passText;
-        el.style.display = show ? '' : 'none';
-        if (show) visible++;
-      });
-
-      noResults.classList.toggle('hidden', visible > 0);
-      suggest.classList.add('hidden');
-    }
-
-    // Suggest
-    input.addEventListener('input', () => {
-      const q = norm(input.value);
-      if (!q) { suggest.classList.add('hidden'); return; }
-
-      const items = $$('.course-item');
-      const matches = items
-        .filter(el => norm(el.dataset.title || '').includes(q))
-        .slice(0, 6);
-
-      if (matches.length === 0) {
-        suggest.classList.add('hidden');
-        return;
-      }
-
-      suggest.innerHTML = matches.map(el => `
-        <a href="${el.querySelector('a').href}" class="flex items-center p-3 hover:bg-gray-100 dark:hover:bg-gray-700 border-b border-gray-200 dark:border-gray-700 last:border-0">
-          <img src="${el.querySelector('img').src}" class="w-10 h-10 rounded-lg object-cover mr-3">
-          <div class="flex-1 min-w-0">
-            <p class="font-medium text-gray-800 dark:text-gray-200 truncate">${el.querySelector('h3').textContent}</p>
-            <p class="text-xs text-gray-500 dark:text-gray-400">${el.dataset.category}</p>
-          </div>
-        </a>
-      `).join('');
-      suggest.classList.remove('hidden');
-    });
-
-    // Events
-    input.addEventListener('input', filter);
-    select.addEventListener('change', filter);
-    $('#resetFilter').addEventListener('click', () => {
-      input.value = ''; select.value = ''; filter();
-    });
-
-    // Click outside
-    document.addEventListener('click', (e) => {
-      if (!input.contains(e.target) && !suggest.contains(e.target)) {
-        suggest.classList.add('hidden');
-      }
-    });
-
-    // Init
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', () => { index(); filter(); });
-    } else {
-      index(); filter();
-    }
-  })();
   </script>
+
 </body>
 </html>

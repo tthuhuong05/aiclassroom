@@ -960,9 +960,7 @@
                 <button class="btn btn-sm btn-outline-secondary ms-2" id="aiChatToggle" type="button">
                   <i class="bi bi-chat-dots me-1"></i> Hỏi trợ giảng AI
                 </button>
-                <div class="text-muted small ms-auto">
-                  Hệ thống sẽ tạm dừng tại <span class="badge bg-info text-dark">giây thứ 50</span> để kiểm tra nhanh nội dung đã học.
-                </div>
+                
               </div>
               <div class="tabs" id="tabs">
                 <button data-tab="t" class="active">Transcript</button>
@@ -1771,14 +1769,27 @@ document.addEventListener('DOMContentLoaded', function() {
   const askedAt = new Set();
   let quizAnswered = false;
   let wrongAnswerCount = 0;
+  let currentQuestionCheckpoint = null; // Lưu checkpoint của câu hỏi hiện tại
+  let needsReplay = false; // Flag để biết có cần phát lại không
+  let isAskingQuestion = false; // Flag để đảm bảo chỉ 1 câu hỏi tại một thời điểm
+  let lastCheckpointProcessed = -1; // Lưu checkpoint cuối cùng đã xử lý
 
   function showModal(){ 
+    // Kiểm tra nếu modal đã được hiển thị, không hiển thị lại
+    if (modal && modal._element && modal._element.classList.contains('show')) {
+      console.log('⚠️ Modal đã được hiển thị, bỏ qua');
+      return;
+    }
     console.log('📱 Hiển thị quiz modal');
-    modal.show(); 
+    if (modal) {
+      modal.show(); 
+    }
   }
   function hideModal(){ 
     console.log('❌ Ẩn quiz modal');
-    modal.hide(); 
+    if (modal) {
+      modal.hide(); 
+    }
   }
 
   // Tạo câu hỏi mẫu về nội dung 50 giây đầu
@@ -1817,54 +1828,124 @@ document.addEventListener('DOMContentLoaded', function() {
     btnCont.style.display = "none";
     qChoices.innerHTML = "";
     
+    // Reset trạng thái câu hỏi
+    quizAnswered = false;
+    
     qa.options.forEach((c, idx)=>{
       const b = document.createElement('button');
       b.textContent = `(${String.fromCharCode(65+idx)}) ${c}`;
       b.className = "btn btn-outline-primary w-100 mb-2";
       b.addEventListener('click', ()=>{
         console.log('🖱️ User clicked option:', idx);
-        // khoá lựa chọn
-        [...qChoices.children].forEach(x=>x.disabled=true);
         
         if(idx === qa.correct_index){
-          qResult.textContent = "✅ Chính xác! " + qa.explanation;
+          // Trả lời đúng
+          // Khóa tất cả lựa chọn
+          [...qChoices.children].forEach(x=>x.disabled=true);
+          
+          // Highlight đáp án đúng
+          b.classList.remove('btn-outline-primary');
+          b.classList.add('btn-success');
+          
+          qResult.textContent = "✅ Chính xác! " + (qa.explanation || "Bạn đã trả lời đúng!");
           qResult.className = "result correct";
           quizAnswered = true;
+          needsReplay = false;
           console.log('✅ User answered correctly');
+          
+          // Hiển thị nút tiếp tục
+          btnCont.style.display = "inline-block";
         }else{
+          // Trả lời sai - không hiển thị đáp án đúng
           wrongAnswerCount++;
-          const correct = qa.options[qa.correct_index];
-          qResult.textContent = `❌ Chưa đúng. Bạn cần xem lại đoạn video từ checkpoint trước đó để hiểu rõ hơn.`;
+          
+          // Highlight đáp án sai
+          b.classList.remove('btn-outline-primary');
+          b.classList.add('btn-danger');
+          b.disabled = true;
+          
+          qResult.textContent = "❌ Chưa đúng. Hãy xem lại đoạn video và thử lại.";
           qResult.className = "result wrong";
-          console.log('❌ User answered incorrectly');
+          needsReplay = true;
+          console.log('❌ User answered incorrectly - will replay from previous checkpoint');
+          
+          // Tự động quay lại checkpoint trước và phát lại
+          setTimeout(() => {
+            if (currentQuestionCheckpoint !== null) {
+              const previousCheckpoint = Math.max(0, currentQuestionCheckpoint - 50);
+              
+              console.log(`🔄 Trả lời sai tại checkpoint ${currentQuestionCheckpoint}s`);
+              console.log(`⏪ Quay lại checkpoint ${previousCheckpoint}s để xem lại`);
+              
+              // Reset trạng thái để có thể hỏi lại
+              const checkpointKey = currentQuestionCheckpoint.toString();
+              askedAt.delete(checkpointKey);
+              lastCheckpointProcessed = -1;
+              wrongAnswerCount = 0;
+              quizAnswered = false;
+              needsReplay = false;
+              currentQuestionCheckpoint = null;
+              isAskingQuestion = false;
+              
+              // Đóng modal
+              hideModal();
+              
+              // Quay lại checkpoint trước đó
+              player.currentTime = previousCheckpoint;
+              
+              // Tự động phát video
+              player.play();
+              
+              console.log(`▶️ Video sẽ tự động phát từ ${previousCheckpoint}s và hỏi lại khi đến ${currentQuestionCheckpoint}s`);
+            }
+          }, 1500); // Đợi 1.5 giây để người dùng thấy thông báo sai
         }
-        btnCont.style.display = "inline-block";
       });
       qChoices.appendChild(b);
     });
   }
 
   async function maybeAsk(now){
+    // Kiểm tra nếu đang xử lý câu hỏi khác, bỏ qua
+    if (isAskingQuestion) {
+      console.log('⏸️ Already asking a question, skipping...');
+      return;
+    }
+    
     console.log('⏰ Checking time:', now, 'Asked at:', Array.from(askedAt));
     
     // Tính checkpoint hiện tại (mỗi 50 giây: 50, 100, 150, 200...)
     const currentCheckpoint = Math.floor(now / 50) * 50;
     const checkpointKey = currentCheckpoint.toString();
     
+    // Kiểm tra nếu đã xử lý checkpoint này rồi
+    if (lastCheckpointProcessed === currentCheckpoint) {
+      return;
+    }
+    
     // Kiểm tra nếu đã đến checkpoint và chưa hỏi quiz
     // Chỉ hiển thị quiz khi đã qua checkpoint (không phải tại checkpoint 0)
     if(now >= currentCheckpoint && currentCheckpoint > 0 && !askedAt.has(checkpointKey)){
+      // Đánh dấu đang xử lý câu hỏi
+      isAskingQuestion = true;
+      lastCheckpointProcessed = currentCheckpoint;
+      
+      // Thêm vào askedAt NGAY LẬP TỨC để tránh bị gọi lại
+      askedAt.add(checkpointKey);
+      
       console.log(`🎯 Time to show quiz at checkpoint ${currentCheckpoint}!`);
       player.pause();
-      showModal();
+      currentQuestionCheckpoint = currentCheckpoint; // Lưu checkpoint của câu hỏi
+      
       try{
         const qa = await fetchQuestionFromSubtitles(now);
-        askedAt.add(checkpointKey);
+        showModal();
         renderQuestion(qa);
       }catch(e){
         console.error('❌ Error creating question:', e);
         // Fallback question
         const fallbackQA = await createFallbackQuestion(currentCheckpoint);
+        showModal();
         renderQuestion(fallbackQA);
       }
     }
@@ -1875,10 +1956,16 @@ document.addEventListener('DOMContentLoaded', function() {
     const currentCheckpoint = Math.floor(currentTime / 50) * 50;
     const checkpointKey = currentCheckpoint.toString();
     
+    // Nếu video được tua lại trước checkpoint đã hỏi, reset để có thể hỏi lại
     if (currentTime < currentCheckpoint && askedAt.has(checkpointKey)) {
-      console.log(`🔄 Video tua lại trước checkpoint ${currentCheckpoint}, reset quiz`);
+      console.log(`🔄 Video tua lại trước checkpoint ${currentCheckpoint}, reset quiz để có thể hỏi lại`);
       askedAt.delete(checkpointKey);
       wrongAnswerCount = 0;
+      quizAnswered = false;
+      needsReplay = false;
+      currentQuestionCheckpoint = null;
+      isAskingQuestion = false; // Reset flag
+      lastCheckpointProcessed = -1; // Reset checkpoint đã xử lý
     }
   }
 
@@ -1948,8 +2035,10 @@ document.addEventListener('DOMContentLoaded', function() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          subtitle_text: subtitleText,
-          time_range: `${startTime}-${endTime} seconds`,
+          script_text: subtitleText,
+          video_id: {{ course.id }},
+          start_time: startTime,
+          end_time: endTime,
           language: 'vi',
           checkpoint: currentCheckpoint
         })
@@ -1958,11 +2047,26 @@ document.addEventListener('DOMContentLoaded', function() {
       if (response.ok) {
         const data = await response.json();
         console.log('✅ AI Gemini generated question on-the-fly:', data);
+        
+        // Validate response
+        if (!data.question || !data.options || data.options.length !== 4) {
+          console.error('❌ Invalid question data from API:', data);
+          return await createFallbackQuestion(currentCheckpoint);
+        }
+        
+        // Log để debug
+        console.log(`📝 Question: ${data.question}`);
+        console.log(`📝 Options: ${data.options.join(', ')}`);
+        console.log(`📝 Correct index: ${data.correct_index}`);
+        console.log(`📝 Transcript used: ${subtitleText.substring(0, 100)}...`);
+        
         // Shuffle đáp án để không cố định vị trí
         const shuffledData = shuffleAnswers(data);
         return shuffledData;
       } else {
-        console.log('⚠️ AI API failed, using fallback');
+        const errorData = await response.json().catch(() => ({}));
+        console.error('⚠️ AI API failed:', errorData);
+        console.error('⚠️ Transcript that was sent:', subtitleText.substring(0, 200));
         return await createFallbackQuestion(currentCheckpoint);
       }
     } catch (error) {
@@ -2003,52 +2107,103 @@ document.addEventListener('DOMContentLoaded', function() {
   // Trích xuất text từ phụ đề trong khoảng thời gian
   async function extractSubtitleText(startTime, endTime) {
     const player = document.getElementById('player');
-    if (!player || !player.textTracks) {
-      console.log('❌ No text tracks found');
-      return '';
-    }
-    
     let subtitleText = '';
     console.log(`📝 Extracting subtitles from ${startTime}s to ${endTime}s`);
     
-    // Tìm track phụ đề đang hoạt động
-    let activeTrack = null;
-    for (let i = 0; i < player.textTracks.length; i++) {
-      const track = player.textTracks[i];
-      if (track.kind === 'subtitles' && track.mode === 'showing') {
-        activeTrack = track;
-        console.log(`✅ Found active subtitle track: ${track.label}`);
-        break;
+    // Phương pháp 1: Thử lấy từ textTracks (nếu đã load)
+    if (player && player.textTracks) {
+      // Tìm track phụ đề đang hoạt động
+      let activeTrack = null;
+      for (let i = 0; i < player.textTracks.length; i++) {
+        const track = player.textTracks[i];
+        if ((track.kind === 'subtitles' || track.kind === 'captions') && track.mode === 'showing') {
+          activeTrack = track;
+          console.log(`✅ Found active subtitle track: ${track.label}`);
+          break;
+        }
+      }
+      
+      // Nếu không tìm thấy track đang showing, thử tìm track có sẵn
+      if (!activeTrack) {
+        for (let i = 0; i < player.textTracks.length; i++) {
+          const track = player.textTracks[i];
+          if (track.kind === 'subtitles' || track.kind === 'captions') {
+            activeTrack = track;
+            track.mode = 'showing'; // Kích hoạt track
+            console.log(`✅ Found subtitle track (activated): ${track.label}`);
+            break;
+          }
+        }
+      }
+      
+      if (activeTrack) {
+        // Đợi cues được load (nếu chưa có)
+        if (activeTrack.cues && activeTrack.cues.length > 0) {
+          // Trích xuất text từ cues trong khoảng thời gian
+          const cues = [];
+          for (let j = 0; j < activeTrack.cues.length; j++) {
+            const cue = activeTrack.cues[j];
+            // Kiểm tra nếu cue nằm trong khoảng thời gian (bao gồm cả overlap)
+            if (cue.startTime < endTime && cue.endTime > startTime) {
+              // Loại bỏ HTML tags nếu có
+              let text = cue.text;
+              if (text.includes('<')) {
+                const div = document.createElement('div');
+                div.innerHTML = text;
+                text = div.textContent || div.innerText || text;
+              }
+              cues.push({
+                text: text,
+                startTime: cue.startTime,
+                endTime: cue.endTime
+              });
+            }
+          }
+          
+          // Sắp xếp theo thời gian và ghép text
+          cues.sort((a, b) => a.startTime - b.startTime);
+          subtitleText = cues.map(cue => cue.text).join(' ').trim();
+          
+          console.log(`📝 Extracted ${cues.length} subtitle cues from textTracks`);
+          if (subtitleText) {
+            console.log(`📝 Subtitle text: ${subtitleText.substring(0, 200)}...`);
+            return subtitleText;
+          }
+        } else {
+          console.log('⚠️ Track found but no cues loaded yet');
+        }
       }
     }
     
-    if (!activeTrack) {
-      console.log('⚠️ No active subtitle track found');
-      return '';
-    }
+    // Phương pháp 2: Fallback - Gọi API backend để đọc VTT file trực tiếp
+    console.log('🔄 Falling back to API to read VTT file...');
+    const trackEl = document.getElementById('trackSubs');
+    const captionUrl = trackEl?.getAttribute('src') || '{{ course.caption_url or "" }}';
     
-    // Trích xuất text từ cues trong khoảng thời gian
-    const cues = [];
-    for (let j = 0; j < activeTrack.cues.length; j++) {
-      const cue = activeTrack.cues[j];
-      // Kiểm tra nếu cue nằm trong khoảng thời gian (bao gồm cả overlap)
-      if (cue.startTime < endTime && cue.endTime > startTime) {
-        cues.push({
-          text: cue.text,
-          startTime: cue.startTime,
-          endTime: cue.endTime
+    if (captionUrl) {
+      try {
+        const response = await fetch(`/api/captions/extract-text?url=${encodeURIComponent(captionUrl)}&start_time=${startTime}&end_time=${endTime}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          }
         });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.ok && data.text) {
+            subtitleText = data.text.trim();
+            console.log(`✅ Extracted transcript from API: ${subtitleText.substring(0, 200)}...`);
+            return subtitleText;
+          }
+        }
+      } catch (error) {
+        console.error('❌ Error calling API to extract transcript:', error);
       }
     }
     
-    // Sắp xếp theo thời gian và ghép text
-    cues.sort((a, b) => a.startTime - b.startTime);
-    subtitleText = cues.map(cue => cue.text).join(' ').trim();
-    
-    console.log(`📝 Extracted ${cues.length} subtitle cues`);
-    console.log(`📝 Subtitle text: ${subtitleText.substring(0, 200)}...`);
-    
-    return subtitleText;
+    console.log('⚠️ Could not extract subtitle text');
+    return '';
   }
 
   // Pre-generate questions cho tất cả segments
@@ -2151,30 +2306,50 @@ document.addEventListener('DOMContentLoaded', function() {
 
   btnCont.addEventListener('click', ()=>{
     console.log('▶️ Continue button clicked');
-    hideModal(); 
-    if(wrongAnswerCount > 0){
-      // Tính checkpoint trước đó để tua lại
-      const currentTime = player.currentTime || 0;
-      const currentCheckpoint = Math.floor(currentTime / 50) * 50;
-      const previousCheckpoint = Math.max(0, currentCheckpoint - 50);
-      
-      console.log(`🔄 Trả lời sai - Tua lại từ checkpoint ${previousCheckpoint}`);
-      // Nếu trả lời sai, tua lại từ checkpoint trước đó
-      player.currentTime = previousCheckpoint;
-      wrongAnswerCount = 0; // reset counter
-      askedAt.delete(currentCheckpoint.toString()); // Reset quiz để có thể hỏi lại
+    
+    // Chỉ cho phép tiếp tục nếu đã trả lời đúng
+    if (!quizAnswered) {
+      console.log('⚠️ Cannot continue - question not answered correctly yet');
+      return;
     }
+    
+    hideModal();
+    
+    // Reset flag đang xử lý câu hỏi
+    isAskingQuestion = false;
+    
+    // Trả lời đúng, tiếp tục phát video bình thường
+    console.log('✅ Answer is correct, continuing video');
     player.play();
   });
 
+  // Throttle để tránh gọi quá nhiều lần
+  let lastTimeUpdateCheck = 0;
+  const TIME_UPDATE_THROTTLE = 100; // Chỉ kiểm tra mỗi 100ms
+  
   player.addEventListener('timeupdate', ()=>{
     const t = player.currentTime || 0;
+    const now = Date.now();
+    
+    // Throttle để tránh gọi quá nhiều lần
+    if (now - lastTimeUpdateCheck < TIME_UPDATE_THROTTLE) {
+      return;
+    }
+    lastTimeUpdateCheck = now;
+    
     // Reset quiz nếu video được tua lại trước checkpoint
     resetQuizIfNeeded(t);
+    
+    // Chỉ kiểm tra nếu không đang xử lý câu hỏi
+    if (isAskingQuestion) {
+      return;
+    }
+    
     // Hiển thị quiz mỗi 50 giây (50, 100, 150, 200...)
     const currentCheckpoint = Math.floor(t / 50) * 50;
     const checkpointKey = currentCheckpoint.toString();
     
+    // Kiểm tra nếu đã đến checkpoint và chưa hỏi quiz
     if(t >= currentCheckpoint && currentCheckpoint > 0 && !askedAt.has(checkpointKey)){
       console.log(`⏰ Video reached checkpoint ${currentCheckpoint}, showing quiz`);
       maybeAsk(t);
@@ -2184,15 +2359,23 @@ document.addEventListener('DOMContentLoaded', function() {
   player.addEventListener('seeked', ()=>{
     const t = player.currentTime || 0;
     console.log('⏩ Video seeked to:', t);
+    
+    // Reset flag khi seek
+    isAskingQuestion = false;
+    lastCheckpointProcessed = -1;
+    
     // Reset quiz nếu video được tua lại trước checkpoint
     resetQuizIfNeeded(t);
-    // nếu tua qua checkpoint → hỏi ngay quiz
-    const currentCheckpoint = Math.floor(t / 50) * 50;
-    const checkpointKey = currentCheckpoint.toString();
     
-    if(t >= currentCheckpoint && currentCheckpoint > 0 && !askedAt.has(checkpointKey)){
-      console.log(`⏩ Video seeked past checkpoint ${currentCheckpoint}, showing quiz`);
-      maybeAsk(t);
+    // Nếu tua qua checkpoint → hỏi ngay quiz (chỉ nếu không đang xử lý câu hỏi)
+    if (!isAskingQuestion) {
+      const currentCheckpoint = Math.floor(t / 50) * 50;
+      const checkpointKey = currentCheckpoint.toString();
+      
+      if(t >= currentCheckpoint && currentCheckpoint > 0 && !askedAt.has(checkpointKey)){
+        console.log(`⏩ Video seeked past checkpoint ${currentCheckpoint}, showing quiz`);
+        maybeAsk(t);
+      }
     }
   });
 

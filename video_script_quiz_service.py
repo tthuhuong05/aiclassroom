@@ -29,21 +29,99 @@ load_dotenv()
 class VideoScriptQuizService:
     def __init__(self):
         self.session_cache = {}
+        # Track transcript và số câu hỏi đã tạo cho mỗi session
+        self.session_transcripts = {}  # {session_key: full_transcript}
+        self.session_question_count = {}  # {session_key: count}
+        self.session_used_segments = {}  # {session_key: set of segment_indices}
     
     def get_next_question_from_video_script(self, course_id: str, script_content: str, 
                                            session_id: str, question_type: str = "mcq", 
-                                           language: str = "vi") -> Dict[str, Any]:
+                                           language: str = "vi", time_range: tuple = None) -> Dict[str, Any]:
         """
         Tạo câu hỏi từ nội dung script video sử dụng AI Gemini
+        Đảm bảo mỗi câu hỏi khác nhau bằng cách:
+        1. Chia transcript thành các phần nhỏ
+        2. Tạo câu hỏi từ các phần khác nhau
+        3. Track các câu hỏi đã tạo để tránh trùng lặp
+        
+        Args:
+            time_range: Tuple (start_time, end_time) trong giây để tạo câu hỏi từ đoạn transcript cụ thể
+                       Nếu None, sẽ tạo câu hỏi từ toàn bộ transcript
         """
         # Tạo timestamp để đảm bảo câu hỏi luôn khác nhau
         import time
         timestamp = str(int(time.time() * 1000))  # milliseconds
         
+        # Tạo session key để track
+        session_key = f"{course_id}_{session_id}"
+        
+        # Lưu transcript gốc cho session này (lần đầu tiên)
+        if session_key not in self.session_transcripts:
+            # Validate transcript trước khi lưu
+            if not script_content or len(script_content.strip()) < 100:
+                print(f"⚠️ WARNING: Transcript too short ({len(script_content) if script_content else 0} chars). Minimum required: 100 chars")
+            else:
+                print(f"✅ Transcript loaded: {len(script_content)} chars for session {session_key}")
+            
+            self.session_transcripts[session_key] = script_content
+            self.session_question_count[session_key] = 0
+            self.session_used_segments[session_key] = set()
+        
+        # Lấy transcript gốc
+        full_transcript = self.session_transcripts[session_key]
+        question_count = self.session_question_count[session_key]
+        used_segments = self.session_used_segments[session_key]
+        
+        # Nếu có time_range, tạo câu hỏi từ đoạn transcript tương ứng với khoảng thời gian đó
+        if time_range and len(time_range) == 2:
+            start_time, end_time = time_range
+            print(f"⏰ Creating question for time range: {start_time}s - {end_time}s")
+            # script_content đã là transcript của đoạn này (được truyền từ frontend)
+            # Sử dụng trực tiếp script_content thay vì full_transcript
+            segment_transcript = script_content if script_content and len(script_content.strip()) >= 50 else full_transcript
+        else:
+            # Không có time_range, dùng logic cũ (chia transcript thành segments)
+            segment_transcript = full_transcript
+        
+        # Validate transcript trước khi chia
+        if not segment_transcript or len(segment_transcript.strip()) < 50:
+            print(f"❌ ERROR: Invalid transcript for question generation. Length: {len(segment_transcript) if segment_transcript else 0} chars")
+            # Fallback về full_transcript nếu segment quá ngắn
+            segment_transcript = full_transcript if full_transcript else ""
+        
+        # Nếu có time_range, dùng trực tiếp segment_transcript
+        # Nếu không, chia transcript thành các phần nhỏ (mỗi phần ~200-300 từ) để tạo câu hỏi đa dạng
+        if time_range and len(time_range) == 2:
+            transcript_segments = [segment_transcript]  # Chỉ có 1 segment cho khoảng thời gian này
+            selected_segment = segment_transcript
+            segment_index = 0
+        else:
+            transcript_segments = self._split_transcript_into_segments(segment_transcript, segment_size=250)
+            
+            if not transcript_segments or len(transcript_segments) == 0:
+                print(f"⚠️ WARNING: No segments created from transcript. Transcript length: {len(segment_transcript) if segment_transcript else 0} chars")
+            
+            # Chọn một segment chưa được sử dụng (hoặc ít được sử dụng nhất)
+            selected_segment, segment_index = self._select_unused_segment(transcript_segments, used_segments, question_count)
+        
+        # Đánh dấu segment này đã được sử dụng
+        used_segments.add(segment_index)
+        self.session_question_count[session_key] = question_count + 1
+        
+        # Validate segment trước khi gọi AI
+        if not selected_segment or len(selected_segment.strip()) < 50:
+            print(f"❌ ERROR: Selected segment is too short or empty. Length: {len(selected_segment) if selected_segment else 0} chars")
+            print(f"   Full transcript length: {len(full_transcript) if full_transcript else 0} chars")
+            print(f"   Number of segments: {len(transcript_segments)}")
+        
+        ai_question = None  # Khởi tạo biến
+        
         try:
-            # Thử sử dụng AI Gemini để tạo câu hỏi
-            ai_question = self._generate_question_with_ai(script_content, language)
+            # Thử sử dụng AI Gemini để tạo câu hỏi từ segment được chọn
+            print(f"🔄 Attempting to generate question from segment (length: {len(selected_segment) if selected_segment else 0} chars)")
+            ai_question = self._generate_question_with_ai(selected_segment, language, question_count)
             if ai_question:
+                print(f"✅ Successfully generated AI question: {ai_question.get('question', '')[:100]}...")
                 # Tạo qid duy nhất với timestamp để tránh trùng lặp
                 qid = hashlib.sha1(f"{course_id}_{session_id}_{timestamp}_{ai_question['question']}".encode()).hexdigest()[:16]
                 
@@ -96,14 +174,107 @@ class VideoScriptQuizService:
                     "time_limit_ms": 10000
                 }
         except Exception as e:
-            print(f"Error generating AI question: {e}")
+            print(f"❌ Error generating AI question: {e}")
+            import traceback
+            traceback.print_exc()
+            ai_question = None  # Đảm bảo set về None nếu có lỗi
         
-        # Fallback: Tạo câu hỏi dựa trên nội dung thực tế
-        return self._generate_fallback_question(script_content, course_id, session_id, question_type, timestamp)
+        # Nếu AI không tạo được câu hỏi, thử lại với toàn bộ transcript (không chỉ segment)
+        if not ai_question and full_transcript and len(full_transcript.strip()) >= 100:
+            print(f"⚠️ Retrying with full transcript instead of segment...")
+            try:
+                # Thử với toàn bộ transcript nếu segment không đủ
+                ai_question = self._generate_question_with_ai(full_transcript[:2000], language, question_count)  # Giới hạn 2000 ký tự
+                if ai_question:
+                    print(f"✅ Successfully generated AI question from full transcript")
+                    # Xử lý tương tự như trên
+                    qid = hashlib.sha1(f"{course_id}_{session_id}_{timestamp}_{ai_question['question']}".encode()).hexdigest()[:16]
+                    import random
+                    options = ai_question["options"].copy()
+                    correct_index = int(ai_question.get("correct_index", 0))
+                    if correct_index < 0 or correct_index >= len(options):
+                        correct_index = 0
+                    correct_answer = options[correct_index]
+                    random.shuffle(options)
+                    try:
+                        new_correct_index = options.index(correct_answer)
+                    except ValueError:
+                        new_correct_index = 0
+                    options_hashes = [hash_option(option) for option in options]
+                    correct_hash = options_hashes[new_correct_index]
+                    return {
+                        "qid": qid,
+                        "question": ai_question["question"],
+                        "options": options,
+                        "options_hashes": options_hashes,
+                        "correct_index": new_correct_index,
+                        "correct_hash": correct_hash,
+                        "explanation": ai_question["explanation"],
+                        "type": question_type,
+                        "time_limit_ms": 10000
+                    }
+            except Exception as e2:
+                print(f"❌ Error generating from full transcript: {e2}")
+                import traceback
+                traceback.print_exc()
+        
+        # Chỉ dùng fallback nếu thực sự không có transcript hoặc AI hoàn toàn fail
+        if not ai_question:
+            print(f"⚠️ Using fallback question (AI generation failed or no transcript)")
+            print(f"   Transcript available: {bool(full_transcript)}, Length: {len(full_transcript) if full_transcript else 0} chars")
+            # Fallback: Tạo câu hỏi dựa trên segment đã chọn (không phải toàn bộ transcript)
+            return self._generate_fallback_question(selected_segment if selected_segment else full_transcript, course_id, session_id, question_type, timestamp, question_count)
+        
+        # Nếu có ai_question, return nó (trường hợp này không nên xảy ra vì đã return ở trên)
+        return ai_question
     
-    def _generate_question_with_ai(self, script_content: str, language: str = "vi") -> Dict[str, Any]:
+    def _split_transcript_into_segments(self, transcript: str, segment_size: int = 250) -> List[str]:
         """
-        Tạo câu hỏi sử dụng AI Gemini
+        Chia transcript thành các phần nhỏ để tạo câu hỏi đa dạng
+        """
+        if not transcript or len(transcript.strip()) < segment_size:
+            return [transcript] if transcript else []
+        
+        words = transcript.split()
+        segments = []
+        
+        for i in range(0, len(words), segment_size):
+            segment = ' '.join(words[i:i + segment_size])
+            segments.append(segment)
+        
+        return segments
+    
+    def _select_unused_segment(self, segments: List[str], used_segments: set, question_count: int) -> tuple:
+        """
+        Chọn một segment chưa được sử dụng hoặc ít được sử dụng nhất
+        """
+        if not segments:
+            return ("", 0)
+        
+        # Nếu chưa có segment nào được sử dụng, chọn ngẫu nhiên
+        if not used_segments:
+            import random
+            idx = random.randint(0, len(segments) - 1)
+            return (segments[idx], idx)
+        
+        # Tìm các segment chưa được sử dụng
+        unused_indices = [i for i in range(len(segments)) if i not in used_segments]
+        
+        if unused_indices:
+            # Chọn ngẫu nhiên từ các segment chưa dùng
+            import random
+            idx = random.choice(unused_indices)
+            return (segments[idx], idx)
+        else:
+            # Nếu đã dùng hết, reset và chọn lại (hoặc chọn ngẫu nhiên)
+            import random
+            idx = random.randint(0, len(segments) - 1)
+            return (segments[idx], idx)
+    
+    def _generate_question_with_ai(self, script_content: str, language: str = "vi", question_number: int = 0) -> Dict[str, Any]:
+        """
+        Tạo câu hỏi sử dụng AI Gemini từ một phần transcript cụ thể
+        question_number: số thứ tự câu hỏi (0-19) để tạo câu hỏi đa dạng hơn
         """
         try:
             import google.generativeai as genai
@@ -115,41 +286,178 @@ class VideoScriptQuizService:
                 return None
             
             genai.configure(api_key=api_key)
-            model = genai.GenerativeModel('gemini-pro')
             
-            # Prompt cho AI Gemini
-            prompt = f"""
-            Bạn là một giáo viên AI chuyên tạo câu hỏi trắc nghiệm từ nội dung video thực tế.
-
-            NỘI DUNG PHỤ ĐỀ VIDEO:
-            {script_content}
-
-            NHIỆM VỤ:
-            1. ĐỌC KỸ toàn bộ nội dung phụ đề trên
-            2. PHÂN TÍCH nội dung chính được đề cập trong phụ đề
-            3. TẠO câu hỏi trắc nghiệm CỤ THỂ về nội dung thực tế trong phụ đề
-            4. ĐẢM BẢO câu hỏi và đáp án dựa 100% trên nội dung phụ đề
-
-            YÊU CẦU:
-            - Câu hỏi phải liên quan TRỰC TIẾP đến nội dung trong phụ đề
-            - 4 lựa chọn (A, B, C, D) - chỉ 1 đáp án đúng
-            - Đáp án đúng phải có trong phụ đề hoặc suy luận từ phụ đề
-            - 3 đáp án sai phải hợp lý nhưng không đúng
-            - KHÔNG được tạo câu hỏi chung chung
-            - KHÔNG được dùng template có sẵn
-            - KHÔNG được copy text từ phụ đề vào câu hỏi
-
-            TRẢ VỀ JSON:
-            {{
-                "question": "Câu hỏi cụ thể dựa trên nội dung phụ đề...",
-                "options": ["Đáp án A dựa trên phụ đề", "Đáp án B dựa trên phụ đề", "Đáp án C dựa trên phụ đề", "Đáp án D dựa trên phụ đề"],
-                "correct_index": 0,
-                "explanation": "Giải thích dựa trên nội dung phụ đề cụ thể..."
-            }}
-            """
+            # Thử các model theo thứ tự ưu tiên
+            model_names = [
+                os.getenv('GEMINI_MODEL_QA', 'gemini-2.0-flash'),
+                'gemini-2.0-flash-001',
+                'gemini-2.5-flash',
+                'gemini-1.5-pro-latest',
+                'gemini-1.5-flash-latest',
+                'gemini-1.5-pro',
+                'gemini-1.5-flash',
+                'gemini-pro'
+            ]
             
+            model = None
+            for model_name in model_names:
+                try:
+                    model = genai.GenerativeModel(model_name)
+                    break
+                except Exception:
+                    continue
+            
+            if not model:
+                print("No available Gemini model")
+                return None
+            
+            # Prompt cải thiện để tạo câu hỏi đa dạng hơn
+            # Thêm yêu cầu tạo câu hỏi về khía cạnh khác nhau của nội dung
+            question_types = [
+                "khái niệm cơ bản",
+                "ví dụ cụ thể",
+                "ứng dụng thực tế",
+                "so sánh và phân biệt",
+                "nguyên nhân và kết quả",
+                "quy trình và bước thực hiện",
+                "đặc điểm và tính chất",
+                "lợi ích và hạn chế",
+                "trường hợp sử dụng",
+                "lỗi thường gặp"
+            ]
+            
+            question_type_hint = question_types[question_number % len(question_types)]
+            
+            # Validate transcript trước khi gửi vào AI
+            if not script_content or len(script_content.strip()) < 50:
+                print(f"❌ [AI_GEMINI] Transcript too short: {len(script_content) if script_content else 0} chars")
+                return None
+            
+            # Log để debug - hiển thị preview của transcript
+            transcript_preview = script_content[:300] + "..." if len(script_content) > 300 else script_content
+            print(f"🤖 [AI_GEMINI] Generating question #{question_number + 1}")
+            print(f"   📝 Transcript segment length: {len(script_content)} chars")
+            print(f"   📄 Transcript FULL CONTENT:")
+            print(f"   {'='*80}")
+            print(f"   {script_content}")
+            print(f"   {'='*80}")
+            print(f"   🎯 Question type: {question_type_hint}")
+            
+            # Tạo prompt rõ ràng, nhấn mạnh việc sử dụng transcript
+            prompt = f"""Bạn là một giáo viên AI chuyên tạo câu hỏi trắc nghiệm từ TRANSCRIPT (phụ đề) của video bài giảng.
+
+⚠️ QUAN TRỌNG: Bạn PHẢI đọc kỹ và PHÂN TÍCH toàn bộ TRANSCRIPT dưới đây. Đây là nội dung THỰC TẾ được nói trong video, KHÔNG phải kiến thức chung.
+
+═══════════════════════════════════════════════════════════════
+TRANSCRIPT THỰC TẾ TỪ VIDEO BÀI GIẢNG (Đoạn {question_number + 1}):
+═══════════════════════════════════════════════════════════════
+{script_content}
+═══════════════════════════════════════════════════════════════
+
+NHIỆM VỤ CỦA BẠN (PHẢI LÀM THEO ĐÚNG THỨ TỰ):
+
+BƯỚC 1: ĐỌC VÀ PHÂN TÍCH TRANSCRIPT
+   - Đọc TỪNG TỪ trong transcript ở trên
+   - Xác định các khái niệm, thuật ngữ, ví dụ CỤ THỂ được đề cập
+   - Ghi nhận các thông tin QUAN TRỌNG trong transcript
+   - KHÔNG được bỏ qua bất kỳ chi tiết nào trong transcript
+
+BƯỚC 2: XÁC ĐỊNH NỘI DUNG CHÍNH
+   Dựa TRỰC TIẾP vào transcript, xác định:
+   - Khái niệm nào được giải thích? (Ghi rõ từ transcript)
+   - Ví dụ nào được đưa ra? (Ghi rõ từ transcript)
+   - Quy trình nào được mô tả? (Ghi rõ từ transcript)
+   - So sánh nào được thực hiện? (Ghi rõ từ transcript)
+   - Thuật ngữ kỹ thuật nào được đề cập? (Ghi rõ từ transcript)
+
+BƯỚC 3: TẠO CÂU HỎI DỰA TRỰC TIẾP VÀO TRANSCRIPT
+   - Câu hỏi PHẢI kiểm tra hiểu biết về nội dung CỤ THỂ trong transcript
+   - Tập trung vào khía cạnh: {question_type_hint}
+   - Đáp án đúng PHẢI dựa trên thông tin CỤ THỂ có trong transcript
+   - Câu hỏi phải có thể trả lời được BẰNG CÁCH đọc transcript
+
+BƯỚC 4: ĐẢM BẢO TÍNH CHÍNH XÁC
+   - Câu hỏi và đáp án PHẢI phản ánh ĐÚNG nội dung trong transcript
+   - KHÔNG được thêm thông tin KHÔNG CÓ trong transcript
+   - KHÔNG được tạo câu hỏi về kiến thức chung nếu KHÔNG có trong transcript
+   - Nếu transcript nói về "String" thì câu hỏi phải về "String", KHÔNG phải về kiến thức Java chung
+
+YÊU CẦU BẮT BUỘC:
+✅ Câu hỏi PHẢI liên quan TRỰC TIẾP đến nội dung trong đoạn TRANSCRIPT ở trên
+✅ Tập trung vào khía cạnh: {question_type_hint}
+✅ 4 lựa chọn (A, B, C, D) - chỉ 1 đáp án đúng
+✅ Đáp án đúng PHẢI dựa trên thông tin CỤ THỂ có trong transcript
+✅ 3 đáp án sai PHẢI bám sát transcript nhưng DỄ GÂY NHẦM LẪN (xem chi tiết bên dưới)
+✅ Câu hỏi phải cụ thể, rõ ràng, không mơ hồ
+✅ KHÔNG được dùng template có sẵn hoặc câu hỏi chung chung
+✅ KHÔNG được copy nguyên văn text từ transcript vào câu hỏi (phải diễn đạt lại)
+✅ Tạo câu hỏi KHÁC BIỆT với các câu hỏi trước đó
+
+⚠️ QUY TẮC BẮT BUỘC (KHÔNG ĐƯỢC VI PHẠM):
+1. TRANSCRIPT ở trên là nguồn DUY NHẤT để tạo câu hỏi
+2. KHÔNG được tạo câu hỏi dựa trên kiến thức chung nếu KHÔNG có trong transcript
+3. Câu hỏi PHẢI kiểm tra xem học viên có hiểu nội dung CỤ THỂ trong transcript hay không
+4. Câu hỏi PHẢI bắt đầu bằng "Theo đoạn video" để chỉ rõ câu hỏi dựa trên transcript
+5. Đáp án đúng PHẢI là thông tin CỤ THỂ có trong transcript
+
+🎯 QUY TẮC TẠO ĐÁP ÁN SAI (DISTRACTOR OPTIONS) - RẤT QUAN TRỌNG:
+Các đáp án sai PHẢI:
+1. BÁM SÁT TRANSCRIPT: Phải dựa trên các thông tin, thuật ngữ, khái niệm CÓ TRONG transcript
+2. DỄ GÂY NHẦM LẪN: Phải là các phương án hợp lý, có vẻ đúng nhưng thực tế KHÔNG đúng với câu hỏi
+3. CÁC CÁCH TẠO ĐÁP ÁN SAI:
+   a) Sử dụng các thuật ngữ/khái niệm KHÁC được đề cập trong transcript (nhưng không phải câu trả lời đúng)
+   b) Sử dụng các thông tin LIÊN QUAN nhưng KHÔNG CHÍNH XÁC (ví dụ: nếu transcript nói "String", có thể dùng "str" hoặc "text" nếu có trong transcript)
+   c) Sử dụng các thông tin TƯƠNG TỰ nhưng SAI (ví dụ: nếu transcript nói về "int", có thể dùng "integer" hoặc "number" nếu có trong transcript)
+   d) Sử dụng các thông tin ĐỐI LẬP hoặc TRÁI NGƯỢC được đề cập trong transcript
+   e) Sử dụng các thông tin BỔ SUNG nhưng KHÔNG PHẢI câu trả lời (ví dụ: nếu câu hỏi về "kiểu dữ liệu", đáp án sai có thể là các kiểu dữ liệu KHÁC được đề cập trong transcript)
+
+VÍ DỤ CỤ THỂ:
+TRANSCRIPT: "Trong Java, để lưu trữ chuỗi văn bản, ta dùng kiểu String. Các kiểu dữ liệu khác như int dùng cho số nguyên, float dùng cho số thực, boolean dùng cho giá trị true/false."
+
+Câu hỏi: "Theo đoạn video, kiểu dữ liệu nào được sử dụng để lưu trữ một chuỗi văn bản trong Java?"
+
+Đáp án đúng: "String" (vì có trong transcript)
+
+Đáp án sai (BÁM SÁT TRANSCRIPT, DỄ NHẦM):
+- "int" (có trong transcript, là kiểu dữ liệu hợp lệ nhưng không đúng cho câu hỏi này)
+- "float" (có trong transcript, là kiểu dữ liệu hợp lệ nhưng không đúng cho câu hỏi này)
+- "boolean" (có trong transcript, là kiểu dữ liệu hợp lệ nhưng không đúng cho câu hỏi này)
+
+❌ KHÔNG ĐƯỢC DÙNG các đáp án chung chung như:
+- "Kết luận và tóm tắt nội dung"
+- "Thảo luận chi tiết về chủ đề"
+- "Thực hành và bài tập"
+- Các đáp án KHÔNG có trong transcript hoặc KHÔNG liên quan đến transcript
+
+TRẢ VỀ ĐỊNH DẠNG JSON (chỉ JSON, không có text khác):
+{{
+    "question": "Theo đoạn video, [câu hỏi cụ thể dựa trên nội dung transcript, tập trung vào {question_type_hint}]",
+    "options": [
+        "Đáp án đúng - thông tin CỤ THỂ từ transcript",
+        "Đáp án sai 1 - thuật ngữ/khái niệm KHÁC từ transcript (dễ nhầm)",
+        "Đáp án sai 2 - thông tin LIÊN QUAN nhưng SAI từ transcript (dễ nhầm)",
+        "Đáp án sai 3 - thông tin TƯƠNG TỰ nhưng KHÔNG ĐÚNG từ transcript (dễ nhầm)"
+    ],
+    "correct_index": 0,
+    "explanation": "Giải thích chi tiết dựa trên nội dung cụ thể trong transcript, chỉ rõ tại sao đáp án đúng và tại sao các đáp án sai dễ gây nhầm lẫn"
+}}
+
+LƯU Ý QUAN TRỌNG:
+- TẤT CẢ 4 đáp án PHẢI dựa trên thông tin CÓ TRONG transcript
+- 3 đáp án sai PHẢI là các thông tin/thuật ngữ/khái niệm CỤ THỂ từ transcript, KHÔNG phải câu trả lời chung chung
+- 3 đáp án sai PHẢI dễ gây nhầm lẫn, có vẻ hợp lý nhưng thực tế không đúng với câu hỏi"""
+            
+            # Gọi Gemini với transcript
+            print(f"   🔄 Calling Gemini API with transcript...")
             response = model.generate_content(prompt)
             response_text = response.text.strip()
+            
+            # Log response để debug
+            print(f"   📥 Gemini response received (length: {len(response_text)} chars)")
+            if len(response_text) > 500:
+                print(f"   📄 Response preview: {response_text[:500]}...")
+            else:
+                print(f"   📄 Full response: {response_text}")
             
             # Parse JSON response
             try:
@@ -162,19 +470,33 @@ class VideoScriptQuizService:
                     # Validate response
                     if all(key in question_data for key in ['question', 'options', 'correct_index', 'explanation']):
                         if len(question_data['options']) == 4 and 0 <= question_data['correct_index'] < 4:
-                            print("✅ AI Gemini generated question successfully")
+                            print(f"   ✅ AI Gemini generated question successfully!")
+                            print(f"   ❓ Question: {question_data['question'][:100]}...")
+                            print(f"   📋 Options count: {len(question_data['options'])}")
+                            print(f"   ✓ Correct index: {question_data['correct_index']}")
                             return question_data
+                        else:
+                            print(f"   ❌ Invalid options or correct_index: options={len(question_data.get('options', []))}, correct_index={question_data.get('correct_index')}")
+                    else:
+                        missing_keys = [k for k in ['question', 'options', 'correct_index', 'explanation'] if k not in question_data]
+                        print(f"   ❌ Missing required keys: {missing_keys}")
+            except json.JSONDecodeError as e:
+                print(f"   ❌ Error parsing JSON: {e}")
+                print(f"   📄 Raw response: {response_text[:500]}")
             except Exception as e:
-                print(f"Error parsing AI response: {e}")
+                print(f"   ❌ Error parsing AI response: {e}")
+                import traceback
+                traceback.print_exc()
         
         except Exception as e:
             print(f"Error calling AI Gemini: {e}")
         
         return None
     
-    def _generate_fallback_question(self, script_content: str, course_id: str, session_id: str, question_type: str, timestamp: str = None) -> Dict[str, Any]:
+    def _generate_fallback_question(self, script_content: str, course_id: str, session_id: str, question_type: str, timestamp: str = None, question_number: int = 0) -> Dict[str, Any]:
         """
         Tạo câu hỏi fallback cải thiện dựa trên nội dung thực tế
+        question_number: số thứ tự câu hỏi để đảm bảo đa dạng
         """
         # Câu hỏi cải thiện dựa trên nội dung video Java variables - Mở rộng để có đa dạng
         improved_questions = [
@@ -396,6 +718,16 @@ class VideoScriptQuizService:
         """Reset session cache"""
         if session_id in self.session_cache:
             del self.session_cache[session_id]
+        
+        # Reset tất cả session data liên quan
+        keys_to_remove = [key for key in self.session_transcripts.keys() if key.endswith(f"_{session_id}")]
+        for key in keys_to_remove:
+            if key in self.session_transcripts:
+                del self.session_transcripts[key]
+            if key in self.session_question_count:
+                del self.session_question_count[key]
+            if key in self.session_used_segments:
+                del self.session_used_segments[key]
 
 # Tạo instance global
 video_script_quiz_service = VideoScriptQuizService()

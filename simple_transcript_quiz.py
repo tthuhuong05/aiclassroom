@@ -184,17 +184,17 @@ def demo_transcript_quiz():
         print("🎉 KẾT QUẢ TẠO CÂU HỎI:")
         print("=" * 60)
         
-        print(f"📹 Video: {quiz_result['video_title']}")
-        print(f"📝 Transcript: {quiz_result['transcript_length']} ký tự")
-        print(f"📊 Tổng câu hỏi: {quiz_result['total_questions']}")
+        print(f" Video: {quiz_result['video_title']}")
+        print(f" Transcript: {quiz_result['transcript_length']} ký tự")
+        print(f" Tổng câu hỏi: {quiz_result['total_questions']}")
         
         print(f"\n🔍 PHÂN TÍCH NỘI DUNG:")
-        print(f"  📚 Từ khóa: {', '.join(quiz_result['content_analysis']['keywords'][:5])}")
-        print(f"  🎯 Chủ đề: {', '.join(quiz_result['content_analysis']['main_topics'][:3])}")
-        print(f"  📊 Độ khó: {quiz_result['content_analysis']['difficulty_level']}")
+        print(f"   Từ khóa: {', '.join(quiz_result['content_analysis']['keywords'][:5])}")
+        print(f"   Chủ đề: {', '.join(quiz_result['content_analysis']['main_topics'][:3])}")
+        print(f"   Độ khó: {quiz_result['content_analysis']['difficulty_level']}")
         
         # Hiển thị câu hỏi
-        print(f"\n🎯 CÂU HỎI ĐÃ TẠO:")
+        print(f"\n CÂU HỎI ĐÃ TẠO:")
         print("-" * 50)
         
         for i, q in enumerate(quiz_result["questions"], 1):

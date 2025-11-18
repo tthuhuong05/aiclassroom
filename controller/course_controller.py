@@ -2063,45 +2063,45 @@ Dựa trên kết quả kiểm tra (điểm: {results['score']}/100):
       except Exception:
         return default
     def _prefill_questions_from_caption_if_needed(self, course_id: int, n_required: int = 20):
-    # Đếm câu hỏi hiện có cho khoá
-      try:
-        have = self.assignment_model.count_questions(course_id)
-      except Exception:
-        # Tương thích: nếu thuộc tính khác tên, fallback sang model trong app
-        from model.assignment_model import AssignmentModel
-        self.assignment_model = getattr(self, "assignment_model", AssignmentModel())
-        have = self.assignment_model.count_questions(course_id)
+        # Đếm câu hỏi hiện có cho khoá
+        try:
+            have = self.assignment_model.count_questions(course_id)
+        except Exception:
+            # Tương thích: nếu thuộc tính khác tên, fallback sang model trong app
+            from model.assignment_model import AssignmentModel
+            self.assignment_model = getattr(self, "assignment_model", AssignmentModel())
+            have = self.assignment_model.count_questions(course_id)
 
-      if have >= n_required:
-        return
+        if have >= n_required:
+            return
 
-    # Lấy caption path/url từ DB
-      c = self.course_model.get_course_by_id(course_id)
-      cap_url = (c["caption_url"] if isinstance(c, dict) else getattr(c, "caption_url", "")) or ""
-      cap_path = cap_url.lstrip("/") if cap_url else ""
+        # Lấy caption path/url từ DB
+        c = self.course_model.get_course_by_id(course_id)
+        cap_url = (c["caption_url"] if isinstance(c, dict) else getattr(c, "caption_url", "")) or ""
+        cap_path = _url_to_local_path(cap_url) if cap_url else ""
 
-    # Đọc transcript từ .vtt; nếu không có thì bỏ qua (không crash)
-      from app import _read_vtt_as_text, _gemini_generate_mcqs
-      transcript = _read_vtt_as_text(cap_path) if cap_path else ""
+        # Đọc transcript từ .vtt; nếu không có thì bỏ qua (không crash)
+        from app import _read_vtt_as_text, _gemini_generate_mcqs
+        transcript = _read_vtt_as_text(cap_path) if cap_path else ""
 
-      if not transcript or len(transcript) < 50:
-        # Không đủ nội dung để sinh câu hỏi
-        return
+        if not transcript or len(transcript) < 50:
+            # Không đủ nội dung để sinh câu hỏi
+            return
 
-    # Gọi Gemini sinh 20 câu và nhét vào DB, chia theo level
-      qa_list = _gemini_generate_mcqs(transcript, n=n_required, language="vi")
+        # Gọi Gemini sinh 20 câu và nhét vào DB, chia theo level
+        qa_list = _gemini_generate_mcqs(transcript, n=n_required, language="vi")
 
-      buckets = {"beginner": [], "intermediate": [], "advanced": []}
-      for q in qa_list:
-        buckets[q.get("level", "beginner")].append({
-            "question": q["question"],
-            "options": q["options"],
-            "answer": q["answer"]  # 'A'..'D'
-        })
+        buckets = {"beginner": [], "intermediate": [], "advanced": []}
+        for q in qa_list:
+            buckets[q.get("level", "beginner")].append({
+                "question": q["question"],
+                "options": q["options"],
+                "answer": q["answer"]  # 'A'..'D'
+            })
 
-      for lvl, qs in buckets.items():
-        if qs:
-            self.assignment_model.insert_questions(course_id, lvl, qs)
+        for lvl, qs in buckets.items():
+            if qs:
+                self.assignment_model.insert_questions(course_id, lvl, qs)
 
     def api_exam_start(self):  
       try:
@@ -2178,19 +2178,109 @@ Dựa trên kết quả kiểm tra (điểm: {results['score']}/100):
         caption_url = self._pick_caption_for_course(course_id)
         similar_to = p.get('similar_to') or att.get("pending_repeat_qid")
         session_id = session.get("user", {}).get("id", "anonymous")
-        # Sử dụng script-based system thay vì transcript
+        
+        # Lấy script content thực tế từ caption/transcript - QUAN TRỌNG: Phải có transcript thực tế
+        script_content = ""
+        transcript_source = None
+        
+        # Ưu tiên 1: Đọc từ file caption/transcript (.vtt/.srt)
+        try:
+            from app import _read_vtt_as_text
+            # Lấy đường dẫn caption thực tế
+            cap_path = self.course_model.get_caption_path(course_id)
+            if not cap_path and caption_url:
+                # Fallback: chuyển caption_url sang local path
+                cap_path = _url_to_local_path(caption_url)
+            
+            if cap_path:
+                import os
+                if os.path.exists(cap_path):
+                    script_content = _read_vtt_as_text(cap_path)
+                    if script_content and len(script_content.strip()) >= 100:  # Ít nhất 100 ký tự
+                        transcript_source = f"caption_file:{cap_path}"
+                        current_app.logger.info(f"[EXAM_NEXT] ✅ Loaded transcript from {cap_path}, length: {len(script_content)} chars")
+                    else:
+                        current_app.logger.warning(f"[EXAM_NEXT] ⚠️ Caption file {cap_path} exists but content too short: {len(script_content) if script_content else 0} chars")
+                else:
+                    current_app.logger.warning(f"[EXAM_NEXT] ⚠️ Caption file not found: {cap_path}")
+        except Exception as e:
+            current_app.logger.warning(f"[EXAM_NEXT] Failed to read caption: {e}")
+        
+        # Ưu tiên 2: Nếu không có từ file, thử lấy từ course model (script_text)
+        if not script_content or len(script_content.strip()) < 100:
+            try:
+                course = self.course_model.get_course_by_id(course_id)
+                if course:
+                    # Thử lấy script_text từ course nếu có
+                    if isinstance(course, dict):
+                        script_content = course.get("script_text", "") or course.get("description", "")
+                    else:
+                        script_content = getattr(course, "script_text", "") or getattr(course, "description", "")
+                    
+                    if script_content and len(script_content.strip()) >= 100:
+                        transcript_source = "course_script_text"
+                        current_app.logger.info(f"[EXAM_NEXT] ✅ Loaded transcript from course script_text, length: {len(script_content)} chars")
+            except Exception as e:
+                current_app.logger.warning(f"[EXAM_NEXT] Failed to get script from course: {e}")
+        
+        # Kiểm tra: Nếu không có transcript đủ dài, báo lỗi rõ ràng
+        if not script_content or len(script_content.strip()) < 100:
+            current_app.logger.error(f"[EXAM_NEXT] ❌ No valid transcript found for course_id={course_id}")
+            current_app.logger.error(f"   Caption URL: {caption_url}")
+            current_app.logger.error(f"   Script content length: {len(script_content) if script_content else 0} chars")
+            current_app.logger.error(f"   Required minimum: 100 chars")
+            # Thử tìm file caption thủ công
+            import os
+            possible_paths = [
+                f"static/captions/course_{course_id}.vtt",
+                f"static/captions/{course_id}.vtt",
+                f"static/uploads/course_{course_id}.vtt",
+                f"static/uploads/{course_id}.vtt",
+            ]
+            for path in possible_paths:
+                if os.path.exists(path):
+                    current_app.logger.warning(f"   Found possible caption file: {path}")
+                    try:
+                        from app import _read_vtt_as_text
+                        test_content = _read_vtt_as_text(path)
+                        if test_content and len(test_content.strip()) >= 100:
+                            current_app.logger.info(f"   ✅ Successfully read from {path}, length: {len(test_content)} chars")
+                            script_content = test_content
+                            transcript_source = f"manual_found:{path}"
+                            break
+                    except Exception as e:
+                        current_app.logger.warning(f"   Failed to read {path}: {e}")
+            # Vẫn tiếp tục nhưng sẽ dùng fallback - nhưng log rõ ràng
+        
+        # Sử dụng script-based system với transcript thực tế
         if video_script_quiz_service:
             try:
-                # Tạo câu hỏi từ script content (không phải transcript)
-                script_qa = video_script_quiz_service.get_next_question_from_video_script(
-                    course_id=str(course_id),
-                    script_content="Nội dung video bài giảng",  # Sử dụng script content thực tế
-                    session_id=str(session_id),
-                    question_type="mcq",
-                    language="vi"
-                )
+                # QUAN TRỌNG: Chỉ tạo câu hỏi từ transcript nếu có đủ nội dung
+                if script_content and len(script_content.strip()) >= 100:
+                    current_app.logger.info(f"[EXAM_NEXT] 🎯 Creating question from transcript (source: {transcript_source}, length: {len(script_content)} chars)")
+                    # Tạo câu hỏi từ script content thực tế
+                    script_qa = video_script_quiz_service.get_next_question_from_video_script(
+                        course_id=str(course_id),
+                        script_content=script_content,  # Dùng transcript thực tế
+                        session_id=str(session_id),
+                        question_type="mcq",
+                        language="vi"
+                    )
+                else:
+                    # Nếu không có transcript, báo lỗi và dùng fallback
+                    current_app.logger.error(f"[EXAM_NEXT] ❌ Cannot create question: No valid transcript (length: {len(script_content) if script_content else 0} chars, required: >= 100)")
+                    raise ValueError("No valid transcript available for course")
                 
-                options = script_qa.get("options", ["Đáp án A", "Đáp án B", "Đáp án C", "Đáp án D"])
+                # Validate và đảm bảo có đầy đủ dữ liệu
+                question_text = script_qa.get("question", "").strip()
+                if not question_text:
+                    question_text = "Câu hỏi về nội dung video bài giảng"
+                
+                options = script_qa.get("options", [])
+                if not options or len(options) < 2:
+                    # Đảm bảo có ít nhất 4 options
+                    options = ["Đáp án A", "Đáp án B", "Đáp án C", "Đáp án D"]
+                
                 # SỬ DỤNG HASH CÓ SẴN TỪ SERVICE THAY VÌ TẠO LẠI
                 # để tránh mismatch do different secret keys
                 options_hashes = [_hash_option(opt) for opt in options]
@@ -2198,11 +2288,13 @@ Dựa trên kết quả kiểm tra (điểm: {results['score']}/100):
                 if not (0 <= correct_idx < len(options_hashes)):
                    correct_idx = 0
                 correct_hash = options_hashes[correct_idx]
-                # SỬ DỤNG correct_hash CÓ SẴN TỪ SERVICE
+                
+                # Log để debug
+                current_app.logger.info(f"[EXAM_NEXT] Generated question: qid={script_qa.get('qid')}, question_len={len(question_text)}, options_count={len(options)}")
                 
                 qa = {
-                    "qid": script_qa.get("qid") or f"script_q_{hash(script_qa.get('question',''))}",
-                    "question": script_qa.get("question", "Câu hỏi về nội dung video bài giảng"),
+                    "qid": script_qa.get("qid") or f"script_q_{hash(question_text)}",
+                    "question": question_text,
                     "options": options,
                     "options_hashes": options_hashes,
                     "answer_index": correct_idx,
@@ -2215,6 +2307,7 @@ Dựa trên kết quả kiểm tra (điểm: {results['score']}/100):
                 }
             except Exception as e:
                 # Fallback nếu script system không hoạt động
+                current_app.logger.warning(f"[EXAM_NEXT] Script service failed: {e}, using fallback")
                 options = ["Đáp án A", "Đáp án B", "Đáp án C", "Đáp án D"]
                 options_hashes = [_hash_option(opt) for opt in options]
                 correct_hash = options_hashes[0]
@@ -2279,11 +2372,33 @@ Dựa trên kết quả kiểm tra (điểm: {results['score']}/100):
             print(f"  correct_hash: {qa.get('correct_hash')}")
             print(f"  correct_index: {qa.get('correct_index')}")
 
+        # Validate qa trước khi trả về
+        if not qa.get("question") or not qa.get("options") or len(qa.get("options", [])) < 2:
+            current_app.logger.error(f"[EXAM_NEXT] Invalid qa structure: {qa}")
+            # Tạo qa mặc định nếu không hợp lệ
+            qa = {
+                "qid": "error_q_" + str(hash(str(course_id))),
+                "question": "Câu hỏi về nội dung video bài giảng",
+                "options": ["Đáp án A", "Đáp án B", "Đáp án C", "Đáp án D"],
+                "options_hashes": [_hash_option(opt) for opt in ["Đáp án A", "Đáp án B", "Đáp án C", "Đáp án D"]],
+                "answer_index": 0,
+                "correct_index": 0,
+                "correct_hash": _hash_option("Đáp án A"),
+                "explanation": "Giải thích dựa trên nội dung video",
+                "topic_hash": "error_topic",
+                "type": "mcq",
+                "time_limit_ms": 10000
+            }
+        
         att["current_topic"] = qa.get("topic_hash")
         att["pending_repeat_qid"] = None
         att["repeat_mode"] = bool(similar_to)
         att["last_qid"] = qa.get("qid")
         ATTEMPT_CACHE[attempt_id] = att
+        
+        # Log response để debug
+        current_app.logger.info(f"[EXAM_NEXT] Returning question: qid={qa.get('qid')}, question={qa.get('question')[:50]}..., options_count={len(qa.get('options', []))}")
+        
         return jsonify(ok=True, **qa)
 
     def api_exam_submit(self):

@@ -392,96 +392,118 @@ JSON schema:
 
 def extract_main_content_from_document(document_text: str) -> Optional[Dict]:
     """
-    Phân tích và trích xuất NỘI DUNG CHÍNH từ tài liệu với độ chính xác cao.
-    Tập trung vào: khái niệm cốt lõi, nguyên lý quan trọng, ứng dụng thực tế.
+    Phân tích và trích xuất NỘI DUNG CHÍNH từ tài liệu theo phong cách NotebookLM:
+    1. Tóm tắt nội dung chính và tạo dàn ý 8-15 ý (để video dài 2-3 phút)
+    2. Viết script chi tiết, tự nhiên như giáo viên (30-50 từ/mục, 10-20 giây)
+    3. Lấy hình ảnh liên quan trong file hoặc tự tạo hình AI phù hợp
+    4. Tạo giọng đọc TTS tự nhiên
+    5. Dựng video: mỗi mục 10-20 giây, kèm hình minh họa và phụ đề ngắn
+    6. Tập trung vào tính logic, rõ ràng, không đọc nguyên văn PDF
+    7. Phong cách NotebookLM: giải thích chi tiết, có ví dụ, dễ hiểu
     
     Args:
         document_text: Nội dung đầy đủ của tài liệu
     
     Returns:
-        Dict chứa nội dung chính, cấu trúc bài giảng, và gợi ý hình ảnh
+        Dict chứa nội dung chính, cấu trúc bài giảng (8-15 slides), và gợi ý hình ảnh
+        Tổng thời lượng video: 120-180 giây (2-3 phút)
     """
     if not _ensure():
         return None
     
     sys = (
-        "You are a professional document analysis and video lecture creation expert with deep experience. "
-        "Task: Analyze documents and extract MAIN and MOST IMPORTANT content with high accuracy. "
-        "Focus on: "
-        "- Extract ONLY the main and most important concepts (tổng quát và tập trung vào nội dung chính) "
-        "- Prioritize core knowledge and essential principles, skip minor details "
-        "- Create simplified structure focusing on key concepts and important points "
-        "- Focus on practical understanding and key takeaways "
-        "- Suggest diverse, specific and matching images for each section "
-        "- Ensure content is general but covers essential points "
-        "- Avoid overwhelming details, focus on what matters most "
-        "- Keep each slide clear, focused, and easy to understand"
+        "Bạn là một giáo viên AI chuyên nghiệp, có nhiệm vụ phân tích tài liệu và tạo video bài giảng "
+        "theo phong cách NotebookLM - chi tiết, tự nhiên, và dễ hiểu. QUAN TRỌNG: Tập trung vào tính LOGIC, RÕ RÀNG, KHÔNG đọc nguyên văn PDF. "
+        "Nhiệm vụ của bạn: "
+        "- Tóm tắt nội dung chính và tạo dàn ý 8-15 ý rõ ràng, logic (để video dài 2-3 phút) "
+        "- Viết script chi tiết, tự nhiên như giáo viên thật đang giảng bài (30-50 từ/mục, 10-20 giây) "
+        "- Gợi ý hình ảnh phù hợp với nội dung (ưu tiên hình trong file, sau đó là AI-generated) "
+        "- Mỗi mục/slide có thời lượng 10-20 giây với phụ đề ngắn gọn "
+        "- Đảm bảo nội dung logic, dễ hiểu, không sao chép nguyên văn từ PDF "
+        "- Phong cách giống NotebookLM: giải thích chi tiết, có ví dụ, dễ hiểu"
     )
     
     prompt = f"""
-SOURCE DOCUMENT: <<<BEGIN>>>
+TÀI LIỆU NGUỒN: <<<BEGIN>>>
 {document_text.strip()}
 <<<END>>>
 
-REQUIREMENTS FOR MAIN CONTENT EXTRACTION (Focus on Core and Important Points):
+QUY TRÌNH TẠO VIDEO BÀI GIẢNG THEO PHONG CÁCH NOTEBOOKLM (BẮT BUỘC):
 
-1. FOCUSED EXTRACTION (Tổng quát và tập trung nội dung chính):
-   - Identify the SINGLE MAIN TOPIC of the document clearly
-   - Extract 3-5 CORE CONCEPTS most important (only essentials, skip minor details)
-   - Focus on main principles and key takeaways
-   - Keep content GENERAL but cover important points
-   - Prioritize understanding over details
+1. TÓM TẮT NỘI DUNG CHÍNH VÀ TẠO DÀN Ý 10-15 Ý (BẮT BUỘC):
+   - Đọc kỹ toàn bộ tài liệu, hiểu ý chính và chi tiết
+   - Tóm tắt nội dung chính thành TỐI THIỂU 10-12 ý lớn (KHÔNG được ít hơn 10)
+   - Nếu tài liệu ngắn: Chia nhỏ từng ý thành nhiều slides (ví dụ: "Khái niệm cơ bản" → "Định nghĩa", "Đặc điểm", "Ví dụ")
+   - Nếu tài liệu dài: Chọn 12-15 điểm quan trọng nhất
+   - Mỗi ý phải logic, rõ ràng, dễ hiểu, có thể giải thích chi tiết
+   - Sắp xếp theo thứ tự từ cơ bản đến nâng cao
+   - Giữ lại các điểm quan trọng và ví dụ minh họa
 
-2. SIMPLIFIED LECTURE STRUCTURE (Nội dung chính):
-   - Divide into 5-8 focused slides, each slide covers ONE main idea clearly
-   - Each slide: Clear title + Main content (2-3 clear sentences) + 2-3 key points
-   - Natural and engaging reading script for each slide (40-60 seconds/slide)
-   - Coherent transitions between slides focusing on main flow
-   - From basic understanding to practical application
+2. VIẾT SCRIPT CHI TIẾT, TỰ NHIÊN NHƯ GIÁO VIÊN (PHONG CÁCH NOTEBOOKLM):
+   - Script cho mỗi mục: 12-18 giây (khoảng 35-55 từ) - QUAN TRỌNG để đạt tổng 2-3 phút
+   - Viết như giáo viên thật đang giảng bài, giải thích chi tiết
+   - Sử dụng ngôn ngữ tự nhiên, dễ hiểu, có ví dụ cụ thể
+   - Giải thích rõ ràng các khái niệm, không chỉ liệt kê
+   - KHÔNG sao chép nguyên văn từ PDF, diễn đạt lại bằng lời của giáo viên
+   - Phong cách NotebookLM: Giải thích từng bước, có context, dễ hiểu
 
-3. DIVERSE AND MATCHING IMAGE SUGGESTIONS (Hình ảnh đa dạng trùng khớp):
-   - Each slide suggests 3-4 diverse, specific and accurate image keywords
-   - Images must MATCH slide content accurately, not just decorative
-   - Keywords should be VARIED and DIVERSE to get different image types
-   - Prioritize: realistic photos, illustrations, diagrams, charts that match content
-   - Keywords must be specific enough to find high-quality matching images on Unsplash/Pexels
-   - Ensure images are SHARP and CLEAR in search results (prioritize "high quality", "sharp", "clear")
+3. HÌNH ẢNH PHÙ HỢP VỚI NỘI DUNG:
+   - Ưu tiên: Hình ảnh có trong file tài liệu (nếu có)
+   - Sau đó: Tự tạo hình AI phù hợp với nội dung từng mục
+   - Mỗi mục có 2-3 từ khóa hình ảnh cụ thể, rõ ràng
+   - Hình ảnh phải minh họa đúng nội dung, không chỉ trang trí
 
-4. NATURAL HUMAN-LIKE READING VOICE (Giọng người thật):
-   - Script written like a natural human teacher speaking
-   - Conversational tone, NOT robotic or mechanical
-   - Use natural pauses and expressions
-   - Keep language simple but professional
-   - Avoid formal/academic tone that sounds like AI
-   - Make it sound like a real person explaining concepts
+4. PHỤ ĐỀ NGẮN GỌN:
+   - Mỗi mục có phụ đề ngắn (5-10 từ) tóm tắt nội dung
+   - Phụ đề hiển thị trong 10-20 giây của mục đó
+   - Phụ đề rõ ràng, dễ đọc, không quá dài
+
+5. TÍNH LOGIC VÀ RÕ RÀNG (PHONG CÁCH NOTEBOOKLM):
+   - Nội dung phải có logic, mạch lạc, giải thích từng bước
+   - Các mục liên kết với nhau một cách tự nhiên
+   - Tránh nhảy cóc, đảm bảo học viên dễ theo dõi
+   - KHÔNG đọc nguyên văn PDF, phải diễn giải lại
+   - Giống NotebookLM: Giải thích chi tiết, có context, dễ hiểu
+
+YÊU CẦU CẤU TRÚC (VIDEO 2-3 PHÚT - BẮT BUỘC):
+- Tổng số mục: TỐI THIỂU 10-12 slides (KHÔNG được ít hơn), tối đa 15 slides
+- Mỗi mục: 12-18 giây (để đảm bảo tổng thời lượng đạt 2-3 phút)
+- Script mỗi mục: 35-55 từ, tự nhiên như giáo viên, giải thích chi tiết
+- Phụ đề: 5-10 từ, ngắn gọn
+- Tổng thời lượng: PHẢI đạt ít nhất 120 giây (2 phút), tốt nhất là 150-180 giây (2.5-3 phút)
+- QUAN TRỌNG: Nếu tài liệu ngắn, chia nhỏ nội dung thành nhiều slides. Nếu tài liệu dài, chọn 12-15 điểm quan trọng nhất.
 
 JSON schema:
 {{
-  "main_topic": "Single main topic (accurate)",
-  "core_concepts": ["Concept 1", "Concept 2", "Concept 3"],
-  "lecture_title": "Engaging lecture title",
+  "main_topic": "Chủ đề chính của tài liệu",
+  "summary": "Tóm tắt ngắn gọn nội dung chính (2-3 câu)",
+  "outline": ["Ý 1", "Ý 2", "Ý 3", "Ý 4", "Ý 5", "Ý 6", "Ý 7", "Ý 8", "Ý 9", "Ý 10"],
+  "lecture_title": "Tiêu đề bài giảng hấp dẫn",
   "introduction": {{
-    "script": "Natural introduction script (30-40 seconds)",
-    "key_points": ["Point 1", "Point 2"],
-    "image_keywords": ["keyword 1", "keyword 2"]
+    "script": "Script giới thiệu chi tiết (12-15 giây, 35-45 từ), tự nhiên như giáo viên, giải thích rõ ràng",
+    "subtitle": "Phụ đề ngắn (5-10 từ)",
+    "image_keywords": ["từ khóa hình ảnh 1", "từ khóa hình ảnh 2"],
+    "duration_sec": 14
   }},
   "slides": [
     {{
       "slide_number": 1,
-      "title": "Clear slide title",
-      "main_content": "Core content (2-3 accurate sentences)",
-      "key_points": ["Important point 1", "Important point 2"],
-      "script": "Natural reading script (40-60 seconds)",
-      "image_keywords": ["specific keyword 1", "specific keyword 2"],
-      "duration_sec": 50
+      "title": "Tiêu đề mục (ngắn gọn)",
+      "script": "Script chi tiết (12-18 giây, 35-55 từ), tự nhiên như giáo viên, giải thích rõ ràng từng bước, có ví dụ, KHÔNG đọc nguyên văn PDF",
+      "subtitle": "Phụ đề ngắn (5-10 từ)",
+      "key_points": ["Điểm quan trọng 1", "Điểm quan trọng 2"],
+      "image_keywords": ["từ khóa hình ảnh cụ thể 1", "từ khóa hình ảnh cụ thể 2"],
+      "duration_sec": 15
     }}
   ],
   "conclusion": {{
-    "script": "Summary conclusion script (30-40 seconds)",
-    "key_takeaways": ["Key point 1", "Key point 2"],
-    "image_keywords": ["keyword"]
+    "script": "Script kết luận chi tiết (12-15 giây, 35-45 từ)",
+    "subtitle": "Phụ đề ngắn (5-10 từ)",
+    "key_takeaways": ["Điểm chính 1", "Điểm chính 2"],
+    "image_keywords": ["từ khóa hình ảnh"],
+    "duration_sec": 14
   }},
-  "total_duration_minutes": 8
+  "total_duration_seconds": 180
 }}
 """
     
@@ -490,9 +512,9 @@ JSON schema:
         resp = model.generate_content(
             sys + "\n" + prompt,
             generation_config={
-                "temperature": 0.1, 
-                "top_p": 0.8, 
-                "max_output_tokens": 4096,
+                "temperature": 0.2,  # Tăng một chút để có sự đa dạng
+                "top_p": 0.9, 
+                "max_output_tokens": 8192,  # Tăng để đảm bảo tạo đủ 8-15 slides chi tiết
                 "response_mime_type": "application/json"
             }
         )

@@ -841,6 +841,9 @@
       <button id="toggleScreenShare" class="toolbar-btn" title="Chia sẻ màn hình">
         <i class="bi bi-display"></i>
       </button>
+      <button id="toggleRecord" class="toolbar-btn" title="Quay video">
+        <i class="bi bi-record-circle"></i>
+      </button>
       <button id="leaveRoom" class="toolbar-btn danger" title="Rời phòng">
         <i class="bi bi-telephone-x-fill"></i>
       </button>
@@ -1023,6 +1026,10 @@ const userAvatar = userAvatarPath ? `/static/${userAvatarPath}` : '';
 let socket;
 let localStream;
 let screenStream = null;
+let mediaRecorder = null;
+let recordedChunks = [];
+let isRecording = false;
+let recordingMimeType = 'video/webm'; // Lưu mimeType đang dùng
 let isScreenSharing = false;
 let micOn = true;
 let camOn = true;
@@ -1579,9 +1586,439 @@ function stopScreenShare() {
   }
 }
 
+// Toggle recording
+document.getElementById('toggleRecord').addEventListener('click', async () => {
+  const btn = document.getElementById('toggleRecord');
+  const icon = btn.querySelector('i');
+  
+  if (!isRecording) {
+    // Start recording
+    try {
+      // Tạo stream để record (kết hợp local video + audio + screen share nếu có)
+      const streamsToRecord = [];
+      
+      if (localStream) {
+        streamsToRecord.push(localStream);
+      }
+      
+      if (screenStream) {
+        streamsToRecord.push(screenStream);
+      }
+      
+      if (streamsToRecord.length === 0) {
+        alert('Vui lòng bật camera hoặc chia sẻ màn hình để quay video');
+        return;
+      }
+      
+      // Tạo MediaStream từ các tracks
+      const combinedStream = new MediaStream();
+      streamsToRecord.forEach(stream => {
+        stream.getTracks().forEach(track => {
+          combinedStream.addTrack(track);
+        });
+      });
+      
+      // Kiểm tra MediaRecorder support
+      if (!MediaRecorder.isTypeSupported('video/webm') && !MediaRecorder.isTypeSupported('video/mp4')) {
+        alert('Trình duyệt không hỗ trợ quay video. Vui lòng sử dụng Chrome hoặc Firefox.');
+        return;
+      }
+      
+      // Tạo MediaRecorder - ưu tiên mp4 nếu được hỗ trợ
+      let options = {
+        videoBitsPerSecond: 2500000 // 2.5 Mbps
+      };
+      
+      // Thử các codec mp4 trước
+      const mp4Codecs = [
+        'video/mp4;codecs=h264,opus',
+        'video/mp4;codecs=h264,aac',
+        'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+        'video/mp4'
+      ];
+      
+      let mimeType = null;
+      for (const codec of mp4Codecs) {
+        if (MediaRecorder.isTypeSupported(codec)) {
+          mimeType = codec;
+          break;
+        }
+      }
+      
+      // Fallback về webm nếu mp4 không được hỗ trợ
+      if (!mimeType) {
+        const webmCodecs = [
+          'video/webm;codecs=vp9,opus',
+          'video/webm;codecs=vp8,opus',
+          'video/webm'
+        ];
+        
+        for (const codec of webmCodecs) {
+          if (MediaRecorder.isTypeSupported(codec)) {
+            mimeType = codec;
+            break;
+          }
+        }
+      }
+      
+      if (!mimeType) {
+        alert('Trình duyệt không hỗ trợ quay video. Vui lòng sử dụng Chrome hoặc Firefox.');
+        return;
+      }
+      
+      options.mimeType = mimeType;
+      recordingMimeType = mimeType; // Lưu mimeType để dùng khi download
+      
+      mediaRecorder = new MediaRecorder(combinedStream, options);
+      recordedChunks = [];
+      
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          recordedChunks.push(event.data);
+        }
+      };
+      
+      mediaRecorder.onstop = async () => {
+        // Tạo blob từ chunks với đúng mimeType
+        const blob = new Blob(recordedChunks, { type: recordingMimeType });
+        
+        // Hiển thị dialog hỏi có muốn tải về không
+        showDownloadDialog(blob);
+        
+        // Reset
+        recordedChunks = [];
+        mediaRecorder = null;
+      };
+      
+      mediaRecorder.onerror = (event) => {
+        console.error('Recording error:', event.error);
+        alert('Lỗi khi quay video: ' + event.error.message);
+        stopRecording();
+      };
+      
+      // Bắt đầu recording
+      mediaRecorder.start(1000); // Collect data every 1 second
+      isRecording = true;
+      
+      // Cập nhật UI
+      btn.classList.add('active', 'danger');
+      icon.className = 'bi bi-record-circle-fill';
+      btn.title = 'Dừng quay video';
+      
+      // Thêm animation cho icon khi đang record
+      icon.style.animation = 'pulse-record 1.5s infinite';
+      
+      // Hiển thị thông báo
+      showRecordingIndicator();
+      
+      console.log('Recording started');
+      
+    } catch (err) {
+      console.error('Error starting recording:', err);
+      alert('Không thể bắt đầu quay video: ' + err.message);
+      isRecording = false;
+      btn.classList.remove('active', 'danger');
+      icon.className = 'bi bi-record-circle';
+      icon.style.animation = '';
+    }
+  } else {
+    // Stop recording
+    stopRecording();
+  }
+});
+
+function stopRecording() {
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+    mediaRecorder.stop();
+  }
+  
+  isRecording = false;
+  const btn = document.getElementById('toggleRecord');
+  const icon = btn.querySelector('i');
+  
+  btn.classList.remove('active', 'danger');
+  icon.className = 'bi bi-record-circle';
+  icon.style.animation = '';
+  btn.title = 'Quay video';
+  
+  hideRecordingIndicator();
+  
+  console.log('Recording stopped');
+}
+
+function showRecordingIndicator() {
+  // Tạo hoặc cập nhật indicator
+  let indicator = document.getElementById('recordingIndicator');
+  if (!indicator) {
+    indicator = document.createElement('div');
+    indicator.id = 'recordingIndicator';
+    indicator.style.cssText = `
+      position: fixed;
+      top: 80px;
+      right: 20px;
+      background: rgba(239, 68, 68, 0.9);
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      z-index: 1000;
+      font-size: 14px;
+      font-weight: 600;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    `;
+    document.body.appendChild(indicator);
+  }
+  
+  indicator.innerHTML = `
+    <span style="width: 12px; height: 12px; background: white; border-radius: 50%; display: inline-block; animation: pulse 1.5s infinite;"></span>
+    Đang quay video...
+  `;
+  
+  // Thêm animation
+  if (!document.getElementById('recordingPulseStyle')) {
+    const style = document.createElement('style');
+    style.id = 'recordingPulseStyle';
+    style.textContent = `
+      @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+      }
+      @keyframes pulse-record {
+        0%, 100% { 
+          opacity: 1;
+          transform: scale(1);
+        }
+        50% { 
+          opacity: 0.7;
+          transform: scale(1.1);
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+  
+  indicator.style.display = 'flex';
+}
+
+function hideRecordingIndicator() {
+  const indicator = document.getElementById('recordingIndicator');
+  if (indicator) {
+    indicator.style.display = 'none';
+  }
+}
+
+function showDownloadDialog(blob) {
+  // Ẩn recording indicator
+  hideRecordingIndicator();
+  
+  // Tạo modal dialog
+  const modal = document.createElement('div');
+  modal.id = 'downloadRecordingModal';
+  modal.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    backdrop-filter: blur(4px);
+  `;
+  
+  const modalContent = document.createElement('div');
+  modalContent.style.cssText = `
+    background: var(--night-card);
+    border: 1px solid var(--night-border);
+    border-radius: 16px;
+    padding: 2rem;
+    max-width: 500px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  `;
+  
+  const fileSize = (blob.size / (1024 * 1024)).toFixed(2);
+  const timestamp = new Date().toLocaleString('vi-VN');
+  
+  modalContent.innerHTML = `
+    <div style="margin-bottom: 1.5rem;">
+      <div style="width: 80px; height: 80px; margin: 0 auto; background: rgba(34, 197, 94, 0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
+        <i class="bi bi-check-circle-fill" style="font-size: 3rem; color: #22c55e;"></i>
+      </div>
+      <h3 style="color: var(--night-text); margin-bottom: 0.5rem; font-size: 1.5rem;">Quay video hoàn tất!</h3>
+      <p style="color: rgba(248, 250, 252, 0.7); font-size: 0.9rem;">
+        Video đã được quay thành công<br>
+        <span style="color: rgba(248, 250, 252, 0.5); font-size: 0.85rem;">Kích thước: ${fileSize} MB</span>
+      </p>
+    </div>
+    <div style="display: flex; gap: 1rem; justify-content: center;">
+      <button id="downloadRecordingBtn" style="
+        background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+        color: white;
+        border: none;
+        padding: 0.75rem 2rem;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: transform 0.2s;
+      " onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+        <i class="bi bi-download"></i>
+        Tải video về
+      </button>
+      <button id="cancelDownloadBtn" style="
+        background: rgba(255, 255, 255, 0.1);
+        color: var(--night-text);
+        border: 1px solid var(--night-border);
+        padding: 0.75rem 2rem;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s;
+      " onmouseover="this.style.background='rgba(255, 255, 255, 0.15)'" onmouseout="this.style.background='rgba(255, 255, 255, 0.1)'">
+        Hủy
+      </button>
+    </div>
+  `;
+  
+  modal.appendChild(modalContent);
+  document.body.appendChild(modal);
+  
+  // Download button handler
+  document.getElementById('downloadRecordingBtn').addEventListener('click', () => {
+    downloadRecording(blob);
+    document.body.removeChild(modal);
+  });
+  
+  // Cancel button handler
+  document.getElementById('cancelDownloadBtn').addEventListener('click', () => {
+    document.body.removeChild(modal);
+  });
+  
+  // Close on background click
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      document.body.removeChild(modal);
+    }
+  });
+}
+
+function downloadRecording(blob) {
+  // Tạo download link
+  const url = URL.createObjectURL(blob);
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+  
+  // Xác định extension dựa trên mimeType
+  let extension = 'mp4';
+  if (recordingMimeType.includes('webm')) {
+    // Nếu là webm, vẫn đặt tên .mp4 nhưng cảnh báo user có thể cần convert
+    extension = 'mp4';
+  } else if (recordingMimeType.includes('mp4')) {
+    extension = 'mp4';
+  }
+  
+  const filename = `room_recording_${roomId}_${timestamp}.${extension}`;
+  
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  
+  // Cleanup URL sau 1 phút
+  setTimeout(() => {
+    URL.revokeObjectURL(url);
+  }, 60000);
+  
+  // Hiển thị thông báo thành công
+  showSuccessNotification('Video đã được tải về thành công!');
+  
+  // Nếu là webm nhưng đặt tên .mp4, cảnh báo user
+  if (recordingMimeType.includes('webm') && extension === 'mp4') {
+    setTimeout(() => {
+      alert('Lưu ý: Video được quay ở định dạng WebM nhưng đã được đặt tên .mp4. Nếu không mở được, bạn có thể cần chuyển đổi sang MP4 bằng công cụ chuyển đổi video.');
+    }, 1000);
+  }
+}
+
+function showSuccessNotification(message) {
+  const notification = document.createElement('div');
+  notification.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: rgba(34, 197, 94, 0.95);
+    color: white;
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    z-index: 10001;
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    animation: slideInRight 0.3s ease;
+  `;
+  
+  notification.innerHTML = `
+    <i class="bi bi-check-circle-fill" style="font-size: 1.25rem;"></i>
+    <span>${message}</span>
+  `;
+  
+  // Thêm animation
+  if (!document.getElementById('slideInRightStyle')) {
+    const style = document.createElement('style');
+    style.id = 'slideInRightStyle';
+    style.textContent = `
+      @keyframes slideInRight {
+        from {
+          transform: translateX(100%);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+  
+  document.body.appendChild(notification);
+  
+  // Tự động ẩn sau 3 giây
+  setTimeout(() => {
+    notification.style.animation = 'slideInRight 0.3s ease reverse';
+    setTimeout(() => {
+      if (notification.parentNode) {
+        document.body.removeChild(notification);
+      }
+    }, 300);
+  }, 3000);
+}
+
+// Dừng recording khi rời phòng
+function stopRecordingOnLeave() {
+  if (isRecording) {
+    stopRecording();
+  }
+}
+
 // Leave room
 document.getElementById('leaveRoom').addEventListener('click', () => {
   if (confirm('Bạn có chắc muốn rời khỏi phòng học này?')) {
+    // Stop recording if active
+    if (isRecording) {
+      stopRecording();
+    }
     // Stop screen share if active
     if (isScreenSharing) {
       stopScreenShare();

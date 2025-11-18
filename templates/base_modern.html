@@ -60,6 +60,16 @@
                             <i class="bi bi-people-fill me-1"></i>Social
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'history' %}active{% endif %}" href="{{ url_for('history') }}">
+                            <i class="bi bi-clock-history me-1"></i>Lịch sử
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'ai_tool' %}active{% endif %}" href="{{ url_for('ai_tool') }}">
+                            <i class="bi bi-robot me-1"></i>AI TOOL
+                        </a>
+                    </li>
                     {% if username and is_teacher %}
                     <li class="nav-item">
                         <a class="nav-link {% if request.endpoint == 'manage_courses' %}active{% endif %}" href="{{ url_for('manage_courses') }}">

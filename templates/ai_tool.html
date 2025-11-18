@@ -1,0 +1,1390 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI TOOL - Gợi ý công cụ AI mạnh mẽ & miễn phí</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --primary-color: #2563eb;
+      --primary-hover: #1d4ed8;
+      --secondary-color: #64748b;
+      --bg-color: #f8fafc;
+      --card-bg: #ffffff;
+      --text-primary: #1e293b;
+      --text-secondary: #64748b;
+      --border-color: #e2e8f0;
+      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+      --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+      --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.15);
+      --radius: 12px;
+      --radius-lg: 16px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+      background: var(--bg-color);
+      color: var(--text-primary);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* Header */
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 3rem 1.5rem;
+      text-align: center;
+      box-shadow: var(--shadow-md);
+    }
+
+    .header h1 {
+      font-size: 3rem;
+      font-weight: 800;
+      margin-bottom: 0.5rem;
+      letter-spacing: -0.02em;
+    }
+
+    .header .subtitle {
+      font-size: 1.1rem;
+      opacity: 0.95;
+      font-weight: 400;
+    }
+
+    /* Main Container */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+    }
+
+    /* Input Section */
+    .input-section {
+      background: var(--card-bg);
+      border-radius: var(--radius-lg);
+      padding: 2rem;
+      box-shadow: var(--shadow-md);
+      margin-bottom: 2rem;
+    }
+
+    .input-wrapper {
+      position: relative;
+      margin-bottom: 1.5rem;
+    }
+
+    .input-box {
+      width: 100%;
+      min-height: 120px;
+      padding: 1.25rem;
+      border: 2px solid var(--border-color);
+      border-radius: var(--radius);
+      font-size: 1rem;
+      font-family: inherit;
+      resize: vertical;
+      transition: all 0.3s ease;
+      background: var(--card-bg);
+    }
+
+    .input-box:focus {
+      outline: none;
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+    }
+
+    .input-box::placeholder {
+      color: var(--text-secondary);
+    }
+
+    .btn-ask {
+      background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
+      color: white;
+      border: none;
+      padding: 1rem 2.5rem;
+      border-radius: var(--radius);
+      font-size: 1.1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: var(--shadow-sm);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      width: 100%;
+      justify-content: center;
+    }
+
+    .btn-ask:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .btn-ask:active {
+      transform: translateY(0);
+    }
+
+    .btn-ask:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* Quick Suggestions */
+    .quick-suggestions {
+      margin-top: 1.5rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border-color);
+    }
+
+    .quick-suggestions-title {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      margin-bottom: 1rem;
+      font-weight: 500;
+    }
+
+    .suggestion-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
+    .chip {
+      background: var(--bg-color);
+      border: 1.5px solid var(--border-color);
+      padding: 0.6rem 1.2rem;
+      border-radius: 999px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+
+    .chip:hover {
+      background: var(--primary-color);
+      color: white;
+      border-color: var(--primary-color);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* Results Section */
+    .results-section {
+      display: none;
+    }
+
+    .results-section.show {
+      display: block;
+    }
+
+    .results-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .results-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .results-count {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+    }
+
+    .tools-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 1.5rem;
+    }
+
+    /* Tool Card */
+    .tool-card {
+      background: var(--card-bg);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--border-color);
+      transition: all 0.3s ease;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .tool-card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-md);
+      border-color: var(--primary-color);
+    }
+
+    .tool-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 1rem;
+    }
+
+    .tool-name {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 0.25rem;
+    }
+
+    .tool-type {
+      display: inline-block;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 0.25rem 0.75rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .tool-price {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      padding: 0.4rem 0.9rem;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
+
+    .tool-price.free {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .tool-price.freemium {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .tool-price.paid {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .tool-description {
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+      line-height: 1.6;
+      margin-bottom: 1rem;
+      flex: 1;
+    }
+
+    .tool-strengths {
+      margin-bottom: 1rem;
+    }
+
+    .tool-strengths-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 0.5rem;
+    }
+
+    .tool-strengths-list {
+      list-style: none;
+      padding: 0;
+    }
+
+    .tool-strengths-list li {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      padding: 0.25rem 0;
+      padding-left: 1.5rem;
+      position: relative;
+    }
+
+    .tool-strengths-list li::before {
+      content: "✓";
+      position: absolute;
+      left: 0;
+      color: #10b981;
+      font-weight: 700;
+    }
+
+    .tool-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--primary-color);
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.9rem;
+      margin-top: auto;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border-color);
+      transition: all 0.2s ease;
+    }
+
+    .tool-link:hover {
+      color: var(--primary-hover);
+      gap: 0.75rem;
+    }
+
+    /* Loading State */
+    .loading {
+      display: none;
+      text-align: center;
+      padding: 3rem;
+    }
+
+    .loading.show {
+      display: block;
+    }
+
+    .loading-spinner {
+      width: 48px;
+      height: 48px;
+      border: 4px solid var(--border-color);
+      border-top-color: var(--primary-color);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 1rem;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .loading-text {
+      color: var(--text-secondary);
+      font-size: 1rem;
+    }
+
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 4rem 2rem;
+      color: var(--text-secondary);
+    }
+
+    .empty-state-icon {
+      font-size: 4rem;
+      margin-bottom: 1rem;
+      opacity: 0.5;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .header h1 {
+        font-size: 2rem;
+      }
+
+      .header .subtitle {
+        font-size: 1rem;
+      }
+
+      .input-section {
+        padding: 1.5rem;
+      }
+
+      .tools-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .suggestion-chips {
+        gap: 0.5rem;
+      }
+
+      .chip {
+        font-size: 0.85rem;
+        padding: 0.5rem 1rem;
+      }
+    }
+
+    /* Animation */
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .tool-card {
+      animation: fadeIn 0.5s ease-out;
+    }
+
+    .tool-card:nth-child(1) { animation-delay: 0.1s; }
+    .tool-card:nth-child(2) { animation-delay: 0.2s; }
+    .tool-card:nth-child(3) { animation-delay: 0.3s; }
+    .tool-card:nth-child(4) { animation-delay: 0.4s; }
+    .tool-card:nth-child(5) { animation-delay: 0.5s; }
+
+    /* Filter Section */
+    .filter-section {
+      background: var(--card-bg);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      box-shadow: var(--shadow-sm);
+      margin-bottom: 2rem;
+      border: 1px solid var(--border-color);
+    }
+
+    .filter-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .filter-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
+    .filter-btn {
+      padding: 0.6rem 1.2rem;
+      border: 2px solid var(--border-color);
+      border-radius: 999px;
+      background: var(--card-bg);
+      color: var(--text-primary);
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .filter-btn:hover {
+      border-color: var(--primary-color);
+      background: rgba(37, 99, 235, 0.05);
+    }
+
+    .filter-btn.active {
+      background: var(--primary-color);
+      color: white;
+      border-color: var(--primary-color);
+    }
+
+    /* Rating */
+    .tool-rating {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .rating-stars {
+      display: flex;
+      gap: 0.15rem;
+      color: #fbbf24;
+    }
+
+    .rating-value {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .rating-count {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+
+    /* Price Details */
+    .price-details {
+      background: var(--bg-color);
+      border-radius: var(--radius);
+      padding: 0.75rem;
+      margin-bottom: 1rem;
+      font-size: 0.85rem;
+    }
+
+    .price-details-title {
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 0.5rem;
+    }
+
+    .price-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.25rem 0;
+      color: var(--text-secondary);
+    }
+
+    .price-item strong {
+      color: var(--text-primary);
+    }
+
+    /* Comparison Section */
+    .comparison-section {
+      background: var(--card-bg);
+      border-radius: var(--radius-lg);
+      padding: 2rem;
+      box-shadow: var(--shadow-md);
+      margin-top: 2rem;
+      display: none;
+    }
+
+    .comparison-section.show {
+      display: block;
+    }
+
+    .comparison-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .comparison-table {
+      width: 100%;
+      border-collapse: collapse;
+      overflow-x: auto;
+      display: block;
+    }
+
+    .comparison-table thead {
+      background: var(--bg-color);
+    }
+
+    .comparison-table th,
+    .comparison-table td {
+      padding: 1rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .comparison-table th {
+      font-weight: 600;
+      color: var(--text-primary);
+      position: sticky;
+      top: 0;
+      background: var(--bg-color);
+    }
+
+    .comparison-table tr:hover {
+      background: var(--bg-color);
+    }
+
+    .comparison-badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    @media (max-width: 768px) {
+      .filter-buttons {
+        gap: 0.5rem;
+      }
+
+      .filter-btn {
+        font-size: 0.85rem;
+        padding: 0.5rem 1rem;
+      }
+
+      .comparison-table {
+        font-size: 0.85rem;
+      }
+
+      .comparison-table th,
+      .comparison-table td {
+        padding: 0.75rem 0.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <h1>AI TOOL</h1>
+    <p class="subtitle">Gợi ý công cụ AI mạnh mẽ & miễn phí cho mọi nhu cầu</p>
+  </header>
+
+  <!-- Main Container -->
+  <div class="container">
+    <!-- Input Section -->
+    <section class="input-section">
+      <div class="input-wrapper">
+        <textarea 
+          id="questionInput" 
+          class="input-box" 
+          placeholder="Nhập nhu cầu của bạn… Ví dụ: Tôi muốn tạo ảnh chất lượng cao miễn phí bằng câu lệnh"
+          rows="4"
+        ></textarea>
+      </div>
+      
+      <button id="askBtn" class="btn-ask">
+        <i class="bi bi-robot"></i>
+        Hỏi AI
+      </button>
+
+      <!-- Quick Suggestions -->
+      <div class="quick-suggestions">
+        <div class="quick-suggestions-title">Gợi ý nhanh:</div>
+        <div class="suggestion-chips">
+          <button class="chip" data-suggestion="Tôi muốn tạo ảnh chất lượng cao miễn phí bằng câu lệnh thì dùng AI nào?">
+            <i class="bi bi-image"></i> Tạo ảnh bằng AI
+          </button>
+          <button class="chip" data-suggestion="Tôi muốn tạo video bài giảng từ text thì nên dùng AI nào?">
+            <i class="bi bi-camera-video"></i> Tạo video bài giảng
+          </button>
+          <button class="chip" data-suggestion="Tôi muốn viết nội dung blog, bài viết chất lượng thì nên dùng AI nào?">
+            <i class="bi bi-pencil-square"></i> Viết nội dung / blog
+          </button>
+          <button class="chip" data-suggestion="Tôi muốn dịch và phiên âm audio tiếng Anh sang text miễn phí thì nên dùng gì?">
+            <i class="bi bi-translate"></i> Dịch & phiên âm
+          </button>
+          <button class="chip" data-suggestion="Tôi muốn tạo code, viết script tự động thì nên dùng AI nào?">
+            <i class="bi bi-code-square"></i> Viết code tự động
+          </button>
+          <button class="chip" data-suggestion="Tôi muốn tạo voice, text-to-speech chất lượng thì nên dùng AI nào?">
+            <i class="bi bi-mic"></i> Tạo giọng nói AI
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Loading State -->
+    <div id="loading" class="loading">
+      <div class="loading-spinner"></div>
+      <p class="loading-text">Đang tìm kiếm công cụ AI phù hợp cho bạn...</p>
+    </div>
+
+    <!-- Results Section -->
+    <section id="resultsSection" class="results-section">
+      <!-- Filter Section -->
+      <div id="filterSection" class="filter-section" style="display: none;">
+        <div class="filter-title">
+          <i class="bi bi-funnel"></i>
+          Lọc theo giá:
+        </div>
+        <div class="filter-buttons">
+          <button class="filter-btn active" data-filter="all">
+            <i class="bi bi-grid-3x3-gap"></i>
+            Tất cả
+          </button>
+          <button class="filter-btn" data-filter="free">
+            <i class="bi bi-gift"></i>
+            Miễn phí
+          </button>
+          <button class="filter-btn" data-filter="freemium">
+            <i class="bi bi-star"></i>
+            Freemium
+          </button>
+          <button class="filter-btn" data-filter="paid">
+            <i class="bi bi-credit-card"></i>
+            Trả phí
+          </button>
+        </div>
+      </div>
+
+      <div class="results-header">
+        <h2 class="results-title">Công cụ AI được gợi ý</h2>
+        <span class="results-count" id="resultsCount"></span>
+      </div>
+      <div id="toolsGrid" class="tools-grid"></div>
+
+      <!-- Comparison Section -->
+      <div id="comparisonSection" class="comparison-section">
+        <div class="comparison-title">
+          <i class="bi bi-bar-chart"></i>
+          So sánh giá và đánh giá
+        </div>
+        <div style="overflow-x: auto;">
+          <table class="comparison-table">
+            <thead>
+              <tr>
+                <th>Công cụ</th>
+                <th>Loại giá</th>
+                <th>Giá chi tiết</th>
+                <th>Đánh giá</th>
+                <th>Điểm mạnh</th>
+              </tr>
+            </thead>
+            <tbody id="comparisonTableBody">
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    // ============================================
+    // DOM Elements
+    // ============================================
+    const questionInput = document.getElementById('questionInput');
+    const askBtn = document.getElementById('askBtn');
+    const loading = document.getElementById('loading');
+    const resultsSection = document.getElementById('resultsSection');
+    const toolsGrid = document.getElementById('toolsGrid');
+    const resultsCount = document.getElementById('resultsCount');
+    const suggestionChips = document.querySelectorAll('.chip');
+    const filterButtons = document.querySelectorAll('.filter-btn');
+    const comparisonSection = document.getElementById('comparisonSection');
+    const comparisonTableBody = document.getElementById('comparisonTableBody');
+
+    // Store all tools and current filter
+    let allTools = [];
+    let currentFilter = 'all';
+
+    // ============================================
+    // Event Listeners
+    // ============================================
+    
+    // Quick suggestion chips
+    suggestionChips.forEach(chip => {
+      chip.addEventListener('click', () => {
+        const suggestion = chip.dataset.suggestion;
+        questionInput.value = suggestion;
+        questionInput.focus();
+      });
+    });
+
+    // Ask button click
+    askBtn.addEventListener('click', handleAsk);
+
+    // Enter key in textarea (Ctrl/Cmd + Enter)
+    questionInput.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        handleAsk();
+      }
+    });
+
+    // Filter buttons
+    filterButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        // Update active state
+        filterButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        
+        // Update filter
+        currentFilter = btn.dataset.filter;
+        
+        // Filter and display tools
+        filterAndDisplayTools();
+      });
+    });
+
+    // ============================================
+    // Main Handler
+    // ============================================
+    async function handleAsk() {
+      const question = questionInput.value.trim();
+      
+      if (!question) {
+        alert('Vui lòng nhập câu hỏi của bạn!');
+        questionInput.focus();
+        return;
+      }
+
+      // Disable button and show loading
+      askBtn.disabled = true;
+      loading.classList.add('show');
+      resultsSection.classList.remove('show');
+      toolsGrid.innerHTML = '';
+
+      try {
+        // Call AI service
+        const tools = await getAIToolsRecommendation(question);
+        
+        // Store all tools
+        allTools = tools;
+        
+        // Reset filter to 'all'
+        currentFilter = 'all';
+        filterButtons.forEach(b => b.classList.remove('active'));
+        filterButtons[0].classList.add('active');
+        
+        // Display results
+        filterAndDisplayTools();
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Có lỗi xảy ra. Vui lòng thử lại sau.');
+      } finally {
+        // Re-enable button and hide loading
+        askBtn.disabled = false;
+        loading.classList.remove('show');
+      }
+    }
+
+    // ============================================
+    // Filter and Display Tools
+    // ============================================
+    function filterAndDisplayTools() {
+      let filteredTools = allTools;
+      
+      if (currentFilter !== 'all') {
+        filteredTools = allTools.filter(tool => tool.price === currentFilter);
+      }
+      
+      displayResults(filteredTools);
+      displayComparison(filteredTools);
+    }
+
+    // ============================================
+    // AI Service Integration
+    // ============================================
+    async function getAIToolsRecommendation(question) {
+      // TODO: Replace with actual AI API call
+      // For now, using a mock service that analyzes the question
+      
+      try {
+        // Try to call backend API if available
+        const response = await fetch('/api/ai-tool/recommend', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ question: question })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          return data.tools || [];
+        }
+      } catch (error) {
+        console.log('Backend API not available, using mock data');
+      }
+
+      // Fallback to mock recommendation
+      return getMockRecommendation(question);
+    }
+
+    // ============================================
+    // Mock Recommendation (Fallback)
+    // ============================================
+    function getMockRecommendation(question) {
+      const questionLower = question.toLowerCase();
+      
+      // Image generation
+      if (questionLower.includes('ảnh') || questionLower.includes('image') || questionLower.includes('hình')) {
+        return [
+          {
+            name: 'Stable Diffusion (Hugging Face)',
+            type: 'Image Generation',
+            price: 'free',
+            priceLabel: 'Miễn phí',
+            description: 'Công cụ tạo ảnh từ text prompt mạnh mẽ và hoàn toàn miễn phí. Hỗ trợ nhiều style và chất lượng cao.',
+            strengths: [
+              'Hoàn toàn miễn phí, không giới hạn',
+              'Chất lượng ảnh cao, nhiều style',
+              'Cộng đồng lớn, nhiều model có sẵn'
+            ],
+            link: 'https://huggingface.co/spaces/stabilityai/stable-diffusion',
+            advice: 'Nếu bạn mới bắt đầu, hãy thử Stable Diffusion trên Hugging Face - dễ dùng và miễn phí 100%.'
+          },
+          {
+            name: 'Leonardo.ai',
+            type: 'Image Generation',
+            price: 'freemium',
+            priceLabel: 'Có bản free (150 ảnh/ngày)',
+            description: 'Nền tảng tạo ảnh AI với giao diện đẹp, dễ sử dụng. Có free tier hào phóng với 150 ảnh mỗi ngày.',
+            strengths: [
+              'Giao diện đẹp, dễ sử dụng',
+              'Free tier hào phóng (150 ảnh/ngày)',
+              'Nhiều model và style có sẵn'
+            ],
+            link: 'https://leonardo.ai',
+            advice: 'Phù hợp nếu bạn cần tạo nhiều ảnh và muốn giao diện dễ dùng.'
+          },
+          {
+            name: 'DALL-E 2 (OpenAI)',
+            type: 'Image Generation',
+            price: 'freemium',
+            priceLabel: 'Có credit miễn phí',
+            description: 'Công cụ tạo ảnh của OpenAI, chất lượng rất cao và hiểu ngữ cảnh tốt. Có credit miễn phí khi đăng ký.',
+            strengths: [
+              'Chất lượng ảnh xuất sắc',
+              'Hiểu ngữ cảnh và prompt tốt',
+              'An toàn, có filter nội dung'
+            ],
+            link: 'https://openai.com/dall-e-2',
+            advice: 'Nếu bạn cần chất lượng cao nhất và sẵn sàng trả phí, DALL-E 2 là lựa chọn tốt.'
+          }
+        ];
+      }
+
+      // Video generation
+      if (questionLower.includes('video') || questionLower.includes('phim') || questionLower.includes('clip')) {
+        return [
+          {
+            name: 'Runway ML',
+            type: 'Video Generation',
+            price: 'freemium',
+            priceLabel: 'Có bản free (125 credits)',
+            description: 'Nền tảng tạo video từ text hoặc ảnh. Có free tier với 125 credits để thử nghiệm.',
+            strengths: [
+              'Tạo video từ text hoặc ảnh',
+              'Chất lượng video tốt',
+              'Free tier để thử nghiệm'
+            ],
+            link: 'https://runwayml.com',
+            advice: 'Nếu bạn mới bắt đầu với video AI, Runway ML là lựa chọn tốt với free tier.'
+          },
+          {
+            name: 'Pika Labs',
+            type: 'Video Generation',
+            price: 'freemium',
+            priceLabel: 'Có bản free',
+            description: 'Công cụ tạo video ngắn từ text prompt. Dễ sử dụng và có free tier.',
+            strengths: [
+              'Dễ sử dụng, giao diện đơn giản',
+              'Tạo video nhanh từ text',
+              'Có free tier'
+            ],
+            link: 'https://pika.art',
+            advice: 'Phù hợp cho người mới bắt đầu muốn tạo video ngắn từ text.'
+          },
+          {
+            name: 'Synthesia',
+            type: 'Video Generation',
+            price: 'freemium',
+            priceLabel: 'Có bản free giới hạn',
+            description: 'Tạo video với AI avatar nói chuyện. Phù hợp cho video bài giảng, training.',
+            strengths: [
+              'Tạo video với AI avatar',
+              'Phù hợp cho bài giảng',
+              'Nhiều ngôn ngữ hỗ trợ'
+            ],
+            link: 'https://www.synthesia.io',
+            advice: 'Nếu bạn cần tạo video bài giảng với avatar, Synthesia là lựa chọn tốt.'
+          }
+        ];
+      }
+
+      // Text/Content writing
+      if (questionLower.includes('viết') || questionLower.includes('nội dung') || questionLower.includes('blog') || questionLower.includes('text') || questionLower.includes('content')) {
+        return [
+          {
+            name: 'ChatGPT (OpenAI)',
+            type: 'Text Generation',
+            price: 'freemium',
+            priceLabel: 'Có bản free (GPT-3.5)',
+            description: 'Công cụ viết nội dung AI phổ biến nhất. GPT-3.5 miễn phí, GPT-4 có phí nhưng mạnh hơn.',
+            strengths: [
+              'Viết nội dung chất lượng cao',
+              'Hiểu ngữ cảnh tốt',
+              'Free tier với GPT-3.5'
+            ],
+            link: 'https://chat.openai.com',
+            advice: 'Nếu bạn mới bắt đầu, hãy thử ChatGPT free (GPT-3.5) - đủ mạnh cho hầu hết nhu cầu viết.'
+          },
+          {
+            name: 'Claude (Anthropic)',
+            type: 'Text Generation',
+            price: 'freemium',
+            priceLabel: 'Có bản free',
+            description: 'AI chatbot của Anthropic, viết nội dung dài và chi tiết. Có free tier hào phóng.',
+            strengths: [
+              'Viết nội dung dài, chi tiết',
+              'Free tier hào phóng',
+              'An toàn, ít lỗi'
+            ],
+            link: 'https://claude.ai',
+            advice: 'Nếu bạn cần viết nội dung dài (blog, bài viết), Claude là lựa chọn tốt.'
+          },
+          {
+            name: 'Jasper AI',
+            type: 'Text Generation',
+            price: 'freemium',
+            priceLabel: 'Có bản free giới hạn',
+            description: 'Công cụ viết nội dung chuyên nghiệp với nhiều template. Phù hợp cho marketing, blog.',
+            strengths: [
+              'Nhiều template có sẵn',
+              'Tối ưu cho SEO',
+              'Phù hợp cho marketing'
+            ],
+            link: 'https://www.jasper.ai',
+            advice: 'Nếu bạn làm marketing hoặc cần viết nội dung SEO, Jasper là lựa chọn tốt.'
+          }
+        ];
+      }
+
+      // Translation/Transcription
+      if (questionLower.includes('dịch') || questionLower.includes('transcribe') || questionLower.includes('phiên âm') || questionLower.includes('audio')) {
+        return [
+          {
+            name: 'Whisper (OpenAI)',
+            type: 'Transcription',
+            price: 'free',
+            priceLabel: 'Miễn phí (open source)',
+            description: 'Công cụ transcribe audio sang text miễn phí, mã nguồn mở. Hỗ trợ nhiều ngôn ngữ, độ chính xác cao.',
+            strengths: [
+              'Hoàn toàn miễn phí, mã nguồn mở',
+              'Độ chính xác cao',
+              'Hỗ trợ nhiều ngôn ngữ'
+            ],
+            link: 'https://github.com/openai/whisper',
+            advice: 'Nếu bạn cần transcribe audio miễn phí, Whisper là lựa chọn tốt nhất - miễn phí và chính xác.'
+          },
+          {
+            name: 'Google Translate',
+            type: 'Translation',
+            price: 'free',
+            priceLabel: 'Miễn phí',
+            description: 'Công cụ dịch miễn phí của Google. Hỗ trợ nhiều ngôn ngữ, có API miễn phí giới hạn.',
+            strengths: [
+              'Hoàn toàn miễn phí',
+              'Hỗ trợ nhiều ngôn ngữ',
+              'Có API để tích hợp'
+            ],
+            link: 'https://translate.google.com',
+            advice: 'Nếu bạn cần dịch nhanh và miễn phí, Google Translate là lựa chọn tốt nhất.'
+          },
+          {
+            name: 'DeepL',
+            type: 'Translation',
+            price: 'freemium',
+            priceLabel: 'Có bản free (5000 ký tự/tháng)',
+            description: 'Công cụ dịch chất lượng cao, tự nhiên hơn Google Translate. Có free tier 5000 ký tự/tháng.',
+            strengths: [
+              'Chất lượng dịch tự nhiên',
+              'Free tier 5000 ký tự/tháng',
+              'Hỗ trợ nhiều ngôn ngữ'
+            ],
+            link: 'https://www.deepl.com',
+            advice: 'Nếu bạn cần dịch chất lượng cao và tự nhiên, DeepL là lựa chọn tốt.'
+          }
+        ];
+      }
+
+      // Code generation
+      if (questionLower.includes('code') || questionLower.includes('lập trình') || questionLower.includes('script') || questionLower.includes('programming')) {
+        return [
+          {
+            name: 'GitHub Copilot',
+            type: 'Code Generation',
+            price: 'freemium',
+            priceLabel: 'Free cho học sinh/sinh viên',
+            description: 'AI code assistant tích hợp vào IDE. Hỗ trợ nhiều ngôn ngữ, hiểu ngữ cảnh code tốt.',
+            strengths: [
+              'Tích hợp vào IDE',
+              'Hỗ trợ nhiều ngôn ngữ',
+              'Free cho học sinh/sinh viên'
+            ],
+            link: 'https://github.com/features/copilot',
+            advice: 'Nếu bạn là học sinh/sinh viên, GitHub Copilot miễn phí là lựa chọn tốt nhất.'
+          },
+          {
+            name: 'Codeium',
+            type: 'Code Generation',
+            price: 'free',
+            priceLabel: 'Miễn phí',
+            description: 'AI code assistant miễn phí, tương tự GitHub Copilot. Hỗ trợ nhiều IDE và ngôn ngữ.',
+            strengths: [
+              'Hoàn toàn miễn phí',
+              'Tích hợp nhiều IDE',
+              'Hỗ trợ nhiều ngôn ngữ'
+            ],
+            link: 'https://codeium.com',
+            advice: 'Nếu bạn cần AI code assistant miễn phí, Codeium là lựa chọn tốt.'
+          },
+          {
+            name: 'ChatGPT (Code Mode)',
+            type: 'Code Generation',
+            price: 'freemium',
+            priceLabel: 'Có bản free (GPT-3.5)',
+            description: 'ChatGPT có thể viết code, debug, giải thích code. GPT-3.5 miễn phí đủ dùng cho nhiều tác vụ.',
+            strengths: [
+              'Viết code từ mô tả',
+              'Debug và giải thích code',
+              'Free tier với GPT-3.5'
+            ],
+            link: 'https://chat.openai.com',
+            advice: 'Nếu bạn cần AI viết code từ mô tả, ChatGPT free là lựa chọn tốt.'
+          }
+        ];
+      }
+
+      // Voice/Speech
+      if (questionLower.includes('voice') || questionLower.includes('giọng nói') || questionLower.includes('speech') || questionLower.includes('text-to-speech')) {
+        return [
+          {
+            name: 'ElevenLabs',
+            type: 'Text-to-Speech',
+            price: 'freemium',
+            priceLabel: 'Có bản free (10,000 ký tự/tháng)',
+            description: 'Công cụ text-to-speech chất lượng cao, giọng nói tự nhiên. Có free tier 10,000 ký tự/tháng.',
+            strengths: [
+              'Giọng nói tự nhiên, chất lượng cao',
+              'Free tier 10,000 ký tự/tháng',
+              'Nhiều giọng nói có sẵn'
+            ],
+            link: 'https://elevenlabs.io',
+            advice: 'Nếu bạn cần text-to-speech chất lượng cao, ElevenLabs là lựa chọn tốt nhất.'
+          },
+          {
+            name: 'Google Text-to-Speech',
+            type: 'Text-to-Speech',
+            price: 'freemium',
+            priceLabel: 'Có bản free (giới hạn)',
+            description: 'API text-to-speech của Google. Có free tier, hỗ trợ nhiều ngôn ngữ và giọng nói.',
+            strengths: [
+              'Miễn phí với giới hạn',
+              'Hỗ trợ nhiều ngôn ngữ',
+              'Dễ tích hợp'
+            ],
+            link: 'https://cloud.google.com/text-to-speech',
+            advice: 'Nếu bạn cần text-to-speech miễn phí và dễ tích hợp, Google TTS là lựa chọn tốt.'
+          },
+          {
+            name: 'Murf AI',
+            type: 'Text-to-Speech',
+            price: 'freemium',
+            priceLabel: 'Có bản free (10 phút)',
+            description: 'Công cụ text-to-speech với nhiều giọng nói chuyên nghiệp. Có free trial 10 phút.',
+            strengths: [
+              'Nhiều giọng nói chuyên nghiệp',
+              'Free trial 10 phút',
+              'Dễ sử dụng'
+            ],
+            link: 'https://murf.ai',
+            advice: 'Nếu bạn cần thử nghiệm text-to-speech, Murf có free trial để bạn test.'
+          }
+        ];
+      }
+
+      // Default recommendation
+      return [
+        {
+          name: 'ChatGPT (OpenAI)',
+          type: 'General AI',
+          price: 'freemium',
+          priceLabel: 'Có bản free (GPT-3.5)',
+          description: 'Công cụ AI đa năng, có thể giúp với nhiều tác vụ: viết, code, dịch, tóm tắt, v.v.',
+          strengths: [
+            'Đa năng, nhiều chức năng',
+            'Free tier với GPT-3.5',
+            'Dễ sử dụng'
+          ],
+          link: 'https://chat.openai.com',
+          advice: 'Nếu bạn không chắc cần tool gì, hãy thử ChatGPT free - nó có thể giúp với nhiều tác vụ.'
+        },
+        {
+          name: 'Claude (Anthropic)',
+          type: 'General AI',
+          price: 'freemium',
+          priceLabel: 'Có bản free',
+          description: 'AI chatbot đa năng, viết nội dung dài và chi tiết. Có free tier hào phóng.',
+          strengths: [
+            'Viết nội dung dài, chi tiết',
+            'Free tier hào phóng',
+            'An toàn, ít lỗi'
+          ],
+          link: 'https://claude.ai',
+          advice: 'Nếu bạn cần AI đa năng với free tier tốt, Claude là lựa chọn tốt.'
+        },
+        {
+          name: 'Google Bard',
+          type: 'General AI',
+          price: 'free',
+          priceLabel: 'Miễn phí',
+          description: 'AI chatbot của Google, miễn phí và tích hợp với các dịch vụ Google.',
+          strengths: [
+            'Hoàn toàn miễn phí',
+            'Tích hợp Google services',
+            'Cập nhật thông tin mới'
+          ],
+          link: 'https://bard.google.com',
+          advice: 'Nếu bạn cần AI miễn phí và tích hợp Google, Bard là lựa chọn tốt.'
+        }
+      ];
+    }
+
+    // ============================================
+    // Display Results
+    // ============================================
+    function displayResults(tools) {
+      if (!tools || tools.length === 0) {
+        toolsGrid.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">🤔</div>
+            <p>Không tìm thấy công cụ AI phù hợp. Vui lòng thử lại với câu hỏi khác.</p>
+          </div>
+        `;
+        // Hide filter section
+        const filterSection = document.getElementById('filterSection');
+        if (filterSection) {
+          filterSection.style.display = 'none';
+        }
+        resultsSection.classList.add('show');
+        return;
+      }
+
+      resultsCount.textContent = `${tools.length} công cụ được gợi ý`;
+      
+      // Show filter section
+      const filterSection = document.getElementById('filterSection');
+      if (filterSection) {
+        filterSection.style.display = 'block';
+      }
+      
+      toolsGrid.innerHTML = tools.map((tool, index) => {
+        const rating = tool.rating || 4.0;
+        const ratingCount = tool.ratingCount || 100;
+        const priceDetails = tool.priceDetails || {};
+        const freeTier = priceDetails.freeTier || '';
+        const paidPrice = priceDetails.paidPrice || '';
+        
+        return `
+        <div class="tool-card" data-price="${tool.price}">
+          <div class="tool-header">
+            <div>
+              <div class="tool-name">${escapeHtml(tool.name)}</div>
+              <span class="tool-type">${escapeHtml(tool.type)}</span>
+            </div>
+          </div>
+          
+          ${rating ? `
+            <div class="tool-rating">
+              <div class="rating-stars">
+                ${generateStars(rating)}
+              </div>
+              <span class="rating-value">${rating.toFixed(1)}</span>
+              <span class="rating-count">(${ratingCount}+ đánh giá)</span>
+            </div>
+          ` : ''}
+          
+          <div class="tool-price ${tool.price}">
+            <i class="bi ${tool.price === 'free' ? 'bi-gift' : tool.price === 'freemium' ? 'bi-star' : 'bi-credit-card'}"></i>
+            ${escapeHtml(tool.priceLabel)}
+          </div>
+          
+          ${(freeTier || paidPrice) ? `
+            <div class="price-details">
+              <div class="price-details-title">💰 Chi tiết giá:</div>
+              ${freeTier ? `<div class="price-item"><span>Bản miễn phí:</span><strong>${escapeHtml(freeTier)}</strong></div>` : ''}
+              ${paidPrice ? `<div class="price-item"><span>Bản trả phí:</span><strong>${escapeHtml(paidPrice)}</strong></div>` : ''}
+            </div>
+          ` : ''}
+          
+          <p class="tool-description">${escapeHtml(tool.description)}</p>
+          ${tool.advice ? `<p class="tool-description" style="font-style: italic; color: var(--primary-color); margin-top: 0.5rem;"><strong>💡 Lời khuyên:</strong> ${escapeHtml(tool.advice)}</p>` : ''}
+          ${tool.strengths && tool.strengths.length > 0 ? `
+            <div class="tool-strengths">
+              <div class="tool-strengths-title">Điểm mạnh:</div>
+              <ul class="tool-strengths-list">
+                ${tool.strengths.map(strength => `<li>${escapeHtml(strength)}</li>`).join('')}
+              </ul>
+            </div>
+          ` : ''}
+          <a href="${escapeHtml(tool.link)}" target="_blank" rel="noopener noreferrer" class="tool-link">
+            <span>Xem công cụ</span>
+            <i class="bi bi-arrow-right"></i>
+          </a>
+        </div>
+      `;
+      }).join('');
+
+      resultsSection.classList.add('show');
+    }
+
+    // ============================================
+    // Display Comparison Table
+    // ============================================
+    function displayComparison(tools) {
+      if (!tools || tools.length === 0) {
+        comparisonSection.classList.remove('show');
+        return;
+      }
+
+      comparisonTableBody.innerHTML = tools.map(tool => {
+        const rating = tool.rating || 4.0;
+        const ratingCount = tool.ratingCount || 100;
+        const priceDetails = tool.priceDetails || {};
+        const freeTier = priceDetails.freeTier || 'N/A';
+        const paidPrice = priceDetails.paidPrice || 'N/A';
+        const priceBadgeClass = tool.price === 'free' ? 'free' : tool.price === 'freemium' ? 'freemium' : 'paid';
+        const priceBadgeBg = tool.price === 'free' ? '#dcfce7' : tool.price === 'freemium' ? '#fef3c7' : '#fee2e2';
+        const priceBadgeColor = tool.price === 'free' ? '#166534' : tool.price === 'freemium' ? '#92400e' : '#991b1b';
+        
+        return `
+          <tr>
+            <td><strong>${escapeHtml(tool.name)}</strong></td>
+            <td>
+              <span class="comparison-badge" style="background: ${priceBadgeBg}; color: ${priceBadgeColor};">
+                ${tool.price === 'free' ? 'Miễn phí' : tool.price === 'freemium' ? 'Freemium' : 'Trả phí'}
+              </span>
+            </td>
+            <td>
+              <div style="font-size: 0.85rem;">
+                ${freeTier !== 'N/A' ? `<div><strong>Free:</strong> ${escapeHtml(freeTier)}</div>` : ''}
+                ${paidPrice !== 'N/A' ? `<div><strong>Paid:</strong> ${escapeHtml(paidPrice)}</div>` : ''}
+              </div>
+            </td>
+            <td>
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <span style="color: #fbbf24;">${generateStars(rating)}</span>
+                <strong>${rating.toFixed(1)}</strong>
+                <span style="color: var(--text-secondary); font-size: 0.85rem;">(${ratingCount}+)</span>
+              </div>
+            </td>
+            <td>
+              <ul style="margin: 0; padding-left: 1.25rem; font-size: 0.85rem;">
+                ${tool.strengths ? tool.strengths.slice(0, 2).map(s => `<li>${escapeHtml(s)}</li>`).join('') : '<li>N/A</li>'}
+              </ul>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      comparisonSection.classList.add('show');
+    }
+
+    // ============================================
+    // Generate Stars
+    // ============================================
+    function generateStars(rating) {
+      const fullStars = Math.floor(rating);
+      const hasHalfStar = rating % 1 >= 0.5;
+      const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
+      
+      let stars = '';
+      for (let i = 0; i < fullStars; i++) {
+        stars += '<i class="bi bi-star-fill"></i>';
+      }
+      if (hasHalfStar) {
+        stars += '<i class="bi bi-star-half"></i>';
+      }
+      for (let i = 0; i < emptyStars; i++) {
+        stars += '<i class="bi bi-star"></i>';
+      }
+      return stars;
+    }
+
+    // ============================================
+    // Utility Functions
+    // ============================================
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+  </script>
+</body>
+</html>
+

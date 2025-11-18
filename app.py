@@ -302,12 +302,18 @@ def api_ai_quiz_question():
     # Try to use video_script_quiz_service, fallback if not available
     try:
         from video_script_quiz_service import video_script_quiz_service
+        # Lấy time_range nếu có (từ frontend)
+        time_range = None
+        if p.get("start_time") is not None and p.get("end_time") is not None:
+            time_range = (float(p.get("start_time")), float(p.get("end_time")))
+        
         item = video_script_quiz_service.get_next_question_from_video_script(
             course_id=str(video_id),
             script_content=script_txt,
             session_id=str(attempt_id),
             question_type=(qtype if qtype in ("mcq","essay","oral") else "mcq"),
-            language="vi"
+            language="vi",
+            time_range=time_range
         )
         return jsonify({"ok": True, "qid": item.get("qid") or hashlib.sha1(item["question"].encode()).hexdigest()[:16], "qa": item})
     except (ImportError, Exception) as e:
@@ -351,34 +357,84 @@ def api_ai_quiz_grade():
 def api_ai_quiz_generate_from_subtitles():
     """
     Tạo câu hỏi từ phụ đề sử dụng AI Gemini
-    Body JSON: {subtitle_text, time_range, language}
+    Body JSON: {script_text (hoặc subtitle_text), video_id, start_time, end_time, language}
     """
     try:
         p = request.get_json(force=True) or {}
-        subtitle_text = p.get("subtitle_text", "")
-        time_range = p.get("time_range", "0-50 seconds")
+        # Hỗ trợ cả script_text và subtitle_text (backward compatibility)
+        script_text = p.get("script_text") or p.get("subtitle_text", "")
+        video_id = p.get("video_id") or "unknown"
+        start_time = p.get("start_time")
+        end_time = p.get("end_time")
         language = p.get("language", "vi")
+        attempt_id = session.get("user", {}).get("id", "anonymous")
         
-        if not subtitle_text or len(subtitle_text.strip()) < 10:
+        # Validate và log transcript
+        script_text = script_text.strip()
+        current_app.logger.info(f"[GENERATE_QUESTION] Received transcript: length={len(script_text)}, start_time={start_time}, end_time={end_time}")
+        current_app.logger.info(f"[GENERATE_QUESTION] Transcript preview: {script_text[:200]}...")
+        
+        if not script_text or len(script_text) < 50:
+            current_app.logger.warning(f"[GENERATE_QUESTION] Transcript too short: {len(script_text)} chars (minimum: 50)")
             return jsonify({
                 "ok": False, 
-                "error": "Không có đủ nội dung phụ đề để tạo câu hỏi"
+                "error": f"Không có đủ nội dung phụ đề để tạo câu hỏi (chỉ có {len(script_text)} ký tự, cần tối thiểu 50 ký tự)"
             }), 400
         
-        # Tạo câu hỏi từ phụ đề sử dụng AI Gemini
-        question_data = generate_question_from_subtitles(subtitle_text, time_range, language)
+        # Tạo time_range nếu có start_time và end_time
+        time_range = None
+        if start_time is not None and end_time is not None:
+            time_range = (float(start_time), float(end_time))
+            current_app.logger.info(f"[GENERATE_QUESTION] Time range: {start_time}s - {end_time}s")
         
-        return jsonify({
-            "ok": True,
-            "question": question_data["question"],
-            "options": question_data["options"],
-            "correct_index": question_data["correct_index"],
-            "explanation": question_data["explanation"],
-            "type": "mcq"
-        })
+        # Sử dụng video_script_quiz_service để tạo câu hỏi
+        try:
+            from video_script_quiz_service import video_script_quiz_service
+            current_app.logger.info(f"[GENERATE_QUESTION] Calling video_script_quiz_service with transcript length: {len(script_text)}")
+            question_data = video_script_quiz_service.get_next_question_from_video_script(
+                course_id=str(video_id),
+                script_content=script_text,
+                session_id=str(attempt_id),
+                question_type="mcq",
+                language=language,
+                time_range=time_range
+            )
+            
+            if not question_data:
+                current_app.logger.error("[GENERATE_QUESTION] video_script_quiz_service returned None")
+                raise ValueError("AI service returned None")
+            
+            current_app.logger.info(f"[GENERATE_QUESTION] Question generated: {question_data.get('question', '')[:100]}...")
+            
+            return jsonify({
+                "ok": True,
+                "question": question_data.get("question", ""),
+                "options": question_data.get("options", []),
+                "correct_index": question_data.get("correct_index", 0),
+                "explanation": question_data.get("explanation", ""),
+                "type": "mcq",
+                "qid": question_data.get("qid", "")
+            })
+        except ImportError:
+            # Fallback nếu không có video_script_quiz_service
+            question_data = generate_question_from_subtitles(
+                script_text, 
+                f"{start_time or 0}-{end_time or 50} seconds" if time_range else "0-50 seconds",
+                language
+            )
+            return jsonify({
+                "ok": True,
+                "question": question_data["question"],
+                "options": question_data["options"],
+                "correct_index": question_data["correct_index"],
+                "explanation": question_data["explanation"],
+                "type": "mcq"
+            })
         
     except Exception as e:
         print(f"❌ Error in generate-from-subtitles: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({
             "ok": False,
             "error": f"Lỗi khi tạo câu hỏi: {str(e)}"
@@ -1116,6 +1172,469 @@ def admin_required(f):
 def home():
     return auth_controller.home()
 
+@app.route("/ai-tool")
+def ai_tool():
+    """Trang gợi ý công cụ AI"""
+    return render_template("ai_tool.html")
+
+@app.post("/api/ai-tool/recommend")
+def api_ai_tool_recommend():
+    """
+    API gợi ý công cụ AI dựa trên câu hỏi của người dùng.
+    Trả về danh sách 3-5 công cụ AI phù hợp.
+    """
+    try:
+        payload = request.get_json(force=True) or {}
+    except Exception:
+        payload = {}
+    
+    question = (payload.get("question") or "").strip()
+    
+    if not question:
+        return jsonify({"ok": False, "error": "Vui lòng nhập câu hỏi"}), 400
+    
+    # TODO: Tích hợp với AI service thực tế (Gemini, OpenAI, etc.)
+    # Hiện tại sử dụng logic phân tích đơn giản dựa trên keywords
+    # Có thể thay thế bằng AI service sau
+    
+    tools = _get_ai_tools_recommendation(question)
+    
+    return jsonify({
+        "ok": True,
+        "tools": tools,
+        "count": len(tools)
+    })
+
+def _get_ai_tools_recommendation(question):
+    """
+    Hàm helper để gợi ý công cụ AI dựa trên câu hỏi.
+    TODO: Thay thế bằng AI service thực tế.
+    """
+    question_lower = question.lower()
+    
+    # Helper function to add default rating and priceDetails if missing
+    def add_default_metadata(tool):
+        # Create a copy to avoid modifying original
+        result = tool.copy()
+        
+        if "rating" not in result:
+            result["rating"] = round(4.0 + (random.random() * 0.8), 1)  # Random 4.0-4.8
+        if "ratingCount" not in result:
+            result["ratingCount"] = random.randint(50, 2000)
+        if "priceDetails" not in result:
+            result["priceDetails"] = {
+                "freeTier": result.get("priceLabel", ""),
+                "paidPrice": "N/A" if result.get("price") == "free" else "Xem trên website"
+            }
+        return result
+    
+    # Image generation
+    if any(kw in question_lower for kw in ['ảnh', 'image', 'hình', 'picture', 'tạo ảnh']):
+        tools = [
+            {
+                "name": "Stable Diffusion (Hugging Face)",
+                "type": "Image Generation",
+                "price": "free",
+                "priceLabel": "Miễn phí",
+                "rating": 4.5,
+                "ratingCount": 1250,
+                "priceDetails": {
+                    "freeTier": "Hoàn toàn miễn phí, không giới hạn",
+                    "paidPrice": "N/A"
+                },
+                "description": "Công cụ tạo ảnh từ text prompt mạnh mẽ và hoàn toàn miễn phí. Hỗ trợ nhiều style và chất lượng cao.",
+                "strengths": [
+                    "Hoàn toàn miễn phí, không giới hạn",
+                    "Chất lượng ảnh cao, nhiều style",
+                    "Cộng đồng lớn, nhiều model có sẵn"
+                ],
+                "link": "https://huggingface.co/spaces/stabilityai/stable-diffusion",
+                "advice": "Nếu bạn mới bắt đầu, hãy thử Stable Diffusion trên Hugging Face - dễ dùng và miễn phí 100%."
+            },
+            {
+                "name": "Leonardo.ai",
+                "type": "Image Generation",
+                "price": "freemium",
+                "priceLabel": "Có bản free (150 ảnh/ngày)",
+                "rating": 4.7,
+                "ratingCount": 890,
+                "priceDetails": {
+                    "freeTier": "150 ảnh/ngày miễn phí",
+                    "paidPrice": "Từ $10/tháng (1500 ảnh/tháng)"
+                },
+                "description": "Nền tảng tạo ảnh AI với giao diện đẹp, dễ sử dụng. Có free tier hào phóng với 150 ảnh mỗi ngày.",
+                "strengths": [
+                    "Giao diện đẹp, dễ sử dụng",
+                    "Free tier hào phóng (150 ảnh/ngày)",
+                    "Nhiều model và style có sẵn"
+                ],
+                "link": "https://leonardo.ai",
+                "advice": "Phù hợp nếu bạn cần tạo nhiều ảnh và muốn giao diện dễ dùng."
+            },
+            {
+                "name": "DALL-E 2 (OpenAI)",
+                "type": "Image Generation",
+                "price": "freemium",
+                "priceLabel": "Có credit miễn phí",
+                "rating": 4.8,
+                "ratingCount": 2100,
+                "priceDetails": {
+                    "freeTier": "$5 credit miễn phí khi đăng ký",
+                    "paidPrice": "$0.02-0.04/ảnh (tùy độ phân giải)"
+                },
+                "description": "Công cụ tạo ảnh của OpenAI, chất lượng rất cao và hiểu ngữ cảnh tốt. Có credit miễn phí khi đăng ký.",
+                "strengths": [
+                    "Chất lượng ảnh xuất sắc",
+                    "Hiểu ngữ cảnh và prompt tốt",
+                    "An toàn, có filter nội dung"
+                ],
+                "link": "https://openai.com/dall-e-2",
+                "advice": "Nếu bạn cần chất lượng cao nhất và sẵn sàng trả phí, DALL-E 2 là lựa chọn tốt."
+            }
+        ]
+        return [add_default_metadata(tool) for tool in tools]
+    
+    # Video generation
+    if any(kw in question_lower for kw in ['video', 'phim', 'clip', 'tạo video']):
+        tools = [
+            {
+                "name": "Runway ML",
+                "type": "Video Generation",
+                "price": "freemium",
+                "priceLabel": "Có bản free (125 credits)",
+                "rating": 4.6,
+                "ratingCount": 750,
+                "priceDetails": {
+                    "freeTier": "125 credits miễn phí",
+                    "paidPrice": "Từ $12/tháng (625 credits/tháng)"
+                },
+                "description": "Nền tảng tạo video từ text hoặc ảnh. Có free tier với 125 credits để thử nghiệm.",
+                "strengths": [
+                    "Tạo video từ text hoặc ảnh",
+                    "Chất lượng video tốt",
+                    "Free tier để thử nghiệm"
+                ],
+                "link": "https://runwayml.com",
+                "advice": "Nếu bạn mới bắt đầu với video AI, Runway ML là lựa chọn tốt với free tier."
+            },
+            {
+                "name": "Pika Labs",
+                "type": "Video Generation",
+                "price": "freemium",
+                "priceLabel": "Có bản free",
+                "description": "Công cụ tạo video ngắn từ text prompt. Dễ sử dụng và có free tier.",
+                "strengths": [
+                    "Dễ sử dụng, giao diện đơn giản",
+                    "Tạo video nhanh từ text",
+                    "Có free tier"
+                ],
+                "link": "https://pika.art",
+                "advice": "Phù hợp cho người mới bắt đầu muốn tạo video ngắn từ text."
+            },
+            {
+                "name": "Synthesia",
+                "type": "Video Generation",
+                "price": "freemium",
+                "priceLabel": "Có bản free giới hạn",
+                "description": "Tạo video với AI avatar nói chuyện. Phù hợp cho video bài giảng, training.",
+                "strengths": [
+                    "Tạo video với AI avatar",
+                    "Phù hợp cho bài giảng",
+                    "Nhiều ngôn ngữ hỗ trợ"
+                ],
+                "link": "https://www.synthesia.io",
+                "advice": "Nếu bạn cần tạo video bài giảng với avatar, Synthesia là lựa chọn tốt."
+            }
+        ]
+        return [add_default_metadata(tool) for tool in tools]
+    
+    # Text/Content writing
+    if any(kw in question_lower for kw in ['viết', 'nội dung', 'blog', 'text', 'content', 'bài viết']):
+        tools = [
+            {
+                "name": "ChatGPT (OpenAI)",
+                "type": "Text Generation",
+                "price": "freemium",
+                "priceLabel": "Có bản free (GPT-3.5)",
+                "rating": 4.9,
+                "ratingCount": 50000,
+                "priceDetails": {
+                    "freeTier": "GPT-3.5 miễn phí",
+                    "paidPrice": "$20/tháng (GPT-4, không giới hạn)"
+                },
+                "description": "Công cụ viết nội dung AI phổ biến nhất. GPT-3.5 miễn phí, GPT-4 có phí nhưng mạnh hơn.",
+                "strengths": [
+                    "Viết nội dung chất lượng cao",
+                    "Hiểu ngữ cảnh tốt",
+                    "Free tier với GPT-3.5"
+                ],
+                "link": "https://chat.openai.com",
+                "advice": "Nếu bạn mới bắt đầu, hãy thử ChatGPT free (GPT-3.5) - đủ mạnh cho hầu hết nhu cầu viết."
+            },
+            {
+                "name": "Claude (Anthropic)",
+                "type": "Text Generation",
+                "price": "freemium",
+                "priceLabel": "Có bản free",
+                "rating": 4.8,
+                "ratingCount": 12000,
+                "priceDetails": {
+                    "freeTier": "Claude 3 Sonnet miễn phí (giới hạn)",
+                    "paidPrice": "$20/tháng (Claude 3 Opus, không giới hạn)"
+                },
+                "description": "AI chatbot của Anthropic, viết nội dung dài và chi tiết. Có free tier hào phóng.",
+                "strengths": [
+                    "Viết nội dung dài, chi tiết",
+                    "Free tier hào phóng",
+                    "An toàn, ít lỗi"
+                ],
+                "link": "https://claude.ai",
+                "advice": "Nếu bạn cần viết nội dung dài (blog, bài viết), Claude là lựa chọn tốt."
+            },
+            {
+                "name": "Jasper AI",
+                "type": "Text Generation",
+                "price": "freemium",
+                "priceLabel": "Có bản free giới hạn",
+                "description": "Công cụ viết nội dung chuyên nghiệp với nhiều template. Phù hợp cho marketing, blog.",
+                "strengths": [
+                    "Nhiều template có sẵn",
+                    "Tối ưu cho SEO",
+                    "Phù hợp cho marketing"
+                ],
+                "link": "https://www.jasper.ai",
+                "advice": "Nếu bạn làm marketing hoặc cần viết nội dung SEO, Jasper là lựa chọn tốt."
+            }
+        ]
+        return [add_default_metadata(tool) for tool in tools]
+    
+    # Translation/Transcription
+    if any(kw in question_lower for kw in ['dịch', 'transcribe', 'phiên âm', 'audio', 'translation']):
+        tools = [
+            {
+                "name": "Whisper (OpenAI)",
+                "type": "Transcription",
+                "price": "free",
+                "priceLabel": "Miễn phí (open source)",
+                "rating": 4.7,
+                "ratingCount": 3500,
+                "priceDetails": {
+                    "freeTier": "Hoàn toàn miễn phí, mã nguồn mở",
+                    "paidPrice": "N/A"
+                },
+                "description": "Công cụ transcribe audio sang text miễn phí, mã nguồn mở. Hỗ trợ nhiều ngôn ngữ, độ chính xác cao.",
+                "strengths": [
+                    "Hoàn toàn miễn phí, mã nguồn mở",
+                    "Độ chính xác cao",
+                    "Hỗ trợ nhiều ngôn ngữ"
+                ],
+                "link": "https://github.com/openai/whisper",
+                "advice": "Nếu bạn cần transcribe audio miễn phí, Whisper là lựa chọn tốt nhất - miễn phí và chính xác."
+            },
+            {
+                "name": "Google Translate",
+                "type": "Translation",
+                "price": "free",
+                "priceLabel": "Miễn phí",
+                "description": "Công cụ dịch miễn phí của Google. Hỗ trợ nhiều ngôn ngữ, có API miễn phí giới hạn.",
+                "strengths": [
+                    "Hoàn toàn miễn phí",
+                    "Hỗ trợ nhiều ngôn ngữ",
+                    "Có API để tích hợp"
+                ],
+                "link": "https://translate.google.com",
+                "advice": "Nếu bạn cần dịch nhanh và miễn phí, Google Translate là lựa chọn tốt nhất."
+            },
+            {
+                "name": "DeepL",
+                "type": "Translation",
+                "price": "freemium",
+                "priceLabel": "Có bản free (5000 ký tự/tháng)",
+                "description": "Công cụ dịch chất lượng cao, tự nhiên hơn Google Translate. Có free tier 5000 ký tự/tháng.",
+                "strengths": [
+                    "Chất lượng dịch tự nhiên",
+                    "Free tier 5000 ký tự/tháng",
+                    "Hỗ trợ nhiều ngôn ngữ"
+                ],
+                "link": "https://www.deepl.com",
+                "advice": "Nếu bạn cần dịch chất lượng cao và tự nhiên, DeepL là lựa chọn tốt."
+            }
+        ]
+        return [add_default_metadata(tool) for tool in tools]
+    
+    # Code generation
+    if any(kw in question_lower for kw in ['code', 'lập trình', 'script', 'programming', 'viết code']):
+        tools = [
+            {
+                "name": "GitHub Copilot",
+                "type": "Code Generation",
+                "price": "freemium",
+                "priceLabel": "Free cho học sinh/sinh viên",
+                "rating": 4.6,
+                "ratingCount": 8500,
+                "priceDetails": {
+                    "freeTier": "Miễn phí cho học sinh/sinh viên",
+                    "paidPrice": "$10/tháng (cá nhân), $19/tháng (business)"
+                },
+                "description": "AI code assistant tích hợp vào IDE. Hỗ trợ nhiều ngôn ngữ, hiểu ngữ cảnh code tốt.",
+                "strengths": [
+                    "Tích hợp vào IDE",
+                    "Hỗ trợ nhiều ngôn ngữ",
+                    "Free cho học sinh/sinh viên"
+                ],
+                "link": "https://github.com/features/copilot",
+                "advice": "Nếu bạn là học sinh/sinh viên, GitHub Copilot miễn phí là lựa chọn tốt nhất."
+            },
+            {
+                "name": "Codeium",
+                "type": "Code Generation",
+                "price": "free",
+                "priceLabel": "Miễn phí",
+                "description": "AI code assistant miễn phí, tương tự GitHub Copilot. Hỗ trợ nhiều IDE và ngôn ngữ.",
+                "strengths": [
+                    "Hoàn toàn miễn phí",
+                    "Tích hợp nhiều IDE",
+                    "Hỗ trợ nhiều ngôn ngữ"
+                ],
+                "link": "https://codeium.com",
+                "advice": "Nếu bạn cần AI code assistant miễn phí, Codeium là lựa chọn tốt."
+            },
+            {
+                "name": "ChatGPT (Code Mode)",
+                "type": "Code Generation",
+                "price": "freemium",
+                "priceLabel": "Có bản free (GPT-3.5)",
+                "description": "ChatGPT có thể viết code, debug, giải thích code. GPT-3.5 miễn phí đủ dùng cho nhiều tác vụ.",
+                "strengths": [
+                    "Viết code từ mô tả",
+                    "Debug và giải thích code",
+                    "Free tier với GPT-3.5"
+                ],
+                "link": "https://chat.openai.com",
+                "advice": "Nếu bạn cần AI viết code từ mô tả, ChatGPT free là lựa chọn tốt."
+            }
+        ]
+        return [add_default_metadata(tool) for tool in tools]
+    
+    # Voice/Speech
+    if any(kw in question_lower for kw in ['voice', 'giọng nói', 'speech', 'text-to-speech', 'tts']):
+        tools = [
+            {
+                "name": "ElevenLabs",
+                "type": "Text-to-Speech",
+                "price": "freemium",
+                "priceLabel": "Có bản free (10,000 ký tự/tháng)",
+                "rating": 4.8,
+                "ratingCount": 2100,
+                "priceDetails": {
+                    "freeTier": "10,000 ký tự/tháng miễn phí",
+                    "paidPrice": "Từ $5/tháng (30,000 ký tự/tháng)"
+                },
+                "description": "Công cụ text-to-speech chất lượng cao, giọng nói tự nhiên. Có free tier 10,000 ký tự/tháng.",
+                "strengths": [
+                    "Giọng nói tự nhiên, chất lượng cao",
+                    "Free tier 10,000 ký tự/tháng",
+                    "Nhiều giọng nói có sẵn"
+                ],
+                "link": "https://elevenlabs.io",
+                "advice": "Nếu bạn cần text-to-speech chất lượng cao, ElevenLabs là lựa chọn tốt nhất."
+            },
+            {
+                "name": "Google Text-to-Speech",
+                "type": "Text-to-Speech",
+                "price": "freemium",
+                "priceLabel": "Có bản free (giới hạn)",
+                "description": "API text-to-speech của Google. Có free tier, hỗ trợ nhiều ngôn ngữ và giọng nói.",
+                "strengths": [
+                    "Miễn phí với giới hạn",
+                    "Hỗ trợ nhiều ngôn ngữ",
+                    "Dễ tích hợp"
+                ],
+                "link": "https://cloud.google.com/text-to-speech",
+                "advice": "Nếu bạn cần text-to-speech miễn phí và dễ tích hợp, Google TTS là lựa chọn tốt."
+            },
+            {
+                "name": "Murf AI",
+                "type": "Text-to-Speech",
+                "price": "freemium",
+                "priceLabel": "Có bản free (10 phút)",
+                "description": "Công cụ text-to-speech với nhiều giọng nói chuyên nghiệp. Có free trial 10 phút.",
+                "strengths": [
+                    "Nhiều giọng nói chuyên nghiệp",
+                    "Free trial 10 phút",
+                    "Dễ sử dụng"
+                ],
+                "link": "https://murf.ai",
+                "advice": "Nếu bạn cần thử nghiệm text-to-speech, Murf có free trial để bạn test."
+            }
+        ]
+        return [add_default_metadata(tool) for tool in tools]
+    
+    # Default: General AI tools
+    tools = [
+        {
+            "name": "ChatGPT (OpenAI)",
+            "type": "General AI",
+            "price": "freemium",
+            "priceLabel": "Có bản free (GPT-3.5)",
+            "rating": 4.9,
+            "ratingCount": 50000,
+            "priceDetails": {
+                "freeTier": "GPT-3.5 miễn phí",
+                "paidPrice": "$20/tháng (GPT-4, không giới hạn)"
+            },
+            "description": "Công cụ AI đa năng, có thể giúp với nhiều tác vụ: viết, code, dịch, tóm tắt, v.v.",
+            "strengths": [
+                "Đa năng, nhiều chức năng",
+                "Free tier với GPT-3.5",
+                "Dễ sử dụng"
+            ],
+            "link": "https://chat.openai.com",
+            "advice": "Nếu bạn không chắc cần tool gì, hãy thử ChatGPT free - nó có thể giúp với nhiều tác vụ."
+        },
+        {
+            "name": "Claude (Anthropic)",
+            "type": "General AI",
+            "price": "freemium",
+            "priceLabel": "Có bản free",
+            "rating": 4.8,
+            "ratingCount": 12000,
+            "priceDetails": {
+                "freeTier": "Claude 3 Sonnet miễn phí (giới hạn)",
+                "paidPrice": "$20/tháng (Claude 3 Opus, không giới hạn)"
+            },
+            "description": "AI chatbot đa năng, viết nội dung dài và chi tiết. Có free tier hào phóng.",
+            "strengths": [
+                "Viết nội dung dài, chi tiết",
+                "Free tier hào phóng",
+                "An toàn, ít lỗi"
+            ],
+            "link": "https://claude.ai",
+            "advice": "Nếu bạn cần AI đa năng với free tier tốt, Claude là lựa chọn tốt."
+        },
+        {
+            "name": "Google Bard",
+            "type": "General AI",
+            "price": "free",
+            "priceLabel": "Miễn phí",
+            "rating": 4.5,
+            "ratingCount": 8000,
+            "priceDetails": {
+                "freeTier": "Hoàn toàn miễn phí",
+                "paidPrice": "N/A"
+            },
+            "description": "AI chatbot của Google, miễn phí và tích hợp với các dịch vụ Google.",
+            "strengths": [
+                "Hoàn toàn miễn phí",
+                "Tích hợp Google services",
+                "Cập nhật thông tin mới"
+            ],
+            "link": "https://bard.google.com",
+            "advice": "Nếu bạn cần AI miễn phí và tích hợp Google, Bard là lựa chọn tốt."
+        }
+    ]
+    return [add_default_metadata(tool) for tool in tools]
+
 # ---- Auth ----
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -1308,6 +1827,69 @@ def _read_vtt_as_text(vtt_path: str) -> str:
             ln = ln.strip()
             if ln:
                 txt.append(ln)
+    return re.sub(r"\s+", " ", " ".join(txt)).strip()
+
+def _read_vtt_by_time_range(vtt_path: str, start_time: float, end_time: float) -> str:
+    """Đọc VTT file và trích xuất text trong khoảng thời gian cụ thể."""
+    if not vtt_path or not os.path.exists(vtt_path):
+        return ""
+    
+    def time_to_seconds(time_str: str) -> float:
+        """Chuyển đổi timestamp VTT (HH:MM:SS.mmm) sang giây."""
+        try:
+            parts = time_str.split(':')
+            if len(parts) == 3:
+                hours = int(parts[0])
+                minutes = int(parts[1])
+                sec_parts = parts[2].split('.')
+                seconds = int(sec_parts[0])
+                milliseconds = int(sec_parts[1]) if len(sec_parts) > 1 else 0
+                return hours * 3600 + minutes * 60 + seconds + milliseconds / 1000.0
+        except:
+            pass
+        return 0.0
+    
+    txt = []
+    current_cue_text = []
+    current_start = None
+    current_end = None
+    
+    with open(vtt_path, "r", encoding="utf-8", errors="ignore") as f:
+        lines = f.readlines()
+    
+    i = 0
+    while i < len(lines):
+        line = lines[i].strip()
+        
+        # Tìm timestamp line (format: HH:MM:SS.mmm --> HH:MM:SS.mmm)
+        timestamp_match = re.search(r"(\d{2}:\d{2}:\d{2}\.\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2}\.\d{3})", line)
+        if timestamp_match:
+            current_start = time_to_seconds(timestamp_match.group(1))
+            current_end = time_to_seconds(timestamp_match.group(2))
+            current_cue_text = []
+            
+            # Đọc text của cue này (các dòng tiếp theo cho đến khi gặp dòng trống hoặc timestamp mới)
+            i += 1
+            while i < len(lines):
+                next_line = lines[i].strip()
+                if not next_line:
+                    break
+                if re.search(r"\d{2}:\d{2}:\d{2}\.\d{3}", next_line):
+                    i -= 1  # Quay lại dòng timestamp để xử lý ở vòng lặp tiếp theo
+                    break
+                # Loại bỏ HTML tags nếu có
+                text = re.sub(r'<[^>]+>', '', next_line)
+                if text:
+                    current_cue_text.append(text)
+                i += 1
+            
+            # Kiểm tra nếu cue nằm trong khoảng thời gian
+            if current_start is not None and current_end is not None:
+                if current_start < end_time and current_end > start_time:
+                    txt.extend(current_cue_text)
+        
+        i += 1
+    
     return re.sub(r"\s+", " ", " ".join(txt)).strip()
 
 def _gemini_generate_mcqs(transcript_text: str, n: int = 20, language: str = "vi"):
@@ -2770,6 +3352,67 @@ def api_captions_auto():
     """Tự động tạo hoặc lấy caption cho video"""
     return course_controller.api_captions_auto()
 
+@app.get("/api/captions/extract-text")
+def api_captions_extract_text():
+    """
+    Trích xuất text từ VTT file theo khoảng thời gian
+    Query params: url, start_time, end_time
+    """
+    try:
+        caption_url = request.args.get('url', '')
+        start_time = float(request.args.get('start_time', 0))
+        end_time = float(request.args.get('end_time', 50))
+        
+        if not caption_url:
+            return jsonify({
+                "ok": False,
+                "error": "Caption URL is required"
+            }), 400
+        
+        # Lấy đường dẫn file từ URL
+        vtt_path = caption_url.lstrip('/')
+        if not os.path.exists(vtt_path):
+            # Thử các đường dẫn khác
+            possible_paths = [
+                f"static/captions/{os.path.basename(vtt_path)}",
+                f"static/uploads/{os.path.basename(vtt_path)}",
+                vtt_path
+            ]
+            vtt_path = None
+            for path in possible_paths:
+                if os.path.exists(path):
+                    vtt_path = path
+                    break
+            
+            if not vtt_path:
+                return jsonify({
+                    "ok": False,
+                    "error": f"Caption file not found: {caption_url}"
+                }), 404
+        
+        # Đọc text từ VTT file theo khoảng thời gian
+        text = _read_vtt_by_time_range(vtt_path, start_time, end_time)
+        
+        if not text or len(text.strip()) < 10:
+            return jsonify({
+                "ok": False,
+                "error": "No text found in the specified time range"
+            }), 404
+        
+        return jsonify({
+            "ok": True,
+            "text": text,
+            "start_time": start_time,
+            "end_time": end_time
+        })
+        
+    except Exception as e:
+        current_app.logger.exception("Error extracting caption text: %s", e)
+        return jsonify({
+            "ok": False,
+            "error": str(e)
+        }), 500
+
 @app.get("/api/captions/status")
 @login_required
 def api_captions_status():
@@ -2954,7 +3597,9 @@ def api_ai_progress():
 @app.get("/api/ai/cheating-incidents")
 @login_required
 def api_ai_cheating_incidents():
-    """API lấy danh sách chi tiết các sự kiện gian lận"""
+    """API lấy danh sách chi tiết các sự kiện gian lận
+    Tự động scan thư mục cheat_screenshots và map ảnh với incidents dựa trên folder name
+    """
     if session.get("role") != "teacher":
         abort(403)
     course_id = request.args.get("course_id", type=int)
@@ -2966,18 +3611,278 @@ def api_ai_cheating_incidents():
         user_id=user_id,
         limit=limit
     )
+    
+    # Scan thư mục cheat_screenshots và map ảnh với incidents
+    screenshot_map = _scan_cheat_screenshots_folder()
+    current_app.logger.info(f"[SCREENSHOT_MAP] Found {len(screenshot_map)} folders with images")
+    
+    # Map ảnh vào incidents dựa trên folder name (username_YYYYMMDD_HHMMSS)
+    for incident in incidents:
+        # Nếu đã có screenshot_url từ database, giữ nguyên
+        if incident.get("screenshot_url"):
+            current_app.logger.info(f"[SCREENSHOT_MAP] Incident {incident.get('id')} already has screenshot_url: {incident.get('screenshot_url')}")
+            continue
+            
+        # Tạo folder name từ thông tin incident
+        username = (incident.get("username") or "").strip()
+        detected_date = incident.get("detected_date") or ""
+        detected_time = incident.get("detected_time") or ""
+        
+        # Log để debug
+        current_app.logger.info(f"[SCREENSHOT_MAP] Processing incident {incident.get('id')}: username={username}, date={detected_date}, time={detected_time}")
+        
+        # Làm sạch username: loại bỏ @ và các ký tự đặc biệt, chỉ giữ alphanumeric và -_
+        import re
+        clean_username = re.sub(r'[^a-zA-Z0-9_-]', '', username.replace("@", "").replace(".", ""))
+        
+        # Format: username_YYYYMMDD_HHMMSS
+        matched_folder = None
+        
+        # Xử lý date
+        date_str = ""
+        if detected_date:
+            # Chuyển YYYY-MM-DD thành YYYYMMDD
+            date_str = detected_date.replace("-", "").strip()
+            if len(date_str) != 8:
+                # Nếu không đúng format, thử parse lại
+                try:
+                    from datetime import datetime
+                    dt = datetime.strptime(detected_date, "%Y-%m-%d")
+                    date_str = dt.strftime("%Y%m%d")
+                except:
+                    date_str = detected_date.replace("-", "").replace("/", "").strip()
+        
+        # Xử lý time
+        time_str = ""
+        if detected_time:
+            # Chuyển HH:MM:SS thành HHMMSS
+            time_str = detected_time.replace(":", "").strip()
+            # Đảm bảo time_str có đủ 6 ký tự (HHMMSS)
+            if len(time_str) == 8:  # Nếu là HH:MM:SS (8 ký tự với dấu :)
+                time_str = time_str.replace(":", "")
+            elif len(time_str) < 6:
+                # Pad với 0 nếu thiếu
+                time_str = time_str.zfill(6)
+            elif len(time_str) > 6:
+                # Lấy 6 ký tự đầu
+                time_str = time_str[:6]
+        
+        # Tìm folder match
+        if date_str and time_str and clean_username:
+            folder_name = f"{clean_username}_{date_str}_{time_str}"
+            current_app.logger.info(f"[SCREENSHOT_MAP] Trying to match folder: {folder_name}")
+            
+            # Tìm exact match
+            if folder_name in screenshot_map:
+                matched_folder = folder_name
+                current_app.logger.info(f"[SCREENSHOT_MAP] ✅ Found exact match: {matched_folder}")
+            else:
+                # Tìm partial match (có thể có thêm ký tự hoặc format hơi khác)
+                for folder in screenshot_map.keys():
+                    # Thử match với pattern: username_date_time (có thể có thêm ký tự)
+                    if folder.startswith(f"{clean_username}_{date_str}_"):
+                        matched_folder = folder
+                        current_app.logger.info(f"[SCREENSHOT_MAP] ✅ Found partial match: {matched_folder}")
+                        break
+        
+        # Nếu không tìm thấy exact match, thử tìm theo username và date (không cần time chính xác)
+        if not matched_folder:
+            current_app.logger.info(f"[SCREENSHOT_MAP] No exact/partial match, trying fallback matching...")
+            # Sắp xếp folders theo thời gian (mới nhất trước) để ưu tiên folder gần nhất
+            sorted_folders = sorted(screenshot_map.keys(), reverse=True)
+            
+            for folder in sorted_folders:
+                # Kiểm tra folder có chứa username và date không
+                if clean_username and clean_username in folder:
+                    if date_str:
+                        if date_str in folder:
+                            matched_folder = folder
+                            current_app.logger.info(f"[SCREENSHOT_MAP] ✅ Found fallback match by username+date: {matched_folder}")
+                            break
+                    else:
+                        # Nếu không có date, lấy folder đầu tiên chứa username (mới nhất)
+                        matched_folder = folder
+                        current_app.logger.info(f"[SCREENSHOT_MAP] ✅ Found fallback match by username only: {matched_folder}")
+                        break
+        
+        # Nếu tìm thấy folder, map ảnh vào incident
+        if matched_folder and matched_folder in screenshot_map:
+            screenshot_info = screenshot_map[matched_folder]
+            if screenshot_info.get("images"):
+                # Lấy ảnh đầu tiên
+                first_image = screenshot_info["images"][0]
+                incident["screenshot_url"] = f"/cheat_screenshots/{matched_folder}/{first_image}"
+                incident["screenshot_path"] = screenshot_info["folder_path"]
+                incident["screenshot_count"] = len(screenshot_info["images"])
+                incident["all_screenshots"] = [
+                    f"/cheat_screenshots/{matched_folder}/{img}" 
+                    for img in screenshot_info["images"]
+                ]
+                current_app.logger.info(f"[SCREENSHOT_MAP] ✅ Mapped screenshot for incident {incident.get('id')}: {matched_folder} ({len(screenshot_info['images'])} images)")
+            else:
+                current_app.logger.warning(f"[SCREENSHOT_MAP] Folder {matched_folder} found but no images")
+        else:
+            # Nếu vẫn không tìm thấy, thử tìm bất kỳ folder nào có username (không cần date/time)
+            if clean_username:
+                matching_folders = [f for f in screenshot_map.keys() if clean_username in f]
+                if matching_folders:
+                    # Lấy folder đầu tiên (hoặc folder mới nhất nếu có date trong tên)
+                    matched_folder = matching_folders[0]
+                    if date_str:
+                        # Ưu tiên folder có date trong tên
+                        for folder in matching_folders:
+                            if date_str in folder:
+                                matched_folder = folder
+                                break
+                    
+                    screenshot_info = screenshot_map[matched_folder]
+                    if screenshot_info.get("images"):
+                        first_image = screenshot_info["images"][0]
+                        incident["screenshot_url"] = f"/cheat_screenshots/{matched_folder}/{first_image}"
+                        incident["screenshot_path"] = screenshot_info["folder_path"]
+                        incident["screenshot_count"] = len(screenshot_info["images"])
+                        incident["all_screenshots"] = [
+                            f"/cheat_screenshots/{matched_folder}/{img}" 
+                            for img in screenshot_info["images"]
+                        ]
+                        current_app.logger.info(f"[SCREENSHOT_MAP] ✅ Mapped screenshot (loose match) for incident {incident.get('id')}: {matched_folder} ({len(screenshot_info['images'])} images)")
+                    else:
+                        current_app.logger.warning(f"[SCREENSHOT_MAP] ❌ No folder matched for incident {incident.get('id')} (username={clean_username}, date={detected_date}, time={detected_time})")
+                        current_app.logger.info(f"[SCREENSHOT_MAP] Available folders with username '{clean_username}': {matching_folders[:5]}")
+                else:
+                    current_app.logger.warning(f"[SCREENSHOT_MAP] ❌ No folder matched for incident {incident.get('id')} (username={clean_username}, date={detected_date}, time={detected_time})")
+                    # Log tất cả các folder có sẵn để debug
+                    all_folders = list(screenshot_map.keys())[:10]
+                    current_app.logger.info(f"[SCREENSHOT_MAP] Sample available folders: {all_folders}")
+            else:
+                current_app.logger.warning(f"[SCREENSHOT_MAP] ❌ No username for incident {incident.get('id')}")
+    
     return jsonify({"ok": True, "incidents": incidents, "count": len(incidents)})
+
+def _scan_cheat_screenshots_folder():
+    """
+    Scan thư mục cheat_screenshots và trả về map: {folder_name: {images: [...], folder_path: ...}}
+    Folder name format: username_YYYYMMDD_HHMMSS
+    """
+    import os
+    from pathlib import Path
+    
+    screenshot_map = {}
+    
+    # Xử lý đường dẫn
+    screenshot_dir = Path(CHEAT_SCREENSHOT_ROOT)
+    if not screenshot_dir.is_absolute():
+        screenshot_dir = Path(os.getcwd()) / screenshot_dir
+    
+    current_app.logger.info(f"[SCAN_FOLDER] Scanning directory: {screenshot_dir}")
+    
+    if not screenshot_dir.exists():
+        current_app.logger.warning(f"[SCAN_FOLDER] Directory not found: {screenshot_dir}")
+        return screenshot_map
+    
+    if not screenshot_dir.is_dir():
+        current_app.logger.warning(f"[SCAN_FOLDER] Path is not a directory: {screenshot_dir}")
+        return screenshot_map
+    
+    # Scan tất cả các folder trong cheat_screenshots
+    folder_count = 0
+    for folder_path in screenshot_dir.iterdir():
+        if folder_path.is_dir():
+            folder_count += 1
+            folder_name = folder_path.name
+            
+            # Lấy tất cả file ảnh trong folder
+            images = []
+            for ext in ['*.jpg', '*.jpeg', '*.png', '*.JPG', '*.JPEG', '*.PNG']:
+                images.extend(list(folder_path.glob(ext)))
+            
+            if images:
+                # Sắp xếp theo tên file (thường có timestamp)
+                images.sort(key=lambda x: x.name)
+                image_names = [img.name for img in images]
+                
+                screenshot_map[folder_name] = {
+                    "folder_name": folder_name,
+                    "folder_path": str(folder_path),
+                    "images": image_names,
+                    "image_count": len(image_names)
+                }
+                current_app.logger.debug(f"[SCAN_FOLDER] Found folder: {folder_name} with {len(image_names)} images")
+            else:
+                current_app.logger.debug(f"[SCAN_FOLDER] Folder {folder_name} has no images")
+    
+    current_app.logger.info(f"[SCAN_FOLDER] Scanned {folder_count} folders, found {len(screenshot_map)} folders with images")
+    if len(screenshot_map) > 0:
+        # Log một vài folder đầu tiên để debug
+        sample_folders = list(screenshot_map.keys())[:5]
+        current_app.logger.info(f"[SCAN_FOLDER] Sample folders: {sample_folders}")
+    
+    return screenshot_map
 
 @app.route("/cheat_screenshots/<path:filename>")
 @login_required
 def serve_cheat_screenshot(filename):
-    """Serve screenshot files từ thư mục cheat_screenshots"""
+    """Serve screenshot files từ thư mục cheat_screenshots
+    Hỗ trợ cả file trực tiếp và file trong subfolder: folder_name/file.jpg
+    """
     if session.get("role") != "teacher":
         abort(403)
-    from flask import send_from_directory
+    from flask import send_from_directory, send_file
     import os
-    screenshot_dir = os.path.join(os.getcwd(), CHEAT_SCREENSHOT_ROOT)
-    return send_from_directory(screenshot_dir, filename)
+    from pathlib import Path
+    
+    screenshot_dir = Path(CHEAT_SCREENSHOT_ROOT)
+    if not screenshot_dir.is_absolute():
+        screenshot_dir = Path(os.getcwd()) / screenshot_dir
+    
+    # Normalize filename (thay \ thành /)
+    filename = filename.replace("\\", "/")
+    
+    # Đường dẫn đầy đủ đến file
+    file_path = screenshot_dir / filename
+    
+    # Log để debug
+    current_app.logger.info(f"[SERVE_SCREENSHOT] Requested: {filename}, Full path: {file_path}")
+    
+    # Kiểm tra file có tồn tại không
+    if file_path.exists() and file_path.is_file():
+        current_app.logger.info(f"[SERVE_SCREENSHOT] ✅ Serving file: {file_path}")
+        return send_file(str(file_path))
+    
+    # Nếu filename có dạng "folder/file.jpg", thử serve từ subfolder
+    if "/" in filename:
+        parts = filename.split("/")
+        if len(parts) >= 2:
+            folder = parts[0]
+            file_name = "/".join(parts[1:])
+            folder_path = screenshot_dir / folder
+            
+            if folder_path.exists() and folder_path.is_dir():
+                file_in_folder = folder_path / file_name
+                if file_in_folder.exists() and file_in_folder.is_file():
+                    current_app.logger.info(f"[SERVE_SCREENSHOT] ✅ Serving from subfolder: {file_in_folder}")
+                    return send_file(str(file_in_folder))
+    
+    # Fallback: thử với send_from_directory
+    try:
+        # Nếu filename có dạng "folder/file.jpg", tách ra
+        if "/" in filename:
+            parts = filename.split("/")
+            folder = parts[0]
+            file_name = "/".join(parts[1:])
+            folder_path = screenshot_dir / folder
+            if folder_path.exists() and folder_path.is_dir():
+                current_app.logger.info(f"[SERVE_SCREENSHOT] ✅ Serving via send_from_directory: {folder_path} / {file_name}")
+                return send_from_directory(str(folder_path), file_name)
+        
+        # Thử send_from_directory trực tiếp
+        current_app.logger.info(f"[SERVE_SCREENSHOT] ✅ Serving via send_from_directory (root): {filename}")
+        return send_from_directory(str(screenshot_dir), filename)
+    except Exception as e:
+        current_app.logger.error(f"[SERVE_SCREENSHOT] ❌ Error serving screenshot {filename}: {e}")
+        import traceback
+        current_app.logger.error(traceback.format_exc())
+        abort(404)
 
 @app.route("/api/ai/import-screenshots", methods=["POST"])
 @login_required
@@ -3314,6 +4219,69 @@ def api_delete_study_room(room_id):
 def api_update_study_room(room_id):
     """API cập nhật thông tin phòng học"""
     return study_room_controller.update_room(room_id)
+
+@app.post("/api/rooms/upload-recording")
+@login_required
+def api_upload_room_recording():
+    """API endpoint để upload video recording từ room"""
+    try:
+        if 'video' not in request.files:
+            return jsonify({'success': False, 'error': 'No video file provided'}), 400
+        
+        video_file = request.files['video']
+        room_id = request.form.get('room_id')
+        user_id = request.form.get('user_id')
+        username = request.form.get('username', 'Unknown')
+        
+        if video_file.filename == '':
+            return jsonify({'success': False, 'error': 'No file selected'}), 400
+        
+        # Tạo thư mục lưu recordings
+        recordings_dir = os.path.join(os.getcwd(), 'room_recordings')
+        os.makedirs(recordings_dir, exist_ok=True)
+        
+        # Tạo thư mục cho room nếu chưa có
+        room_dir = os.path.join(recordings_dir, f'room_{room_id}')
+        os.makedirs(room_dir, exist_ok=True)
+        
+        # Tạo tên file với timestamp
+        timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f'recording_{username}_{timestamp}.webm'
+        filepath = os.path.join(room_dir, filename)
+        
+        # Lưu file
+        video_file.save(filepath)
+        
+        # Lưu metadata
+        metadata = {
+            'room_id': room_id,
+            'user_id': user_id,
+            'username': username,
+            'filename': filename,
+            'filepath': filepath,
+            'timestamp': datetime.datetime.now().isoformat(),
+            'file_size': os.path.getsize(filepath)
+        }
+        
+        metadata_file = os.path.join(room_dir, f'{filename}.json')
+        with open(metadata_file, 'w', encoding='utf-8') as f:
+            json.dump(metadata, f, ensure_ascii=False, indent=2)
+        
+        print(f"[ROOM RECORDING] Saved recording from {username} in room {room_id}: {filename}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Recording uploaded successfully',
+            'filename': filename,
+            'filepath': filepath
+        }), 200
+        
+    except Exception as e:
+        print(f"[ROOM RECORDING ERROR] {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Internal server error: ' + str(e)
+        }), 500
 
 @app.get("/api/study-rooms")
 @login_required
